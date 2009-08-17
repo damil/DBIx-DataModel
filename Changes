@@ -1,0 +1,241 @@
+Revision history for Perl extension DBIx::DataModel.
+
+v1.19 17.08.2009
+  - insert(..) now accepts a list of arrayrefs (kind of 'populate' method)
+  - fixes in the doc (thanks to Terrence Brannon for many suggestions)
+  - announce discussion group @ googlegroups & public source @ svn.ali.as
+  
+v1.18 31.07.2009
+  - added missing "use DBI" in Schema::Generator
+  - added Schema methods 'table' and 'view'
+  - more liberal in _createPackage, just check not clobbering @ISA
+
+v1.17 10.06.2009
+  - treat case when $schema->dbh is undef
+
+v1.16 10.06.2009
+  - doTransaction properly calls dbh() instead of direct access to classData
+  - localizeState properly calls setter methods when restoring previous state
+
+v1.15 02.06.2009
+  - bug fix on reporting rollback exceptions
+
+v1.14 20.04.2009
+  - bug fix on adaptations for SQL::Abstract v1.51 (select(-where => [...]))
+
+v1.13 08.04.2009
+  - adaptations for SQL::Abstract v1.51 (syntax change for -and/-or)
+
+v1.12 17.03.2009
+  - stupid error in count of SKIP tests (MsAccess.t) when DBD::Mock is absent
+
+v1.11
+  - dependency on SQL::Abstract v1.50, tests adapted
+  - nested records in insert(): allow for empty arrayref
+
+v1.10
+  - exceptions during doTransaction are returned as a blessed arrayref
+
+v1.09
+  - fixed bug with ->fetch(@prim_key) when scalar(@prim_key) > 1
+
+v1.08
+  - fixed bug with -pageIndex (missing code)
+
+v1.07
+   - adapted tests for DBD::Mock 1.39
+
+v1.06
+  - Schema.pm : replaced deprecated 
+        if(defined(%{$pck.".."})) 
+    by 
+        if(%{$pck.".."})
+  - t/Storable.t : 
+      - parent process in eval() to avoid child zombie if parent dies
+      - if Perl < 5.8, fallback to IO::String
+  - t/DBIx-DataModel.t : 
+      - pre-test DBD::Mock on functionality rather than version number
+  - Schema.pm, View.pm : dynamic subclasses created through
+       @{$subclass."::ISA"} = @$aref;
+    instead of 
+       *{$subclass."::ISA"} = $aref;
+    so that Perl5.10 method cache is properly invalidated.
+
+v1.05
+  - fixed hanging test because of bug 37054 in DBD::Mock
+
+v1.04 
+  - removed non-portable v-string in View.pm
+  - fixed test when Acme::Damn is not installed
+
+v1.03 23.09.2008 CPAN release
+
+v1.01
+  - added method Schema->statementClass
+  - bug fixes in Statement::_resolve_source and Statement::JDBC::execute
+  - added -resultAs => 'flat_array' | 'subquery'
+  - better error message when missing foreign keys in a $object->join(...)
+
+v1.0
+  MAJOR REVISION, see Doc/Delta_1.0.pod
+  - added fetch_cached() method
+  - fixed bug in select(..., -orderBy =>...)
+  - better error message if missing foreign key 
+  - corrected _addSelectCriteria algorithm for merging several %where structs
+  - new statement object
+  - new method rowCount
+  - AbstractTable renamed as Source
+  - schema name is automatically prepended in table and views
+
+  INCOMPATIBLE CHANGES
+  - totally removed deprecated methods selectSth, applyColumnHandlers, 
+    SqlDialect
+  - -resultAs => 'statement' now means 'DBIx::DataModel::Statement' 
+    (formerly was a synonym for 'sth'
+
+v0.42
+  - fix bug in Schema.pm (loading Cursor class)
+
+v0.41
+  - documentation: splitting into several parts and general reworking
+  - Schema() : added an option to supply a customized SQL::Abstract instance
+  - Cursor : forbids ->next(..) and ->all() on "fast cursors"
+  - "ViewFromRoles", "selectFromRoles" renamed as "join", "selectJoined"
+  - new method Schema->localizeState()
+
+v0.40
+  - added fast iterators, using DBI's bind_columns() and fetch() methods
+  - bug fix : fetch("") was returning the whole table!
+  - scrollable cursor for JDBC
+
+v0.39 08.02.2008
+  - "longColumn|alias" syntax for -columns no longer modifies original data
+
+v0.38
+  - bug fix Schema::FROM_THAW
+
+v0.37
+  - ->select(-fetch => $key)
+  - doTransaction : all commits at the end
+  - support for Storable::freeze/thaw
+
+v0.36
+  - Schema::doTransaction(): support for localizing the dbh
+
+v0.35 12.11.2007
+  - Schema::doTransaction(): support for nested transactions
+  - insert() : if component subtrees, the composite gets the prim. keys
+
+v0.34 30.10.2007
+  - minor change in Schema::doTransaction because rollback() problem in JDBC
+  
+v0.33 19.10.2007
+  - minor fix in Table.pm, don't delete a hash key from an each() loop
+  - Schema() : added options tableParent and viewParent
+  - select() : added option -resultAs => 'firstrow'
+
+v0.32 21.08.2007
+  - minor adaptation for perl 5.9 (because strict 'refs' is stricter!)
+
+v0.31 30.05.2007
+  - additional parameter in handlers called by autoUpdateColumns
+
+v0.30 29.03.2007
+  - fixed bug in Schema::dbh
+
+v0.29 14.03.2007
+  - AutoUpdateColumns was not called on insert -- fixed
+  - added AutoInsertColumns()
+  - added "longColumn|alias" syntax for -columns
+
+v0.28 12.12.2006 CPAN release
+  - fixed bug in _rawInsert (was unblessing $self in case of exceptions)
+
+v0.27 14.11.2006
+  - added Table::componentRoles()
+  - primKey returns column names (class method) or values (instance method)
+  - restructured insert(), added _singleInsert and _rawInsert
+
+v0.26 12.11.2006
+  - default values for column names in Associations
+  - primKey returns list or scalar depending on wantarray
+  - added optional arguments to Schema->dbh() 
+  - fixed arguments to last_insert_id
+  - consistency checks on Compositions
+
+v0.25 09.11.2006
+  - more liberal parsing of multiplicities
+
+v0.24 08.11.2006
+  - insert() returns list or scalar depending on wantarray
+
+v0.23 07.11.2006
+  - added Composition() and cascaded insert/delete
+  - added support for prefixes +/- for -orderBy
+
+v0.22 14.09.2006
+  - added option -postSQL to select()
+  - Build.pl option to support old-style Makefile.PL
+  - ViewFromRoles creates views in $schema::View namespace
+
+v0.21 CPAN release 06.09.2006
+  - check args for ViewFromRoles
+  - check -resultAs value
+  - fixed SKIP numbers in tests (when DBD::Mock is not installed)
+  - fixed requires and recommends in Build.pl
+
+v0.20 CPAN release 27.05.2006
+	
+v0.18, v0.19 - internal releases, major rewrite:
+  - reshuffled the inheritance tree
+  - restructured the documentation
+  - selectFromRoles() accepts roles from any table in the stack
+  - added many-to-many Associations
+  - added MethodFromRole()
+  - added -distinct, -groupBy and -having clauses
+  - insert() returns DBI->last_insert_id()
+
+v0.17
+  - Minor fixes in documentation
+  - SqlDialect() is deprecated (replaced by arg in Schema() method)
+
+v0.16 CPAN release 26.01.2006
+  - Associations now install an "insert_into_..." method
+  - ViewFromRoles can take explicit join kinds (_INNER_|_LEFT_)
+  - Schema->dbh(..) checks that RaiseError is true
+  - term 'arity' replaced by 'multiplicity' in doc and code
+  - Association() checks that multiplicities are not many to many
+  - fixed internal hyperlinks in POD documentation
+
+v0.15 internal release
+  - added Schema methods 'classes' and 'views'
+  - debug method now also prints the bind values
+
+v0.14 CPAN release 28.11.2005
+  - added clause "-for (readonly | update)" to select() and
+    added method "selectImplicitlyFor"
+  - doTransaction starts with $dbh->begin_work
+  - role methods reuse cached results from "expand"
+  - added method Autoload(1|0)
+
+v0.13 internal release
+  - Added doTransaction
+  - Added Schema->lasth;
+
+v0.12
+  - Added the named arguments API to select()
+  - new methods preselectWhere() and selectFromRoles()
+  - new internal functions _parseSelectArgs() and _addSelectCriteria
+  - rewrote implentation of Association role methods using these new functions
+  - new method SqlDialect	
+  
+v0.11 internal release
+  - Updated the doc, explaining about writing role methods by hand
+  - Added a check in fetch() that we are in a Table class
+  - Changed implementation of ViewFromRoles, using INNER JOIN
+
+v0.10 16.09.2005 First CPAN release, 
+
+
+
+

@@ -1,0 +1,1993 @@
+=head1 NAME
+
+DBIx::DataModel::Doc::Reference - All methods of DBIx::DataModel
+
+=head1 DOCUMENTATION CONTEXT
+
+This chapter is part of the C<DBIx::DataModel> manual.
+
+=over
+
+=item * 
+
+L<SYNOPSIS AND DESCRIPTION|DBIx::DataModel>
+
+=item * 
+
+L<DESIGN|DBIx::DataModel::Doc::Design>
+
+=item * 
+
+L<QUICKSTART|DBIx::DataModel::Doc::Quickstart>
+
+=item *
+
+REFERENCE
+
+=item *
+
+L<MISC|DBIx::DataModel::Doc::Misc>
+
+=item *
+
+L<INTERNALS|DBIx::DataModel::Doc::Internals>
+
+=item *
+
+L<GLOSSARY|DBIx::DataModel::Doc::Glossary>
+
+=back
+
+
+=head1 DESCRIPTION
+
+This chapter is the detailed description
+of C<DBIx::DataModels> methods for creating and using
+schemas. 
+
+Automatic schema generation from external sources is not
+covered here; see L<DBIx::DataModel::Schema::Generator>.
+
+Detailed use of B<statements> is not covered here either,
+because explicit programming of the various statement 
+phases (sqlize, prepare, bind, execute, etc.) is 
+seldom needed. If you want to finely tune these operations,
+read the 
+L<DESIGN|DBIx::DataModel::Doc::Design/"STATEMENT OBJECTS"> 
+section of the manual (purpose, lifecycle, etc.), and
+the L<DBIx::DataModel::Statement|DBIx::DataModel::Statement> page.
+
+
+
+=head1 GENERAL CONVENTION
+
+Method names starting with an B<uppercase letter>
+are meant to be B<compile-time class methods>.  These methods will
+typically be called when loading a module like 'MySchema.pm', and
+therefore will be executed during the BEGIN phase of the Perl
+compiler.  They instruct the compiler to create classes, methods and
+datastructures for representing the elements of a database schema.
+For those methods, the return value is the classname again, so that 
+they can be chained :
+
+   $schema->Table(...)
+          ->Table(...)
+          ->Association(...);
+
+Method names starting with a B<lowercase letter> are meant to be usual
+B<run-time methods>, either for classes or for instances; usually
+these methods do not return the classname and therefore
+cannot be chained.
+
+
+=head1 SCHEMA CREATION
+
+=head2 Schema
+
+  DBIx::DataModel->Schema($schemaName, %options)
+
+Creates a new Perl class of name C<$schemaName> that represents a 
+database schema. That class inherits from 
+C<DBIx::DataModel::Schema>.
+Possible options are :
+
+=over
+
+=item C<< dbh => $dbh >>
+
+Connects the schema to a DBI database handle.
+This can also be set or reset later via the 
+L</dbh> method.
+
+=item C<< sqlAbstract => $sql_abstract_instance >>
+
+Specifies an instance of L<SQL::Abstract|SQL::Abstract>
+to be used by this schema. If none is given, a default
+instance will be created automatically, with no specific
+option.
+
+
+=item C<< sqlDialect => $dialect >>
+
+SQL has no standard syntax for performing joins, so if your
+database wants a particular syntax you will need to declare it.
+Current builtin dialects are either C<'MsAccess'>, C<'BasisODBC'>,
+C<'BasisJDBC'> or C<'Default'> (contributions to enrich this list 
+are welcome). Otherwise C<$dialect> can also be a hashref in which you
+supply the following information :
+
+=over
+
+=item innerJoin
+
+a string in L<sprintf|perlfunc/"sprintf"> format, with placeholders
+for the left table, the right table and the join criteria.
+Default is C<%s INNER JOIN %s ON %s>.
+If your database does not support inner joins, set this to C<undef>
+and the generated SQL will be in the form C<T1, T2, ... Tn WHERE ... AND ... >.
+
+=item leftJoin
+
+a string for left outer joins.
+Default is C<%s LEFT OUTER JOIN %s ON %s>.
+
+=item joinAssociativity
+
+either C<left> or C<right>
+
+=item columnAlias
+
+a string for generating column aliases. 
+Default is C<%s AS %s>.
+
+=back
+
+=item C<< tableParent => 'My::Parent::Class::For::Tables' >>
+
+Specifies a parent class from which table classes will inherit.
+The default is C<DBIx::DataModel::Table>.
+The argument may also be an arrayref of several parent class names.
+
+=item C<< viewParent => 'My::Parent::Class::For::Views' >>
+
+Specifies a parent class from which table classes will inherit.
+The default is C<DBIx::DataModel::View>.
+The argument may also be an arrayref of several parent class names.
+
+
+=item C<< statementClass => 'My::Statement::Class' >>
+
+Specifies a class to be used for statements
+returned by the  L<select()|/"select"> method, 
+instead of the default
+L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>.
+The specified class should of course implement the same
+API. It may be useful to override it  for
+performing driver-specific operations on the 
+underlying C<dbh> (see for example
+L<DBIx::DataModel::Statement::JDBC|DBIx::DataModel::Statement::JDBC>,
+with added methods for scrolling the result set).
+
+
+=item C<< placeholderPrefix => $string >>
+
+Specifies a prefix to distinguish named placeholders from
+ordinary values in parameters to 
+L<statements|DBIx::DataModel::Statement>.
+The default is the question mark C<?>.
+
+=back
+
+
+
+=head1 SCHEMA POPULATION (CREATING TABLES, VIEWS AND ASSOCIATIONS)
+
+=head2 Table
+
+  $schema->Table($class, $dbTable, @primKey);
+
+Creates a new Perl class of name C<$class> that represents a 
+database table. That class inherits from 
+C<DBIx::DataModel::Table>.
+If C<< $class >> contains no C<::>, then the schema name
+is prepended to it (so the new table class is created in the namespace
+of the schema).
+C<< $dbTable >> should contain the name of the table in the database.
+C<< @primKey >> should contain the name of the column
+(or names of columns) holding the primary
+key for that table. 
+
+
+=head2 View
+
+  $schema->View($viewName, $columns, $dbTables, \%where, @parentTables);
+
+Creates a new Perl class of name C<$viewName> that represents a
+SQL SELECT request of shape 
+
+  SELECT $columns FROM $dbTables [ WHERE %where ]
+
+therefore arguments C<$columns> and C<$dbTables> should be strings;
+the optional C<\%where> argument should be a hashref, as explained below.
+
+If C<< $viewName >> or any parent table name contains no C<::>, 
+then the schema name is prepended to it.
+
+C<View()> is seldom called explicitly from client code; it is mainly 
+useful internally for implementing the L</"join"> method. However, it 
+could also be used to build queries with specific SQL clauses like 
+for example
+
+  $schema->View(MyView =>
+     "DISTINCT column1 AS c1, t2.column2 AS c2",
+     "Table1 AS t1 LEFT OUTER JOIN Table2 AS t2 ON t1.fk=t2.pk",
+     {c1 => 'foo', c2 => {-like => 'bar%'}},
+     qw/Table1 Table2/);
+
+The class generated by C<View()> has a  L<select()|/"select"> 
+method, which will 
+
+=over
+
+=item *
+
+select records from the database according to the criteria of the view, 
+merged with the criteria of the request;
+
+=item *
+
+apply the 'fromDB' handlers of the parent tables to those records;
+
+=item *
+
+bless the results into objects of C<$viewName>.
+
+=back
+
+See L<SQL::Abstract> for a
+complete description of what to put in the C<\%where> argument. For the
+moment, just consider the following example:
+
+  my $lst = $schema->view('MyView')->select(-where => {c3 => 22});
+
+This would generate the SQL statement:
+
+  SELECT DISTINCT column1 AS c1, t2.column2 AS c2
+  FROM  Table1 AS t1 
+        LEFT OUTER JOIN Table2 AS t2 ON t1.fk=t2.pk
+  WHERE (c1 = 'foo' AND c2 LIKE 'bar%' AND c3 = 22)
+
+The C<\%where> argument can of course be C<undef>.
+
+The optional list of C<< @parentTables >> contains names of Perl 
+table classes from which the view will also inherit.
+If the SQL code in C<$dbTables> is a join between
+several tables, then it is a good idea to mention these 
+tables in C<< @parentTables >>, so that their
+role methods become available to instances
+of C<MySchema::MyView>. Be careful about table names : 
+the SQL code in C<$dbTables> should contain I<database> table names,
+whereas the members of C<< @parentTables >> should be 
+I<Perl> table classes (although these might be identical,
+usually this is not the case).
+
+Perl views as defined here have nothing to do with views declared in
+the database itself. Perl views are totally unknown to the database,
+they are just abstractions of SQL statements.  If you need to access
+I<database views>, just use the C<Table> declaration, like for a regular
+table.
+
+
+
+=head2 Association
+
+  $schema->Association([$class1, $role1, $multiplicity1, @columns1], 
+                       [$class2, $role2, $multiplicity2, @columns2]);
+
+Declares an association between two tables (or even two instances of
+the same table), in a UML-like fashion. Each side of the association
+specifies its table, the "role name" of of this table in the
+association, the multiplicity, and the name of the column or list of
+columns that technically implement the association as a database
+join. 
+
+Role names should preferably be chosen so as to avoid
+conflicts with column names in the same table. Some
+recommendations are given in the 
+L<Quickstart section|DBIx::DataModel::Doc::Quickstart/"Choosing role names">.
+If several associations attempt to define the same role name in 
+the same table, an exception is generated.
+
+Multiplicities should be written in the UML form '0..*', '1..*',
+'0..1', etc. (minimum .. maximum number of occurrences); this will
+influence how role methods and views are implemented, as explained
+below. The '*' for "infinite" may also be written 'n',
+i.e. '1..n'. Multiplicity '*' is a shortcut for '0..*', and
+multiplicity '1' is a shortcut for '1..1'. Other numbers may be given
+as multiplicity bounds, but this will be just documentary :
+technically, all that matters is
+
+=over
+
+=item *
+
+whether the lower bound is 0 or more (if 0, generated
+joins will be left joins, otherwise inner joins)
+
+=item *
+
+whether the upper bound is 1 or more (if 1, the associated
+method returns a single object, otherwise it returns an arrayref)
+
+=back
+
+If C<@columns1> or C<@columns2> are omitted, they are guessed 
+as follows : for the table with multiplicity C<1> or C<0..1>,
+the default is the primary key; for the other table, the default
+is to take the same column names as the other side of the association.
+This default behaviour is convenient for data models where
+primary keys and foreign keys are identical (for example C<dpt_id> both
+as primary key in C<Department> and as foreign key in C<Activity>). 
+Some data models have a different policy, where primary keys are 
+always named the same (for example C<id>), and foreign keys
+are named after the related table name : in such models, the default
+does not work, and you have to specify the join columns
+explicitly.
+
+=head3 Roles as additional methods in table classes
+
+As a result of the association declaration, the Perl class
+C<< $table1 >> will get an additional method named
+C<< $role2 >> for accessing the associated object(s) in C<< $table2 >>; 
+that method normally returns an arrayref, unless C<< $multiplicity2 >>
+has maximum '1' (in that case the return value is a single object
+ref).  Of course, C<< $table2 >> conversely gets a method named 
+C<< $role1 >>. 
+
+To understand why tables and roles are crossed, look at the UML picture :
+
+  +--------+                     +--------+
+  |        | *              0..1 |        |
+  | Table1 +---------------------+ Table2 |
+  |        | role1         role2 |        |
+  +--------+                     +--------+
+
+so from an object of C<Table1>, you need a method C<role2> to access
+the associated object of C<Table2>. In your diagrams, be careful to
+get the role names correctly according to the UML
+specification. Sometimes we see UML diagrams where role names are on the
+wrong side, mainly because modelers have a background in
+Entity-Relationship or Merise methods, where it is the other way
+around.
+
+
+Role methods perform joins within Perl (as opposed to joins
+directly performed within the database). That is, given a declaration
+
+  $schema->Association([qw/Employee   employee   1   /],
+                       [qw/Activity   activities 0..*/]);
+
+we can call
+
+  my activities = $anEmployee->activities
+
+which will implicitly perform a 
+
+  SELECT * FROM Activity WHERE emp_id = $anEmployee->{emp_id}
+
+The role method can also accept additional parameters
+in L<SQL::Abstract> format, exactly like the 
+L<select()|/"select"> method. So for example
+
+  my $activities = $anEmployee->activities(-columns => [qw/act_name salary/],
+                                           -where   => {is_active => 'Y'});
+
+would perform the following SQL request :
+
+  SELECT act_name, salary FROM Activity WHERE 
+    emp_id = $anEmployee->{emp_id} AND
+    is_active = 'Y'
+
+If the role method is called without any parameters, and
+if that role was previously expanded (see L<expand()|/"expand"> method), 
+i.e. if the object hash contains an entry C<< $obj->{$role} >>, 
+then this data is reused instead of calling the database again
+(this is a primitive form of caching). To force a new
+call to the database, supply some parameters :
+
+  $emp->expand('activities');  # stores result in $emp->{activities}
+  $list = $emp->activities;    # returns cached $emp->{activities}
+  $list = $emp->activities(-columns => '*');  # default columns, but 
+                                              # forces a new call to the DB
+
+Sometimes associations are unidirectional (it does not make sense to
+traverse the association in both directions).  In such cases, just
+supply 0 or an empty string (or even the string C<"0"> or C<'""'> or
+C<--> or C<"none">) to one of the role names : then the corresponding
+role method is not generated.
+
+
+=head3 Methods C<insert_into_...>
+
+When a role has multiplicity '*', another method
+named C<insert_into_...> is also installed, that will
+create new objects of the associated class, taking care
+of the linking automatically :
+
+  $anEmployee->insert_into_activities({d_begin => $today, 
+                                       dpt_id  => $dpt});
+
+This is equivalent to
+
+  $schema->table('Activity')->insert({d_begin => $today, 
+                                      dpt_id  => $dpt, 
+                                      emp_id  => $anEmployee->{emp_id}});
+
+=head3 Many-to-many associations
+
+UML conceptual models may contain associations where
+both roles have multiplicity '*' (so-called 
+B<many-to-many> associations). However, when it comes to 
+actual database implementation, such associations
+need an intermediate linking table to collect 
+couples of identifiers from both tables. 
+
+C<DBIx::DataModel> supports many-to-many associations
+as a kind of syntactic sugar, translated into 
+low-level associations with the linking table. 
+The linking table needs to be declared first :
+
+  $schema->Table(qw/link_table link_table prim_key1 prim_key2/);
+
+  $schema->Association([qw/table1     role1       0..1/],
+                       [qw/link_table link_table  *   /]);
+
+  $schema->Association([qw/table2     role2       0..1/],
+                       [qw/link_table link_table  *   /]);
+
+This describes a diagram like this :
+
+  +--------+                   +-------+                   +--------+
+  |        | 0..1            * | Link  | *            0..1 |        |
+  | Table1 +-------------------+  --   +-------------------+ Table2 |
+  |        | role1  link_table | Table | link_table  role2 |        |
+  +--------+                   +-------+                   +--------+
+
+Then we can declare the  many-to-many association, very much like
+ordinary associations, except that the last items in the argument
+lists are names of roles to follow, instead of names of columns to join.
+In the diagram above, we must follow roles C<linksA> and C<role2>
+in order to obtain the rows of C<Table2> related to an instance
+of C<Table1>; so we write
+
+  $schema->Association([qw/table1  roles1  *  link_table role1/],
+                       [qw/table2  roles2  *  link_table role2/]);
+
+which describes a diagram like this :
+
+              +--------+                    +--------+
+              |        | *                * |        |
+              | Table1 +--------------------+ Table2 |
+              |        | roles1      roles2 |        |
+              +--------+                    +--------+
+
+The declaration has created a new method C<roles2> in 
+C<Table1>; that method is implemented by following roles
+C<linksA> and C<role2>. So for an object C<obj1> of C<Table1>,
+the call
+
+  my $obj2_arrayref = $obj1->roles2();
+
+will generate the following SQL :
+
+  SELECT * FROM link_table INNER JOIN table2
+            ON link_table.prim_key2=table2.prim_key2
+    WHERE link_table.prim_key1 = $obj->{prim_key1}
+
+
+Observe that C<roles2()> returns rows from a I<join>, 
+so these rows will belong both to C<Table2> I<and> to 
+C<Link_Table>.
+
+Many-to-many associations do not have an
+automatic C<insert_into_*> method : you must 
+explicitly insert into the link table.
+
+
+
+=head3 Following multiple associations
+
+In the previous section we were following two roles at once
+in order to implement a many-to-many association. More generally,
+it may be useful to follow several roles at once, joining
+the tables in a single SQL query. This can be done through the
+following methods :
+
+=over
+
+=item *
+
+L</join>  (invoked on a Schema) : create a new C<View> that selects 
+from several tables, filling the joins automatically
+
+
+=item *
+
+L</join> (invoked on an instance of Table or View) :
+from a given object, follow a list of roles to get information
+from associated tables.
+
+=item * 
+
+L</join> (invoked on Table or View class) :
+from a given class, follow a list of roles to prepare getting information
+from associated tables; the result is a L<Statement|DBIx::DataModel::Statement>
+object that can be bound to specific members of the initial table
+and then can be selected.
+
+
+=item *
+
+L</MethodFromJoin> :
+add a new method in a table, that will follow a list of roles 
+(shortcut for repeated calls to C<join>).
+
+
+=back
+
+
+
+=head2 Composition
+
+  $schema->Composition([$class1, $role1, $multiplicity1, @columns1], 
+                       [$class2, $role2, $multiplicity2, @columns2]);
+
+Declares a composition between two tables, i.e an association with
+some additional semantics. In UML class diagrams, compositions are
+pictured with a black diamond on one side : this side will be called
+the I<composite> class, while the other side will be called the
+I<component> class. In C<DBIx::DataModel>, the diamond (the composite
+class) corresponds to the first arrayref argument, and the component
+class corresponds to the second arrayref argument, so the order of
+both arguments is important (while for associations the order makes no
+difference).
+
+The UML intended meaning of a composition is that objects of the
+component classes cannot exist outside of their composite class. Within
+C<DBIx::DataModel>, the additional semantics for compositions is to
+support cascaded insertions and deletions and auto-expansion :
+
+=over
+
+=item *
+
+the argument to an C<insert> may contain references to subrecords.
+The main record will be inserted in the composite class, and within
+the same operation, subrecords will be inserted into the 
+component classes, with foreign keys automatically filled with
+appropriate values.
+
+
+=item *
+
+the argument to a C<delete> may contain lists of component records to
+be deleted together with the main record of the composite class.
+
+=item *
+
+roles declared through a Composition may then be supplied
+to L<AutoExpand()|/AutoExpand> so that the composite class
+can automatically fetch its component parts.
+
+
+=back
+
+See the documentation of L<insert()|/"insert">, L<delete()|/"delete"> and 
+L<AutoExpand()|/"AutoExpand"> methods below for more details.
+
+Note that compositions add nothing to the semantics of update operations.
+
+Even though the arguments to a C<Composition> look exactly like for
+C<Association>, there are some more constraints : the maximum
+C<$multiplicity1> must be  1 (which is coherent with the notion of composition),
+and the maximum C<$multiplicity2> must be greater than 1 (because
+one-to-one compositions are not common and we don't know
+exactly how to implement cascaded inserts or deletes in such a case).
+Furthermore, a class cannot be component of several composite classes,
+unless the corresponding multiplicities are all C<0..1> instead of the
+usual C<1>.
+
+
+=head2 join
+
+=head3 join as class method within a Schema
+
+  my $view = $schema->join($table, $role1, $role2, ..);
+
+Creates a C<View> class, starting from a given table class and
+following one or several associations through their role names.
+It calls the L</View> method, with a collection of parameters
+automatically inferred from the associations. So for example
+
+  $schema->join(qw/Department activities employee/);
+
+is equivalent to 
+
+  my $sql = <<_EOSQL_
+  Department 
+    LEFT OUTER JOIN Activity ON Department.dpt_id = Activity.dpt_id
+    LEFT OUTER JOIN Employee ON Activity.emp_id   = Employee.emp_id
+  _EOSQL_
+  
+  $schema->View(Department_LEFT_Activities_LEFT_Employee => '*', $sql, 
+                qw/Department Activity Employee/);
+
+For each pair of tables, the kind of join is chosen according to
+the multiplicity declared with the role : if the minimum multiplicity is 0, 
+the join will be LEFT OUTER JOIN; otherwise it will be a usual inner join
+(exception : after a first left join, all remaining tables are also
+ connected through additional left joins). The default kind of join 
+chosen by this rule may be overriden by inserting pseudo-roles
+in the list, namely C<< '<=>' >> or C<< INNER >> for inner joins 
+and C<< '=>' >> or C<< LEFT >> for left joins. So for example 
+
+  $schema->join(qw/Department <=> activities <=> employee/);
+
+becomes equivalent to 
+
+  my $sql = <<_EOSQL_
+  Department 
+    INNER JOIN Activity ON Department.dpt_id = Activity.dpt_id
+    INNER JOIN Employee ON Activity.emp_id   = Employee.emp_id
+  _EOSQL_
+
+Table names in the SQL statement correspond to what was defined
+in the C<< $schema->Table(...) >> declarations. However, tables may 
+be aliased using C<|> as a separator :
+
+  $schema->join(qw/Department|dpt activities|act employee|emp/)
+         ->select(-columns => qw/dpt.name act.d_begin emp.lastname/,
+                  -where   => {"dpt.dpt_name" => {-like => "A%"}});
+
+which generates
+
+  SELECT dpt.name, act.d_begin, emp.lastname
+  FROM Department AS dpt
+    LEFT OUTER JOIN Activity AS act ON dpt.dpt_id = act.dpt_id
+    LEFT OUTER JOIN Employee AS emp ON act.emp_id = emp.emp_id
+  WHERE dtp.dpt_name like 'A%'
+
+
+All tables participating in a C<join> are stacked,
+and further roles are found by walking up the stack. So in
+
+  ..->join(qw/FirstTable role1 role2 role3/)
+
+we must find a C<role1> in C<FirstTable>, from which we 
+know what will be the C<Table2>. Then, we must find 
+a C<role2> in in C<Table2>, or otherwise in C<FirstTable>,
+in order to know C<Table3>. In turn, C<role3> must be 
+found either in C<Table3>, or in C<Table2>, or in C<FirstTable>, etc.
+To resolve ambiguities, prefix the role by the role name or alias of the 
+targeted source, such as :
+
+  ..->join(qw/FirstTable role1|r1 FirstTable.role2 r1.role3|r3 role2.role4/)
+
+
+
+The resulting view name will be composed by concatenating the table
+and the capitalized role names. If join kinds were explicitly
+set, these also belong to the view name, like
+C<< Department_INNER_Activities >>.
+Since such names might be long and uncomfortable 
+to use, the view name is also returned as result of the method
+call, so that the client code can store it in a variable and use
+it as an alias.
+
+The main purpose of C<join> is to gain efficiency in
+interacting with the database. If we write
+
+  foreach my $dpt (@{$schema->table('Department')->select}) {
+    foreach my $act ($dpt->activities) {
+      my $emp = $act->employee;
+      printf "%s works in %s since %s\n", 
+         $emp->{lastname}, $dpt->{dpt_name}, $act->{d_begin};
+    }
+  }
+
+many database calls are generated behind the scene. 
+Instead we could write 
+
+  my $view = $schema->join(qw/Department activities employee/);
+  foreach my $row (@{$view->select}) {
+    printf "%s works in %s since %s\n", 
+      $row->{lastname}, $row->{dpt_name}, $row->{d_begin};
+  }
+
+which generates one single call to the database.
+
+
+=head3 join as class method within a Table or View
+
+  my $statement = $table->join(qw/role1 role2 .../)->prepare;
+
+Starting from a given table, returns a reference to a 
+L<statement|DBIx::DataModel::Statement> that
+selects a collection of data rows from associated tables, performing
+the appropriate joins.  Internally this is implemented throught the
+C<Schema::join> method, with an additional join criteria to constrain
+on the primary key(s) of C<$table>.  That statement cannot
+be executed yet, because the values of the primary key are not
+known until we have an instance of C<$table>; but the statement
+can already be
+L<prepare|DBIx::DataModel::Statement/prepare>d.
+Later on, we can 
+L<execute|DBIx::DataModel::Statement/execute> 
+the statement by binding it to an instance
+of C<$table> :
+
+   my $obj = $table->fetch(...);
+   my $rows = $statement->execute($obj)->all;
+
+=head3 join as instance method within a Table or View
+
+Creates a statement as just explained above, and immediately
+binds it to the current object. 
+So for example if C<< $emp->{emp_id} == 987 >>, then
+
+  $emp->join(qw/activities department/)
+      ->select(-where => {d_end => undef})
+
+will generate
+
+  SELECT * FROM Activity INNER JOIN Department 
+                         ON Activity.dpt_id = Department.dpt_id
+           WHERE  emp_id = 987 AND d_end IS NULL
+
+
+=head2 MethodFromJoin
+
+  $table->MethodFromJoin($meth_name => qw/role1 role2 .../, \%options);
+
+Inserts into the table class a new method named C<$meth_name>,
+that will automatically call L<join()|/"join"> and
+then L<select()|/"select">, passing its arguments to the 
+C<select> call.
+This is useful for joining several tables at once, so for
+example with 
+
+  $schema->table('Department')
+         ->MethodFromJoin(employees => qw/activities employee/);
+
+we can then write 
+
+  my $empl_ref = $someDept->employees(-where   => {gender => 'F'},
+                                      -columns => [qw/firstname lastname]);
+
+This method is used internally to implement many-to-many associations;
+so if you have only two roles to follow, you would probably be better
+off by defining the association, which is a more abstract notion.
+Direct calls to C<MethodFromJoin> are still useful if you want
+to follow three or more roles at once.
+
+The last argument to C<MethodFromJoin> is an optional 
+hashref; if present, the hash will be passed as initial
+argument to the C<select> call.
+
+=head1 SCHEMA OR TABLE PARAMETERIZATION
+
+=head2 DefaultColumns
+
+  $table->DefaultColumns($columns);
+
+Sets the default value for the C<-columns> argument to 
+L<select()|/select>. If nothing else is stated, the
+default value for all tables is 'C<*>'.
+
+
+=head2 ColumnHandlers
+
+  $table->ColumnHandlers($columnName => handlerName1 => coderef1,
+                                        handlerName2 => coderef2, ...);
+
+Associates some handlers to a given column in the current table class.
+Then, when you call C<< $obj->applyColumnHandler('someHandler') >>,
+each column having a handler of the corresponding name will execute the
+associated code. This can be useful for all sorts of data manipulation :
+
+=over
+
+=item *
+
+converting dates between internal database format and user presentation format
+
+=item *
+
+converting empty strings into null values
+
+=item *
+
+inflating scalar values into objects
+
+=item *
+
+column data validation
+
+=back
+
+Handlers receive the column value as usual through C<< $_[0] >>.
+If the value is to be modified (for example for scalar
+conversions or while inflating values into objects), 
+the result should be put back into C<< $_[0] >>.
+In addition to the column value, other info is passed to the
+handler :
+
+  sub myHandler {
+    my ($columnValue, $obj, $columnName, $handlerName) = @_;
+    my $newVal = $obj->computeNewVal($columnValue, ...);
+    $columnValue = $newVal; # WRONG : will be a no-op
+    $_[0] = $newVal;        # OK    : value is converted
+  }
+
+The second argument C<< $obj >> is the object from where 
+C<< $columnValue >> was taken -- most probably an instance 
+of a Table or View class.  Use this if you need to read some contextual
+information, but avoid modifying C<< $obj >> : you would most
+probably get unexpected results, since the collection of 
+available columns may vary from one call to the other.
+
+Other arguments C<< $columnName >> and
+C<< $handlerName >> are obvious.
+
+Handler names B<fromDB> and B<toDB> have a special
+meaning : they are called automatically just after reading data from
+the database, or just before writing into the database.
+Handler name B<validate> is used by the method
+L<hasInvalidColumns()|/"hasInvalidColumns">.
+
+
+
+=head2 ColumnType
+
+  $schema->ColumnType(type_name => handler_name1 => coderef1,
+                                   handler_name2 => coderef2, ...);
+
+When invoked on a schema, 
+declares a collection of column handlers under name C<type_name>.
+
+  $table->ColumnType(type_name => qw/column1 column2 .../);
+
+When invoked on a table,
+retrieves all column handlers defined under C<type_name> in the schema
+and calls L<ColumnHandlers()|/"ColumnHandlers"> to register those handlers to 
+C<< column1 >>, C<< column2 >>, etc.
+
+
+=head2 Autoload 
+
+  $schema->Autoload(1);   # turn on AUTOLOAD 
+  $table ->Autoload(1); # turn it on, just for one table
+
+If C<Autoload> is turned on, then columns have implicit read accessors
+through Perl's AUTOLOAD mechanism. So instead of C<< $record->{column} >> 
+you can write C<< $record->column >>.
+This feature is off by default, because the 
+hashref API C<< $record->{column} >>  is the recommended way
+to access data in C<DBIx::DataModel>.
+
+
+B<Caveat> : AUTOLOAD is a global feature, so 
+if there are several schemas, 
+C<< $schema->Autoload(1) >> actually turns it on 
+for all of them.
+
+
+=head2 AutoInsertColumns
+
+  $schema->AutoInsertColumns( columnName1 => sub{...}, ... );
+  $table ->AutoInsertColumns( columnName1 => sub{...}, ... );
+
+Declares handler code that will automatically fill column names
+C<columnName1>, etc. at each insert, either for a single table, or (if
+declared at the Schema level), for every table. For example, each
+record could remember who created it and when with something
+like
+
+  $schema->AutoInsertColumns( created_by => 
+    sub{$ENV{REMOTE_USER} . ", " . localtime}
+  );
+
+The handler code will be called as 
+
+  $handler->(\%record, $table)
+
+so that it can know something about its calling context.  In most
+cases, however, the handler will not need these parameters, because it just
+returns global information such as current user or current date/time.
+
+
+=head2 AutoUpdateColumns
+
+  $schema->AutoUpdateColumns( columnName1 => sub{...}, ... );
+  $table ->AutoUpdateColumns( columnName1 => sub{...}, ... );
+
+Just like C<AutoInsertColumns>, but will be called automatically
+at each update B<and> each insert. This is typically used to 
+remember the author and/or date and time of the last modification
+of a record. If you use both C<AutoInsertColumns> and 
+C<AutoUpdateColumns>, make sure that the column names are not 
+the same.
+
+When doing an I<update> (i.e. not an insert), the
+handler code will be called as 
+
+  $handler->(\%record, $table, \%where)
+
+where C<%record> contains the columns to be updated and
+C<%where> contains the primary key (column name(s) and value(s)).
+
+=head2 NoUpdateColumns
+
+  $schema->NoUpdateColumns(@columns);
+  $table ->NoUpdateColumns(@columns);
+
+Defines an array of column names that will be excluded from 
+INSERT/UPDATE statements. This is useful for example when
+some column are set up automatically by the database 
+(like automatic time stamps or user identification).
+It can also be useful if you want to temporarily add information
+to memory objects, without passing it back to the database.
+
+NoUpdate columns can be set for a whole Schema, or
+for a specific Table class.
+
+
+=head2 AutoExpand
+
+  $table->AutoExpand(qw/role1 role2 .../)
+
+Generates an L<autoExpand()|/"autoExpand"> method for the class, that 
+will autoexpand on the roles listed (i.e. will call
+the appropriate method and store the result
+in a local slot within the object). 
+In other words, the object knows how to expand itself,
+fetching information from associated tables, in order
+to build a data tree in memory.
+Only roles declared as L<Composition()|/"Composition">
+may be auto-expanded.
+
+Be careful about performance issues: when an object uses
+auto-expansion through a call to L<autoExpand()|/"autoExpand">,
+every auto-expanded
+role will generate an additional call to the database. This might
+be slow, especially if there are recursive auto-expansions;
+so in some cases it will be more appropriate to flatten the tree
+and use database joins, typically through the method
+L<join()|/"join">.
+
+
+=head1 RUNTIME PROPERTIES OR PARAMETERIZATION
+
+=head2 dbh
+
+  my $dbh = DBI::connect(...);
+  $schema->dbh($dbh, %options);        # set
+  $schema->dbh([$dbh, %options]);      # set, alternative syntax
+
+  my $dbh             = $schema->dbh;  # get back just the dbh
+  my ($dbh, %options) = $schema->dbh;  # get back all
+
+Returns or sets the handle to a DBI database handle (see L<DBI>). 
+This handle is schema-specific.
+C<DBIx::DataModel> expects the handle to be opened with
+C<< RaiseError => 1 >>
+(see L</"Transactions and error handling">).
+
+In C<%options> you may pass any key-value pairs, and retrieve
+them later by calling C<dbh> in a list context. 
+C<DBIx::DataModel> will look in those options to try to find
+the "catalog" and "schema" arguments for C<DBI>'s 
+L<last_insert_id|DBI/last_insert_id>.
+
+Changing the database handle through the C<dbh> method 
+is forbidden while a transaction is in course.
+However, a nested transaction may temporarily change
+the database handle by supplying it as argument to the 
+L</doTransaction> method.
+
+=head2 schema
+
+  $schema = $class->schema;
+  $schema = $object->schema;
+
+Returns the name of the schema class for the given object or class
+(table or view).
+
+
+=head2 db_table
+
+  $db_table = $class->db_table;
+  $db_table = $object->db_table;
+
+Returns the database table name registered via C<< Schema->Table(..) >> 
+or collection of joined tables registered via C<< Schema->View(..) >>.
+
+
+=head2 debug
+
+  Schema->debug( 1 );            # will warn for each SQL statement
+  Schema->debug( $debugObject ); # will call $debugObject->debug($sql)
+  Schema->debug( 0 );            # turn off debugging
+
+Debug mode is useful for seeing SQL statements generated 
+by C<DBIx::DataModel>. 
+Enabling debugging with a C<$debugObject>
+will typically be useful in conjunction with something like 
+L<Log::Log4perl|Log::Log4perl> or 
+L<Log::Dispatch|Log::Dispatch>.
+
+There is also another way to see the SQL code :
+
+  my $spy_sql = sub {my ($sql, @bind) = @_;
+                     print STDERR join "\n", $sql, @bind;
+                     return ($sql, @bind);};
+  
+  my $result = $myClassOrObj->$someSelectMethod(-columns  => \@columns,
+                                                -where    => \%criteria,
+                                                -postSQL  => $spy_sql);
+
+
+
+=head2 classData
+
+  my $val = $someClass ->classData->{someKey};
+  my $val = $someObject->classData->{someKey};
+
+Returns a ref to a hash for storing class-specific data.
+Each subclass has its own hashref, so class data is NOT propagated
+along the inheritance tree. Class data should be mainly
+for reading; if you write into it, make sure you know what 
+you are doing.
+
+=head2 primKey
+
+  my @primKeyColumns = $table->primKey;
+  my @primKeyValues  = $obj->primKey;
+
+If called as a class method, returns the list of columns
+registered as primary key for that table (via C<< Schema->Table(..) >>).
+
+If called as an instance method, returns the list of values 
+in those columns.
+
+When called in scalar context and the primary key has only one column,
+returns that column (so you can call C<< $my k = $obj->primKey >>).
+
+=head2 componentRoles
+
+  my @roles = $table->componentRoles;
+
+Returns the list of roles declared through L<Composition()|/"Composition">.
+
+
+=head2 noUpdateColumns
+
+  my @cols = $schema->noUpdateColumns;
+
+Returns the array of column names declared as noUpdate
+through L<NoUpdateColumns()|/"NoUpdateColumns">.
+
+  my @cols = $obj->noUpdateColumns;
+
+Returns the array of column names
+declared as noUpdate, either in the Schema or in the Table
+class of the invocant.
+
+
+=head2 autoUpdateColumns
+
+  my @cols = $schema->autoUpdateColumns;
+
+Returns the array of column names declared as autoUpdate
+through L<AutoUpdateColumns()|/"AutoUpdateColumns">.
+
+  my @cols = $obj->autoUpdateColumns;
+
+Returns the array of column names declared as autoUpdate,
+either in the Schema or in the Table class of the invocant.
+
+
+=head2 selectImplicitlyFor
+
+  $schema->selectImplicitlyFor('read only'); # will be added to SQL selects
+  $schema->selectImplicitlyFor('');          # turn it off
+
+Gets or sets a default value for the C<-for> argument to 
+L<select()|/"select">. Here it is set 
+at the C<Schema> level, so it will be applied to all tables.
+
+  $tableClass->selectImplicitlyFor('read only');
+  $viewClass->selectImplicitlyFor('');
+
+Same thing, but at a Table or View level.
+
+  my $string = $object->selectImplicitlyFor;
+
+Retrieves whatever whas set in the table or in the schema.
+
+
+=head2 dbiPrepareMethod
+
+  $schema->dbiPrepareMethod('prepare_cached');
+
+DBI statement handles will be created using L<DBI/prepare_cached>.
+
+=head2 tables
+
+   my @tables = $schema->tables;
+
+Returns an array of names of C<Table> subclasses declared in this schema.
+
+=head2 table
+
+   my $table = $schema->table($moniker);
+
+Returns the full classname for table C<$moniker>, i.e. 
+prepends the schema classname, unless C<$moniker> already
+contains C<::>.
+
+
+=head2 views
+
+   my @views = $schema->views;
+
+Returns an array of names of C<View> subclasses declared in this schema.
+
+
+=head2 view
+
+   my $view = $schema->view($moniker);
+
+Returns the full classname for view C<$moniker>, i.e. 
+prepends the schema classname, unless C<$moniker> already
+contains C<::>.
+
+
+=head2 localizeState
+
+  {
+    my $scope_guard = $schema->localizeState;
+    # or..
+    my $scope_guard = $schema->localizeState(qw/dbh dbh_options 
+                                                 selectImplicitlyFor/);
+    ... # do some work, possibly change state
+  
+  } # $scope_guard out of scope : previous state of $schema is restored 
+
+Schema classes hold some global state (database connection, current
+debug mode, current value of C<selectImplicitlyFor>, etc.).
+Like for other global resources (for example C<STDIN> or C<%ENV>),
+this could create interferences if the global state is simultaneously
+modified by several independent components. 
+
+The usual Perl solution to this kind of problem is I<dynamic scoping>
+through C<local> (see L<perlsub/"Temporary Values via local">).  Here
+however, since C<local> is not perfectly suited for private class
+data, we provide a solution which is similar in spirit, but slightly
+different in implementation. The C<localizeState> method 
+internally takes a copy of the current state, and returns
+a handle to it. The handle should be stored in a C<my> variable;
+when that variable goes out of scope (at block exit), then
+the previous state is restored.
+
+If called without arguments, C<localizeState> localizes the following
+state components by default : C<dbh>, C<dbh_options>, C<debug>, 
+C<selectImplicitlyFor>, C<dbiPrepareMethod>, C<statementClass>. 
+Otherwise, the list of specific components to localize can be 
+passed in the argument list.
+
+
+=head2 statementClass
+
+  $schema->statementClass($classname);
+
+Dynamically sets the statement class. It is quite uncommon to
+change it after schema initialization, but may nevertheless
+be useful in specific cases like for example if the C<dbh> switches 
+from one kind of database to another.
+
+
+=head1 DATA RETRIEVAL AND MANIPULATION
+
+=head2 doTransaction
+
+  my $coderef = sub {$table1->insert(...); $table2->update(...); ...};
+  $schema->doTransaction($coderef);
+
+Evaluates the code within a transaction. In case of failure, the
+transaction is rolled back, and an exception is raised, with a message
+containing the initial error and the status of the rollback (because
+the rollback itself may also fail). If you need finer details,
+you can treat the as an object with two methods C<initial_error>
+and C<rollback_errors>:
+
+    eval {$schema->doTransaction($coderef); 1}
+    or do {my $err = $@;
+           explain($err->initial_error, $err->rollback_errors)};
+
+
+Usually the coderef passed as argument will be a
+closure that may refer to variables local to the environment where
+the closure was created.
+
+Nested calls to C<doTransaction> are supported : only 
+the top-level call will actually initiate and then
+commit the transaction, while an exception at any level
+will abort and rollback the whole thing.
+
+If the nested transaction needs to work on a different 
+database handle, it may do so by supplying the dbh and its
+options as additional arguments :
+
+  $schema->doTransaction($coderef, $new_dbh, %new_dbh_options);
+
+When called in this form, C<doTransaction> will temporarily
+set the dbh to the supplied value, and then return to the 
+previous value when the nested transaction is finished.
+Commits on all involved database handles are delayed until
+the top-level transaction is finished.
+
+
+=head2 fetch
+
+  my $record = $table->fetch(@keyValues, \%options);
+
+Fetches a single record from a table, from its primary key value.
+C<%options> may specify things like C<-for>, C<-preExec>,
+C<-postExec>, etc. 
+
+This method is just syntactic sugar for 
+
+  my $record = $table->select(-fetch => \@keyValues, %options);
+
+(see below).
+
+
+
+=head2 fetch_cached
+
+  my $record = $table->fetch_cached(@keyValues, \%options);
+
+Like C<fetch>, except that the result is stored in a cache,
+and further calls to the same methods with the same
+parameters will return the cached record instead of going
+back to the database. The cache does not know about any updates 
+to the database, so this is mainly useful for readonly data.
+
+The cache is stored internally in
+C<< MyTable->classData->{fetch_cached}{$dbh_addr}{$freeze_args} >>
+(where C<$dbh_addr> is C<< Scalar::Util::refaddr(MyTable->dbh) >>
+and C<$freeze_args> is C<< Storable::freeze(@keyValues, \%options) >>).
+Using these arguments, the cache can be cleared or tied to 
+a caching module.
+
+
+=head2 createStatement
+
+  my $statement = $table->createStatement;
+
+Creates a statement that will search the target table (or view).
+The statement can then be refined, sqlized, prepared and 
+finally executed (see
+L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>).
+
+
+=head2 select
+
+Given a C<$target>, which could be either a 
+L<table|DBIx::DataModel::Doc::Glossary/table>, a 
+L<view|DBIx::DataModel::Doc::Glossary/view> or a 
+L<statement|DBIx::DataModel::Doc::Glossary/statement> :
+
+
+  $records = $target->select(\@columns, \%where, \@order);
+  
+  $records = $target->select(-columns     => \@columns, 
+                             # OR : -distinct => \@columns,
+                             -where       => \%where,
+                             # OR : -fetch => $key,
+                             # OR : -fetch => \@key,
+                             -groupBy     => \@groupings,
+                             -having      => \%criteria,
+                             -orderBy     => \@order,
+                             -for         => 'read only',
+                             -postSQL     => \&postSQL_callback,
+                             -preExec     => \&preExec_callback,
+                             -postExec    => \&preExec_callback,
+                             -postFetch   => \&postFetch_callback,
+                             -limit       => $limit,
+                             -offset      => $offset,
+                             -pageSize    => $pageSize,
+                             -pageIndex   => $pageIndex,
+                             -columnTypes => \%columnTypes,
+                             -resultAs  => 'rows'      || 'firstrow' 
+                                        || 'subquery'  || 'flat_arrayref' 
+                                        || 'sth'       || 'sql' 
+                                        || 'statement' || 'fast_statement');
+  
+  $all_records = $target->select();
+
+Applies a SQL SELECT to the C<$target>, and returns a
+result as specified by the C<-resultAs> argument (see below).
+
+If C<$target> is a table or a view, C<select> is just an alias
+to C<< $target->createStatement->select(...) >>.
+
+Arguments are all optional and may be passed either by name or by position
+(but you cannnot combine both positional and named arguments in a single call).
+Positional arguments should be considered as deprecated; named arguments
+are recommended because they are much more readable and offer a richer
+set of options.
+
+
+=head3 Named arguments to C<select()>
+
+
+=over
+
+=item C<< -columns => \@columns >> 
+
+C<< \@columns >>  is a reference to an array
+of SQL column specifications (i.e. column names, 
+C<*> or C<table.*>, functions, etc.).
+
+A '|' in a column is translated into an 'AS' clause, according
+to the current L<SQL dialect|"Schema">: this is convenient when
+using perl C<< qw/.../ >> operator for columns, as in
+
+  -columns => [ qw/table1.longColumn|t1lc table2.longColumn|t2lc/ ]
+
+Column aliasing should be avoided on key columns (either primary or 
+foreign keys), because role methods will no longer be able
+to navigate through the joins (currently C<DBIx::DataModel> is 
+not clever enough to rename its internal join constraints according
+to column aliases). Aliasing on non-key columns is OK, and 
+column handlers will operate properly on aliased columns.
+
+The argument to C<-columns> can also be a string instead of 
+an arrayref, like for example
+C<< "c1 AS foobar, MAX(c2) AS m_c2, COUNT(c3) AS n_c3" >>;
+however this is mainly for backwards compatibility. The 
+recommended way is to use the arrayref notation as explained above :
+
+  -columns => [ qw/  c1|foobar   MAX(c2)|m_c2   COUNT(c3)|n_c3  / ]
+
+If omitted, C<< \@columns >> takes the default, which is
+usually '*', unless modified through L<DefaultColumns()|/DefaultColumns>.
+
+No verification is done on the list of retrieved C<< \@columns >>,
+so the list does not have to include the primary or foreign keys --- 
+but then later attempts to perform joins or updates will obviously fail.
+
+
+=item C<< -distinct => \@columns >> 
+
+behaves like the C<< -columns >> arguments, except that 
+keyword C<DISTINCT> will be included in the generated SQL.
+
+
+=item C<< -where => \%where >> 
+
+C<< \%where >> is a reference to a hash or array of 
+criteria that will be translated into SQL clauses. In most cases, this
+will just be something like C<< {col1 => 'val1', col2 => 'val2'} >>;
+see L<SQL::Abstract::select|SQL::Abstract/select> for 
+ detailed description of the
+structure of that hash or array. It can also be
+a plain SQL string like C<< "col1 IN (3, 5, 7, 11) OR col2 IS NOT NULL" >>.
+
+
+
+=item C<< -fetch => \@columns >>
+
+equivalent to 
+
+  ...->select(-where => {<primary_key_column0> => $columns[0],
+                         <primary_key_column1> => $columns[1], ...},
+              -resultAs => "firstrow")
+
+If the primary key ranges on one single column (which is the most
+frequent case), then the argument to C<-fetch> can also be
+a single scalar value :
+
+  ...->select(-fetch => $key)
+
+When calling a table directly, the C<< select(-fetch => ..) >> syntax 
+is awkward; you will most certainly prefer the syntactic
+sugar offered by the L<fetch()|"fetch"> method :
+
+  $table->fetch(@key)
+
+However, the C<-fetch> notation is useful when walking through
+association roles :
+
+  $employee->activities(-fetch => $act_id)
+
+This example will generate the following SQL 
+
+  SELECT * FROM activity WHERE act_id=$act_id AND emp_id=$employee->{emp_id}
+
+Notice how this is different from 
+
+  $schema->table('Activity')->fetch($act_id)
+
+which would generate
+
+  SELECT * FROM activity WHERE act_id=$act_id
+
+Both examples would end up with the same record, but in the first
+case there is an additional check that this record really
+belongs to the given employee.
+
+In presence of C<-fetch>, arguments C<-where> and C<-selectAs> are not
+allowed.
+
+
+=item C<< -groupBy => "string" >>  or C<< -groupBy => \@array >> 
+
+adds a C<GROUP BY> clause in the SQL statement. Grouping columns are
+specified either by a plain string or by an array of strings.
+
+=item C<< -having => "string" >>  or C<< -having => \%criteria >> 
+
+adds a C<HAVING> clause in the SQL statement (only makes
+sense together with a C<GROUP BY> clause).
+This is like a C<-where> clause, except that the criteria
+are applied after grouping has occured.
+
+=item C<< -orderBy => \@order >> 
+
+C<< \@order >> is a reference to a list 
+of columns for sorting. It can also be a plain SQL string
+like C<< "col1 DESC, col3, col2 DESC" >>. Columns can 
+also be prefixed by '+' or '-' for indicating sorting directions,
+so for example C<< -orderBy => [qw/-col1 +col2 -col3/] >>
+will generate the SQL clause
+C<< ORDER BY col1 DESC, col2 ASC, col3 DESC >>.
+
+
+=item C<< -for => $clause >> 
+
+specifies an additional clause to be added at the end of the SQL statement,
+like C<< -for => 'read only' >> or C<< -for => 'update' >>.
+
+=item C<< -postSQL => \&postSQL_callback >>
+
+hook for specifying a callback function to be called on SQL code and
+bind values, before preparing the statement. It will be called as
+follows:
+
+  ($sql, @bind) = $args->{-postSQL}->($sql, @bind) if $args->{-postSQL};
+
+
+=item C<< -preExec => \&preExec_callback, -postExec => \&postExec_callback >>
+
+hooks for specifying callback functions to be called on the DBI statement
+handle, just before or just after invoking C<< execute() >>. So the sequence
+will be more or less like this:
+
+  $sth = $dbh->prepare($sql_statement);
+  $preExec_callback->($sth)  if $preExec_callback;
+  $sth->execute(@bind_values);
+  $postExec_callback->($sth) if $postExec_callback;
+
+This is mostly useful if you need to call driver-specific functions at 
+those stages.
+
+=item C<< -postFetch => \&postFetch_callback >>
+
+hook for specifying a callback function to be called on data rows.
+The callback will be called I<after> L<blessFromDB|blessFromDB>, 
+i.e. the row is already an object of the proper class and 
+column handlers have been applied.
+
+
+=item C<< -pageSize => $pageSize >>
+
+specifies how many rows will be retrieved per "page" of data.
+Default is unlimited (or more precisely the maximum 
+value of a short integer on your system).
+When specified, automatically implies C<< -limit >>.
+
+=item C<< -pageIndex => $pageIndex >>
+
+specifies the page number (starting at 1). Default is 1.
+When specified, automatically implies C<< -offset >>.
+
+=item C<< -limit => $limit >>
+
+limit to the number of rows that will be retrieved.
+Automatically implied by C<< -pageSize >>.
+
+=item C<< -offset => $offset >>
+
+Automatically implied by C<< -pageIndex >>.
+
+=item C<< -columnTypes => \%columnTypes >>
+
+dynamically specifies some column types I<at the statement level>.
+Usually column types are defined within tables at compile time, but
+it may be necessary to defined additional types within the 
+statement, for example when using database functions and/or aliases.
+The argument is a hashref in which keys are names of column
+types defined within the schema, and values are arrayrefs
+of column names :
+
+   select(-columns     => [qw/ MAX(date_col)|max_date 
+                               MIN(date_col)|min_date ... /],
+          -columnTypes => { Date => [qw/max_date min_date/] },
+          ...)
+
+
+=item C<< -resultAs => $result_kind >>
+
+specifies what kind of result will be produced. 
+The result is always a scalar and does not depend on the
+calling context.
+Possible result kinds are :
+
+=over
+
+=item B<rows>
+
+The result will be a ref to an array of rows, blessed into objects of the 
+class. This is the default result kind. If there are no data rows, a ref
+to an empty list is returned.
+
+=item B<firstrow>
+
+The result will be just the first data row, blessed into an object of the 
+class. If there is no data, C<undef> is returned.
+
+=item B<flat_arrayref>
+
+The result will be a ref to an array that concatenates results
+from each row. Usually this is combined with a C<-distinct> or C<-columns>
+argument with one single column, to get a vertical slice from a resultset,
+like in 
+
+  my $all_names = $schema->table('People')->select(
+    -distinct => [qw/firstname/],
+    -resultAs => 'flat_arrayref',
+   );
+  print sort @$all_names;
+
+However, it may also be used for example to fill a hash from
+pairs retrieved from each row, like in 
+
+  my $pairs = $schema->table('People')->select(
+    -columns  => [qw/pers_id firstname/],
+    -resultAs => 'flat_arrayref'
+   );
+  my %hash = @$pairs;
+
+Finally, it can be convenient to avoid column aliases
+when using aggregator functions :
+
+  my $array_ref = $source->select(-columns => [qw/MAX(col1)
+                                                 AVG(col2)
+                                                 COUNT(DISTINCT(col3))/],
+                                  -where    => ...,
+                                  -resultAs => 'flat_arrayref');
+  my ($max_col1, $avg_col2, $count_col3) = @$array_ref;
+
+
+=item B<statement>
+
+The result will be an instance of 
+L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>.
+That object has a  C<next> method that fetches the 
+next datarow and blesses it into the appropriate object, or
+returns C<undef> when there is no more data to fetch.
+So a typical usage pattern is :
+
+  my $statement = $class->select(-where    => \%criteria, 
+                                 -resultAs => 'statement');
+  while (my $row = $statement->next) {
+    do_something_with($row);
+  }
+
+
+If called with an argument, the C<next> method
+returns an array ref of several rows, as in
+
+ my $rows = $statement->next(10);
+
+Finally, the statement also has an C<all> method that returns
+an arrayref of all remaining rows.
+
+When creating a new Schema, a different statement class 
+can be specified via the C<statementClass> argument.
+For example the
+L<DBIx::DataModel::Statement::JDBC|DBIx::DataModel::Statement::JDBC>
+subclass in this distribution is intended for
+L<DBD::JDBC|DBD::JDBC> data sources, and gives access to some 
+JDBC methods over the statement (for example positioning instructions).
+
+
+=item B<fast_statement>
+
+The result is like a normal statement, except that rows are successively
+fetched into the same memory location, using DBI's L<fetch|DBI/fetch>
+and L<bind_columns|DBI/bind_columns> methods. This is the fastest way
+to get data; however, pay attention to this warning from L<DBI's
+documentation|DBI/fetchrow_arrayref> : I<Note that the same array
+reference is returned for each fetch, so don't store the reference and
+then use it after a later fetch. Also, the elements of the array are
+also reused for each row, so take care if you want to take a reference
+to an element>. Furthermore, any field added into the row will remain
+present for the next rows.
+
+Of course it is not possible to call C<< all >>
+or C<< next(10) >> on a fast statement. 
+
+=item B<sth> 
+
+The result will be an executed C<DBI> statement handle. Then it is up to the 
+caller to retrieve data rows using the DBI API.
+If needed, these rows can then be blessed into appropriate objects
+through L<blessFromDB()|/"blessFromDB">.
+
+
+=item B<sql> 
+
+In scalar context, the result will just be the generated SQL statement. 
+In list context, it will be C<($sql, @bind)>, i.e. the SQL statement 
+together with the bind values.
+
+=item B<subquery> 
+
+Returns a ref to an arrayref containing C<< \["($sql)", @bind] >>. 
+This is meant to be passed to a second
+query through L<SQL::Abstract|SQL::Abstract>, as in :
+
+  my $subquery = $source1->select(..., -resultAs => 'subquery');
+  my $rows     = $source2->select(
+      -columns => ...,
+      -where   => {foo => 123, bar => {-not_in => $subquery}}
+   );
+
+=back
+
+=back
+
+=head3 Positional arguments to C<select()>
+
+Positional arguments to select() are deprecated -- use
+named arguments, as described above.
+
+The API for positional arguments is mostly borrowed from 
+L<SQL::Abstract|SQL::Abstract>. Some clever inspection of
+arrayrefs and hashrefs is performed in order to guess
+which argument is intended for what :
+
+  ...->select(\@foo, \%bar, \@buz);
+  #    select(-columns => \@foo, -where => \%bar, -orderBy => \@buz);
+  
+  ...->select($foo, $bar);
+  #    select(-columns => $foo, -where => $bar)
+  
+  ...->select(\%foo, \@bar);
+  #    select(-where => \%foo, -orderBy => \@bar);
+  
+  ...->select(\%foo, $bar);
+  #    select(-where => \%foo, -orderBy => $bar);
+
+  ...->select(\%foo, \@bar, \@buz);
+  #    ERROR
+
+
+=head2 unbless
+
+  $schema->unbless($obj1, $obj2, ...);
+
+Recursively applies L<Acme::Damn/damn> to removes all class information 
+from its arguments : these become plain Perl hashrefs, arrayrefs or scalars.
+
+This may be useful if the datatree returned by a C<select(..) / expand(..) >
+needs to be exported through an external module that only considers
+plain datastructures; this is the case for example with L<YAML::Syck/Dump>.
+
+
+=head2 insert
+
+  my @ids = $table->insert({col1 => $val1, col2 => $val2, ...}, 
+                           {...});
+  # or
+  my @ids = $table->insert([qw/ col1   col2   .../],
+                           [    $val1, $val2, ... ],
+                           ...);
+
+Inserts a collection of rows into the database, given
+either as a list of hashrefs, or as a first arrayref containing
+the column names, followed by a list of arrayrefs containing
+values for each row to be inserted.
+
+In either form, the method applies the C<toDB> handlers, removes the
+C<noUpdate> columns, and then inserts the new records into the
+database.  Because of the handlers, this operation I<may modify the
+argument data>, so it is not safe to access C<$val1>, C<$val2>,
+etc. after the call.
+
+Primary key column(s) should of course be present 
+in the supplied hashrefs, unless the the key is auto-generated.
+
+Each hashref will be blessed into the C<MyTable> class, and
+will be inserted through the internal 
+L<_singleInsert()|/"_singleInsert"> method.
+The default implementation of this method should be good enough
+for most common uses, but you may want to refine it in your
+table classes if you need some fancy handling on primary keys
+(like for example computing a random key and checking whether
+that key is free). 
+
+Scalar values returned by L<_singleInsert()|/"_singleInsert"> 
+are collected into
+an array, and then returned by C<insert()>; usually, these are
+the primary keys of the inserted records (if on one single column).
+In scalar context, the return value is the first id in the list above, which
+makes sense if you call insert() with a single argument.  If you call
+it with several arguments but from a scalar context, a warning is issued.
+
+If the table is a composite class (see L<Composition()|/"Composition">
+above), then the component parts may be supplied within the hashref,
+with keys equal to the role names, and values given as arrayrefs of
+sub-hashrefs; then these will be inserted into the database, at the
+same time as the main record, with join values automatically filled
+in.  For example :
+
+   HR::Employee->insert({firstname  => "Johann Sebastian",  
+                         lastname   => "Bach",
+                         activities => [{d_begin  => '01.01.1695',
+        			         d_end    => '18.07.1750',
+	        		         dpt_code => 'CPT'}]});
+
+
+=head2 update
+
+  $table->update({col1 => $val1, ...});
+  $table->update(@primKey, {col1 => $val1, ...});
+  $obj->update;
+
+This is both a class and an instance method.
+It applies the C<toDB> handlers, removes the C<noUpdate> columns, 
+and then updates the database for the given record.
+
+When called as a class method, the columns and values to update
+are supplied as a hashref. The second syntax with 
+C<< @primKey >> is an alternate way to supply the values
+for the primary key (it may be more convenient because you don't
+need to repeat the name of primary key columns). So if C<emp_id>
+is the primary key of table C<Employee>, then the following
+are equivalent :
+
+  HR::Employee->update({emp_id  => $eid, 
+                        address => $newAddr, 
+                        phone   => $newPhone});
+  HR::Employee->update($eid => {address => $newAddr, 
+                                phone   => $newPhone});
+
+When called as an instance method, i.e. 
+
+  $someEmployee->update;
+
+the columns and values to update are taken from the object in 
+memory (ignoring all non-scalar values). After the update, 
+I<the memory for that object is emptied> (to prevent any confusion,
+because the 'toDB' handlers might have changed the values).
+So to continue working with the same record, you must fetch it again 
+from the database (or clone it yourself before calling C<update>).
+
+In either case, you have no control over the 'where' clause of the
+SQL update statement, that will be based exclusively on primary key
+columns. So if you need to simultaneously update several records
+with a SQL request like 
+
+  UPDATE myTable SET col='newVal' WHERE otherCol like 'criteria%'
+
+then you should generate the SQL yourself and pass it directly to
+C<< DBI->do($sql) >>.
+
+The C<update> method only updates the columns received
+as arguments : it knows nothing about other columns that may sit
+in the database table. Therefore if you have two concurrent clients
+doing
+
+  (client1)  $table->update($id, {c1 => $v1, c2 => $v2});
+  (client2)  $table->update($id, {c3 => $v3, c4 => $v4, c5 => $v5});
+
+the final state of record C<$id> in the database will 
+reflect changes from both clients. 
+
+
+=head2 delete
+
+  $table->delete({column1 => value1, ...});
+  $table->delete(@primKey);
+  $row->delete;
+
+This is both a class and an instance method.
+It deletes a record from the database.
+
+When called as a class method, the primary key of the record 
+to delete is supplied either as a hashref, or directly
+as a list of values. Note that C<< $table->delete(11, 22) >>
+does not mean "delete records with keys 11 and 22", but rather
+"delete record having primary key (11, 22)"; in other words,
+you only delete one record at a time. In order to 
+simultaneously delete several records according to some
+C<WHERE> criteria, you must generate 
+the SQL yourself and go directly to the L<DBI|DBI> level.
+
+When called as an instance method, the primary key is taken from
+object columns in memory. After the delete, the memory for that object
+is destroyed.  If the table is a composite class (see
+L<Composition()|/"Composition"> above), and if the object contains
+references to lists of component parts, then those will be recursively
+deleted together with the main object (cascaded delete). However, if
+there are other component parts in the database, not referenced in the
+hashref, then those will not be automatically deleted : in other
+words, the C<delete> method does not go by itself to the database to
+find all dependent composite parts (this is the job of the client
+code, or sometimes of the database itself).
+
+
+=head2 applyColumnHandler
+
+  $class ->applyColumnHandler($handlerName, \@objects);
+  $object->applyColumnHandler($handlerName);
+
+Inspects the target object or list of objects; for every
+column that exists in the object, checks whether
+a handler named C<< $handlerName >> was declared for
+that column (see method L</ColumnHandlers>), and if so, 
+calls the handler. By this definition, if a column
+is I<absent> in an object, then the handler for that column
+is not called, even though it was declared in the class.
+
+The results of handler calls are collected into a hashref, with an
+entry for each column name.  The value of each entry depends on how
+C<< applyColumnHandlers >> was called : if it was called as an
+instance method, then the result is something of shape
+
+  {columnName1 => resultValue1, columnName2 => resultValue2, ... }
+
+if it was called as a class method (i.e. if C<< \@objects >> is defined),
+then the result is something of shape
+
+  {columnName1 => [resultValue1forObject1, resultValue1forObject2, ...], 
+   columnName2 => [resultValue2forObject1, resultValue2forObject2, ...], 
+   ... }
+
+If C<columnName> is not present in the target object(s), then the 
+corresponding result value is  C<undef>.
+
+
+=head2 hasInvalidColumns
+
+  my $invalid_columns = $obj->hasInvalidColumns;
+  if ($invalid_columns) {
+    print "wrong data in columns ", join(", ", @$invalid_columns);
+  }
+  else {
+   print "all columns OK";
+  }
+
+
+Applies the 'validate' handler to all existent columns.
+Returns a ref to the list of invalid columns, or
+undef if there are none.
+
+Note that this is validation at the column level, not at the record
+level. As a result, your validation handlers can check if an existent
+column is empty, but cannot check if a column is missing (because in
+that case the handler would not be called).
+
+Your 'validate' handlers, defined through L</ColumnHandlers>,
+should return 0 or an empty string whenever the column value is invalid.
+Never return C<undef>, because we would no longer be able to
+distinguish between an invalid existent column and a missing column.
+
+
+=head2 expand
+
+  $obj->expand($role [, @args] )
+
+Executes the method C<< $role >> to follow an Association,
+stores the result in the object itself under C<< $obj->{$role} >>,
+and returns that result.
+This is typically used to expand an object into a tree datastructure.
+Optional C<< @args >> are passed to C<< $obj->$role(@args) >>, for
+example for specifying C<-where>, C<-columns> or C<-orderBy> options.
+
+After the expansion, further calls to 
+C<< $obj->$role >> (without any arguments) will reuse 
+that same expanded result instead of calling again the database.
+This caching improves efficiency, but also introduces the risk
+of side-effects across your code : after 
+
+  $obj->expand(someRole => (-columns => [qw/just some columns/],
+                            -where   => {someField => 'restriction'}))
+
+further calls to C<< $obj->someRole() >> will just return
+a dataset restricted according to the above criteria, instead
+of a full join. To prevent that effect, you would need to 
+C<< delete $obj->{someRole} >>, or to call the role
+with arguments : C<< $obj->someRole('*') >>.
+
+
+
+=head2 autoExpand
+
+  $record->autoExpand( $recurse );
+
+Asks the object to expand itself with some objects in foreign tables.
+Does nothing by default. Should be redefined in subclasses,
+most probably through the 
+L</AutoExpand> method (with capital 'A').
+If the optional argument C<$recurse> is true, then 
+C<autoExpand> is recursively called on the expanded objects.
+
+
+
+=head2 blessFromDB
+
+  $class->blessFromDB($record);
+
+Blesses C<< $record >> into an object of the table or view class,
+and applies the C<fromDB> column handlers.
+
+
+
+=head1 DEPRECATED METHODS
+
+Here are some deprecated methods from previous versions
+
+=over
+
+=item *
+
+C<ViewFromRoles> is now called L</"join"> (class method in C<Schema>)
+
+=item *
+
+C<selectFromRoles> is now called L</"join"> (instance method in C<Source>)
+
+=item *
+
+C<MethodFromRoles> is now called L</"MethodFromJoin"> (class method in C<Source>)
+
+=item *
+
+C<selectSth> is now writen C<< select(..., resultAs => "sth") >>
+
+=item *
+
+C<SqlDialect> is now expressed as argument to L<Schema()|/Schemae>
+
+=item *
+
+C<applyColumnHandlers> is now called C<applyColumnHandler>
+
+=item *
+
+C<keepLasth> and C<lasth> are no longer needed; if you want to 
+interact with the database statement handle, use the 
+L<DBIx::DataModel::Statement|DBIx::DataModel::Statement> API.
+
+=item *
+
+C<preselectWhere> is no longer needed (superseded by the
+C<Statement::refine> method).
+
+=back
