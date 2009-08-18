@@ -233,16 +233,16 @@ sub Association {
   }
   @cols1 == @cols2 or croak "Association: numbers of columns do not match";
 
-  $schema->$implement_assoc($table1, $role1, $multipl1, \@cols1, 
-			    $table2, $multipl2, \@cols2);
-  $schema->$implement_assoc($table2, $role2, $multipl2, \@cols2, 
-			    $table1, $multipl1, \@cols1);
+  $schema->$implement_assoc($table1, $role1, $multipl1, \@cols1,
+			    $table2,         $multipl2, \@cols2);
+  $schema->$implement_assoc($table2, $role2, $multipl2, \@cols2,
+			    $table1,         $multipl1, \@cols1);
   return $schema;
 }
 
 # Normal Association implementation, when one side is of multiplicity one
 sub _Assoc_normal { 
-  my ($schema, $table, $role, $multipl, $cols_ref, 
+  my ($schema, $table, $role,  $multipl,         $cols_ref,
                $foreign_table, $foreign_multipl, $foreign_cols_ref) = @_;
 
   return if not $role or $role =~ /^(0|""|''|-+|none)$/; 
@@ -292,7 +292,7 @@ sub _Assoc_normal {
 
 # special implementation for many-to-many Association
 sub _Assoc_many_many {
-  my ($schema, $table, $role, $multipl, $cols_ref, 
+  my ($schema, $table, $role,  $multipl,         $cols_ref,
                $foreign_table, $foreign_multipl, $foreign_cols_ref) = @_;
 
   scalar(@$cols_ref) == 2 or 

@@ -437,13 +437,13 @@ as a kind of syntactic sugar, translated into
 low-level associations with the linking table. 
 The linking table needs to be declared first :
 
-  $schema->Table(qw/link_table link_table prim_key1 prim_key2/);
+  $schema->Table(qw/LinkTable link_table prim_key1 prim_key2/);
 
-  $schema->Association([qw/table1     role1       0..1/],
-                       [qw/link_table link_table  *   /]);
+  $schema->Association([qw/Table1     role1       0..1/],
+                       [qw/LinkTable  link_table  *   /]);
 
-  $schema->Association([qw/table2     role2       0..1/],
-                       [qw/link_table link_table  *   /]);
+  $schema->Association([qw/Table2     role2       0..1/],
+                       [qw/LinkTable  link_table  *   /]);
 
 This describes a diagram like this :
 
@@ -456,12 +456,12 @@ This describes a diagram like this :
 Then we can declare the  many-to-many association, very much like
 ordinary associations, except that the last items in the argument
 lists are names of roles to follow, instead of names of columns to join.
-In the diagram above, we must follow roles C<linksA> and C<role2>
+In the diagram above, we must follow roles C<link_table> and C<role2>
 in order to obtain the rows of C<Table2> related to an instance
 of C<Table1>; so we write
 
-  $schema->Association([qw/table1  roles1  *  link_table role1/],
-                       [qw/table2  roles2  *  link_table role2/]);
+  $schema->Association([qw/Table1  roles1  *  link_table role1/],
+                       [qw/Table2  roles2  *  link_table role2/]);
 
 which describes a diagram like this :
 
