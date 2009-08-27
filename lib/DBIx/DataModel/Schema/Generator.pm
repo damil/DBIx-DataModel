@@ -36,7 +36,6 @@ sub fromDBI {
   my $dbh = DBI->connect($dsn, $user, $passwd, $options)
     or croak "DBI->connect failed ($DBI::errstr)";
 
-  
   my %args 
     = (catalog => undef, schema => undef, table => undef, type => "TABLE");
   my $tables_sth = $dbh->table_info(@args{qw/catalog schema table type/});
@@ -47,7 +46,7 @@ sub fromDBI {
 
     # get primary key info
     my @table_id = @{$table}{qw/TABLE_CAT TABLE_SCHEM TABLE_NAME/};
-    my $pkey = join("", $dbh->primary_key(@table_id)) || "unknown_pk";
+    my $pkey = join(" ", $dbh->primary_key(@table_id)) || "unknown_pk";
 
     my $table_info  = {
       classname => _table2class($table->{TABLE_NAME}),
@@ -66,6 +65,11 @@ sub fromDBI {
       or next TABLE;
 
     while (my $fk_row = $fkey_sth->fetchrow_hashref) {
+
+      # hack for unifying "ODBC" or "SQL/CLI" column names (see L<DBI>)
+      $fk_row->{"UK_$_"} ||= $fk_row->{"PK$_"} for qw/TABLE_NAME COLUMN_NAME/;
+      $fk_row->{"FK_$_"} ||= $fk_row->{"FK$_"} for qw/TABLE_NAME COLUMN_NAME/;
+
       my @assoc = (
         { table    => _table2class($fk_row->{UK_TABLE_NAME}),
           col      => $fk_row->{UK_COLUMN_NAME},
@@ -84,10 +88,8 @@ sub fromDBI {
     }
   }
 
-
   $self->generate;
 }
-
 
 
 sub fromDBIxClass {
