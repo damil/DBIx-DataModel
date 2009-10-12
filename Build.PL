@@ -13,6 +13,11 @@ my $builder = Module::Build->new(
 	'DBI'           => 0,
 	'SQL::Abstract' => 1.51,
 	'Module::Build' => 0,
+	'Scalar::Util'  => 0,
+	'Storable'      => 0,
+    },
+    build_requires => {
+        'Task::Weaken'  => 0,
     },
     recommends => {
         'DBD::Mock'                   => 0,
