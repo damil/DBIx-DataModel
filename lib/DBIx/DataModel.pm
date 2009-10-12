@@ -3,6 +3,7 @@ package DBIx::DataModel;
 #----------------------------------------------------------------------
 # see POD doc at end of file
 
+use 5.006;
 use warnings;
 use strict;
 use DBIx::DataModel::Schema;
