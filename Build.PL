@@ -15,7 +15,8 @@ my $builder = Module::Build->new(
 	'DBI'           => 0,
 	'SQL::Abstract' => 1.51,
 	'Module::Build' => 0,
-	'Scalar::Util'  => 0,
+    'Acme::Damn'    => 0,
+    'Scalar::Util'  => 0,
 	'Storable'      => 0,
     },
     build_requires => {

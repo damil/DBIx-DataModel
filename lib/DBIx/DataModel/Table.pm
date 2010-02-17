@@ -214,11 +214,18 @@ sub _singleInsert {
     my ($dbh, %dbh_options) = $class->schema->dbh;
 
     # fill the primary key from last_insert_id returned by the DBMS
-    $self->{$primKeyCols[0]}
-      = $dbh->last_insert_id($dbh_options{catalog}, 
-                             $dbh_options{schema}, 
-                             $class->db_table, 
-                             $primKeyCols[0]);
+    my $pk_col = $primKeyCols[0];
+    my $table  = $class->db_table;
+    $self->{$pk_col}
+      # either callback given by client ...
+      = $dbh_options{last_insert_id} ? 
+          $dbh_options{last_insert_id}->($dbh, $table, $pk_col)
+      # or catalog and/or schema given by client ...
+      : (exists $dbh_options{catalog} || exists $dbh_options{schema}) ?
+          $dbh->last_insert_id($dbh_options{catalog}, $dbh_options{schema},
+                               $table, $pk_col)
+      # or plain call to last_insert_id() with all undefs
+      :   $dbh->last_insert_id(undef, undef, undef, undef);
   }
 
   return $self->{$primKeyCols[0]};
@@ -443,7 +450,7 @@ Laurent Dami, C<< <laurent.dami AT etat.ge.ch> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2006 Laurent Dami.
+Copyright 2006, 2010 Laurent Dami.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
