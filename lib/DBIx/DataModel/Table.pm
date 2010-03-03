@@ -191,7 +191,7 @@ sub insert {
   # choose what to return according to context
   return @ids if wantarray;             # list context
   return      if not defined wantarray; # void context
-  carp "insert({...}, {...}, ..) called in scalar context" if @records > 1;
+  carp "insert({...}, {...}, ..) called in scalar context" if @ids > 1;
   return $ids[0];                       # scalar context
 }
 
@@ -228,7 +228,7 @@ sub _singleInsert {
       :   $dbh->last_insert_id(undef, undef, undef, undef);
   }
 
-  return $self->{$primKeyCols[0]};
+  return @{$self}{@primKeyCols};
 }
 
 

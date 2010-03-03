@@ -1116,6 +1116,10 @@ Same thing, but at a Table or View level.
 
 Retrieves whatever whas set in the table or in the schema.
 
+This default value is not set for statements with 
+C<< -resultAs => 'subquery' >> (because the FOR clause in an 
+SQL statement only makes sense at the top level, not in a subquery).
+
 
 =head2 dbiPrepareMethod
 
@@ -1760,13 +1764,11 @@ otherwise, C<DBIx::DataModel> will call
 
 =back
 
-Scalar values returned by L<_singleInsert()|/"_singleInsert"> 
-are collected into
-an array, and then returned by C<insert()>; usually, these are
-the primary keys of the inserted records (if on one single column).
-In scalar context, the return value is the first id in the list above, which
-makes sense if you call insert() with a single argument.  If you call
-it with several arguments but from a scalar context, a warning is issued.
+Values returned by calls to L<_singleInsert()|/"_singleInsert"> are 
+collected into a flattened array, and then returned by C<insert()>;
+usually, these are the primary keys of the inserted records. 
+If this array contains several values and C<insert()> was called 
+from a scalar context, a warning is issued.
 
 If the table is a composite class (see L<Composition()|/"Composition">
 above), then the component parts may be supplied within the hashref,
@@ -1866,7 +1868,7 @@ deleted together with the main object (cascaded delete). However, if
 there are other component parts in the database, not referenced in the
 hashref, then those will not be automatically deleted : in other
 words, the C<delete> method does not go by itself to the database to
-find all dependent composite parts (this is the job of the client
+find all component parts (this is the job of the client
 code, or sometimes of the database itself).
 
 

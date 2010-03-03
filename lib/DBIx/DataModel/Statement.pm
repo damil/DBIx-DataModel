@@ -202,7 +202,9 @@ sub sqlize {
   $having =~ s[\bWHERE\b][HAVING];
 
   # "-for" (e.g. "update", "read only")
-  exists($args->{-for}) or $args->{-for} = $source->selectImplicitlyFor;
+  if (!exists($args->{-for}) && ($args->{-resultAs}||"") ne 'subquery') {
+    $args->{-for} = $source->selectImplicitlyFor;
+  }
 
   # translate +/- prefixes to -orderBy args into SQL ASC/DESC
   my $orderBy = $args->{-orderBy} || [];

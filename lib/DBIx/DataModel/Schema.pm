@@ -909,6 +909,10 @@ sub new {
 
 sub DESTROY { # called when the guard goes out of scope
   my ($self) = @_;
+
+  # localize $@, in case we were called while dying - see L<perldoc/Destructors>
+  local $@;
+
   my ($schema, $previous_state) = @$self;
 
   # must cleanup dbh so that ->dbh(..) does not complain if in a transaction

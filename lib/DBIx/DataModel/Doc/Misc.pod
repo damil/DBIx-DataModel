@@ -44,25 +44,15 @@ L<GLOSSARY|DBIx::DataModel::Doc::Glossary>
 =head1 NAMESPACES, CLASSES, METHODS
 
 C<DBIx::DataModel> automatically generates Perl classes for Schemas,
-Tables, Views, Associations. Before doing so, it checks that no Perl
-package of the same name already exists in memory.  
-A similar check is performed
-before adding role methods into classes.
+Tables and Views. The client code can insert a
+additional methods into the generated
+classes : just switch to the package and define your code. 
 
-The client code can insert additional methods into the generated
-classes : just switch to the package and define your code.  However,
-because of the security checks just mentioned, C<DBIx::DataModel> must
-create the package B<before> you start adding methods to it, and
-therefore the declarations should be inside a BEGIN block :
-
-  BEGIN { # make sure these declarations are immediately executed
-    
-    DBIx::DataModel->Schema('MySchema') 
+  # DBIx::DataModel creates packages 'MySchema' and 'MySchema::Activity'
+  DBIx::DataModel->Schema('MySchema') 
       ->Table(Activity   => Activity   => qw/act_id/);
-      ...
-  }
-    
-  # now we can safely add new methods
+      
+  # add a new method into the MySchema::Activity class
   
   package MySchema::Activity; 
   
@@ -72,9 +62,8 @@ therefore the declarations should be inside a BEGIN block :
                    : "since $self->{d_begin}";
   }
   
-  package main;			# switch back to the 'main' package
-
-See L<perlmod> for an explanation of BEGIN blocks.
+  # switch back to the 'main' package
+  package main;			
 
 
 =head1 INTERACTION WITH THE DBI LAYER 
