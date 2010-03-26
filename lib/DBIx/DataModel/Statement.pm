@@ -10,7 +10,7 @@ use List::Util      qw/min first/;
 use Scalar::Util    qw/weaken/;
 use UNIVERSAL       qw/isa/;
 use Storable        qw/dclone/;
-use POSIX           qw/INT_MAX/;
+use POSIX           ();
 
 use overload
 
@@ -194,6 +194,7 @@ sub sqlize {
   my $args         = $self->{args};
   my $source       = $self->{source};
   my $sql_abstract = $source->schema->classData->{sqlAbstr};
+  my $sql_dialect  = $source->schema->classData->{sqlDialect};
 
   # compute "-groupBy" and "-having"
   my $groupBy = ref($args->{-groupBy}) ? join(", ", @{$args->{-groupBy}})
@@ -221,7 +222,8 @@ sub sqlize {
   $sql =~ s[ORDER BY|$][ GROUP BY $groupBy $&]i      if $groupBy;
   $sql =~ s[ORDER BY|$][ $having $&]i
     and push @bind, @bind_having                     if $having;
-  $self->_limit_offset(\$sql, \@bind)                if $args->{-limit};
+  $self->_limit_offset($sql_dialect->{limitOffset},
+                       \$sql, \@bind)                if $args->{-limit};
   $sql .= " FOR $args->{-for}"                       if $args->{-for};
 
   # maybe post-process the SQL
@@ -515,9 +517,9 @@ sub all {
 }
 
 
-sub pageSize       {shift->{args}{-pageSize}  || INT_MAX}
-sub pageIndex      {shift->{args}{-pageIndex} || 1      }
-sub offset         {shift->{offset}           || 0      }
+sub pageSize   { shift->{args}{-pageSize}  || POSIX::INT_MAX }
+sub pageIndex  { shift->{args}{-pageIndex} || 1              }
+sub offset     { shift->{offset}           || 0              }
 
 
 sub pageCount {
@@ -645,8 +647,8 @@ sub _compute_fromDB_handlers {
 
 sub _reorganize_columns {
   my ($self) = @_;
-  my $source = $self->{source};
-  my $args   = $self->{args};
+  my $source     = $self->{source};
+  my $args       = $self->{args};
 
   # translate "-distinct" into "-columns"
   if ($args->{-distinct}) {
@@ -734,13 +736,17 @@ sub _reorganize_pagination {
 
 
 sub _limit_offset {
-  my ($self, $sql_ref, $bind_ref) = @_;
+  my ($self, $handler, $sql_ref, $bind_ref) = @_;
 
   $self->{offset} ||= $self->{args}{-offset} || 0;
 
+  # call handler
+  $handler or croak "sqlDialect does not handle limit/offset";
+  my ($sql, @bind) = $handler->(qw/?limit ?offset/);
+
   # add limit/offset as placeholders into the SQL 
-  $$sql_ref .= " LIMIT ? OFFSET ?";
-  push @$bind_ref, qw/?limit ?offset/;
+  $$sql_ref .= " " . $sql;
+  push @$bind_ref, @bind;
 
   # pre-bind values to the placeholders
   $self->bind(limit  => $self->{args}{-limit},

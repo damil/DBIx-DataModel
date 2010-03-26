@@ -999,7 +999,6 @@ a future release C<DBIx::DataModel> :
   - remove spouse example from doc (because can't have same table
     twice in roles)
   - quoting
-  - DBI catalog and schema
   - dbiPrepareMethod as argument to select()
   - pre/post callbacks: support arrays of handlers, refine(..) adds to the
     array
@@ -1011,3 +1010,5 @@ a future release C<DBIx::DataModel> :
     ->select(..., -resultAs => 'statement'); but needs that
        - -resultAs => 'statement' does 'refine' but not 'sqlize'
        - next() accepts an unexecuted statement and automatically executes it
+  - -resultAs => 'hashref' could be similar to DBI::selectall_hashref ...
+      .. but need to decide what to put in hash keys in case of joins

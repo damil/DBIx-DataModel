@@ -109,12 +109,12 @@ option.
 
 =item C<< sqlDialect => $dialect >>
 
-SQL has no standard syntax for performing joins, so if your
-database wants a particular syntax you will need to declare it.
-Current builtin dialects are either C<'MsAccess'>, C<'BasisODBC'>,
-C<'BasisJDBC'> or C<'Default'> (contributions to enrich this list 
-are welcome). Otherwise C<$dialect> can also be a hashref in which you
-supply the following information :
+SQL has no standard syntax for performing joins, so if your database
+wants a particular syntax you will need to declare it.  Current
+builtin dialects are either C<'MsAccess'>, C<'BasisODBC'>,
+C<'BasisJDBC'>, C<'MySQL'> or C<'Default'> (contributions to enrich
+this list are welcome). Otherwise C<$dialect> can also be a hashref in
+which you supply the following information :
 
 =over
 
@@ -139,6 +139,35 @@ either C<left> or C<right>
 
 a string for generating column aliases. 
 Default is C<%s AS %s>.
+
+=item limitOffset
+
+a callback for generating the C<LIMIT / OFFSET> clause, supplied
+either as a coderef or as a string.
+The callback will be called as C<< $callback->($limit, $offset) >>
+and should return C<< ($sql, @bind) >>.
+If supplied as a string, it should be the name of one of the 
+following builtin callbacks : 
+
+=over 
+
+=item C<LimitOffset>
+
+returns C<< "LIMIT ? OFFSET ?", @_ >>
+
+=item C<LimitXY>
+
+returns C<< "LIMIT ?, ?", reverse @_ >>
+
+=item C<LimitYX>
+
+returns C<< "LIMIT ?, ?", @_ >>
+
+=back
+
+These are implemented directly within C<DBIx::DataModel> and do
+not call L<SQL::Abstract::Limit> (because that module does
+not use placeholders for LIMIT clauses).
 
 =back
 

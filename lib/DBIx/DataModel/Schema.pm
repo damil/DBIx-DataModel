@@ -29,30 +29,30 @@ my $sqlDialects = {
    joinAssociativity => "left",
    columnAlias       => "%s AS %s",
    tableAlias        => "%s AS %s",
+   limitOffset       => "LimitOffset",
  },
  MsAccess => {
    innerJoin         => "%s INNER JOIN (%s) ON %s",
    leftJoin          => "%s LEFT OUTER JOIN (%s) ON %s",
    joinAssociativity => "right",
-   columnAlias       => "%s AS %s",
-   tableAlias        => "%s AS %s",
+   limitOffset       => undef,
  },
  BasisODBC => {
-   innerJoin         => undef, 
-   leftJoin          => "%s LEFT OUTER JOIN %s ON %s",
-   joinAssociativity => "left",
-   columnAlias       => "%s AS %s",
-   tableAlias        => "%s AS %s",
+   innerJoin         => undef,
  },
  BasisJDBC => {
-   innerJoin         => "%s INNER JOIN %s ON %s",
-   leftJoin          => "%s LEFT OUTER JOIN %s ON %s",
-   joinAssociativity => "left",
    columnAlias       => "%s %s",
-   tableAlias        => "%s AS %s",
+ },
+ MySQL => {
+   limitOffset       => "LimitXY",
  },
 };
 
+my $sqlLimitDialects = {
+  LimitOffset => sub {"LIMIT ? OFFSET ?",         @_},
+  LimitXY     => sub {"LIMIT ?, ?",       reverse @_},
+  LimitYX     => sub {"LIMIT ?, ?",               @_},
+};
 
 #----------------------------------------------------------------------
 # COMPILE-TIME METHODS
@@ -127,15 +127,31 @@ sub _subclass { # this is the implementation of DBIx::DataModel->Schema(..)
 sub _SqlDialect {
   my $class = shift;
 
-  my $args = (@_ == 1) ?
-    $sqlDialects->{$_[0]} || croak "invalid SQL dialect: $_[0]" :
-    {@_};
+  my %props;
 
-  while (my ($k, $v) = each %$args) {
-    $k =~ /^(innerJoin|leftJoin|joinAssociativity|columnAlias|tableAlias)$/
-      or croak "invalid argument to SqlDialect: $k";
-    $class->classData->{sqlDialect}{$k} = $v;
+  if (@_ == 1) { # dialect supplied as a dialect name
+    my $dialect_name = shift;
+    my $dialect = $sqlDialects->{$dialect_name} 
+      or croak "invalid SQL dialect: $dialect_name";
+    foreach my $k (keys %{$sqlDialects->{Default}}) {
+      $props{$k} = (exists $dialect->{$k}) ? $dialect->{$k} 
+                                           : $sqlDialects->{Default}{$k};
+    }
   }
+  else {         # dialect supplied as a hashref of properties
+    %props = (@_);
+    my @invalid = grep {! exists $sqlDialects->{Default}{$_}} keys %props;
+    not @invalid
+      or croak "invalid argument to SqlDialect: " . join(", ", @invalid);
+  }
+
+  # limitOffset supplied either as a dialect name or as a coderef
+  if ($props{limitOffset} && ! ref $props{limitOffset}) {
+    $props{limitOffset} = $sqlLimitDialects->{$props{limitOffset}};
+  }
+
+  # copy into class
+  $class->classData->{sqlDialect} = \%props;
 }
 
 

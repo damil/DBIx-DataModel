@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.22 26.03.2010
+  - use POSIX (); (because import() was buggy on Win32)
+  - added property 'limitOffset' in sqlDialect
+
 v1.21 01.03.2010
   - localize $@ in Schema::_State::DESTROY 
   - selectImplicitlyFor not applied when -resultAs => 'subquery'
