@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.23 29.03.2010
+  - back to use POSIX qw(INT_MAX); # because import () breaks on 5.8, 
+    see http://rt.cpan.org/Public/Bug/Display.html?id=55989
+
 v1.22 26.03.2010
   - use POSIX (); (because import() was buggy on Win32)
   - added property 'limitOffset' in sqlDialect

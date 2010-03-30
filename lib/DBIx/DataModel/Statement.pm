@@ -10,7 +10,7 @@ use List::Util      qw/min first/;
 use Scalar::Util    qw/weaken/;
 use UNIVERSAL       qw/isa/;
 use Storable        qw/dclone/;
-use POSIX           ();
+use POSIX           qw/INT_MAX/;
 
 use overload
 
@@ -517,9 +517,9 @@ sub all {
 }
 
 
-sub pageSize   { shift->{args}{-pageSize}  || POSIX::INT_MAX }
-sub pageIndex  { shift->{args}{-pageIndex} || 1              }
-sub offset     { shift->{offset}           || 0              }
+sub pageSize   { shift->{args}{-pageSize}  || POSIX::INT_MAX   }
+sub pageIndex  { shift->{args}{-pageIndex} || 1                }
+sub offset     { shift->{offset}           || 0                }
 
 
 sub pageCount {
