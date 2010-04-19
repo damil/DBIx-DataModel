@@ -202,6 +202,24 @@ sub join {
 # backwards compatibility
 *selectFromRoles = \&join;
 
+
+sub primKey {
+  my $self = shift; 
+
+  # get primKey columns
+  my @primKey = @{$self->classData->{primKey}};
+
+  # if called as instance method, get primKey values
+  @primKey = @{$self}{@primKey} if ref $self;
+
+  # choose what to return depending on context
+  return @primKey if wantarray;
+  not(@primKey > 1) 
+    or croak "cannot return a multi-column primary key in a scalar context";
+  return $primKey[0];
+}
+
+
 #----------------------------------------------------------------------
 # RUNTIME PRIVATE METHODS OR FUNCTIONS
 #----------------------------------------------------------------------
@@ -259,6 +277,8 @@ This module implements
 =item L<autoExpand|DBIx::DataModel::Doc::Reference/autoExpand>
 
 =item L<join|DBIx::DataModel::Doc::Reference/join>
+
+=item L<primKey|DBIx::DataModel::Doc::Reference/primKey>
 
 =back
 

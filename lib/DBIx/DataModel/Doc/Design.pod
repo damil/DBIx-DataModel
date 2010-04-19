@@ -1010,5 +1010,3 @@ a future release C<DBIx::DataModel> :
     ->select(..., -resultAs => 'statement'); but needs that
        - -resultAs => 'statement' does 'refine' but not 'sqlize'
        - next() accepts an unexecuted statement and automatically executes it
-  - -resultAs => 'hashref' could be similar to DBI::selectall_hashref ...
-      .. but need to decide what to put in hash keys in case of joins

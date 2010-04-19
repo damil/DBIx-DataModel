@@ -367,7 +367,10 @@ sub select {
                                   qw/-preExec -postExec -postFetch/;
 
  SWITCH:
-  for ($args->{-resultAs} || "rows") {
+  my ($resultAs, @key_cols) 
+    = ref $args->{-resultAs} ? @{$args->{-resultAs}}
+                             : ($args->{-resultAs} || "rows");
+  for ($resultAs) {
 
     # CASE sql : just return the SQL and bind values
     /^sql$/i        and do {
@@ -401,10 +404,24 @@ sub select {
       };
 
     # CASE rows : all data rows (this is the default)
-    /^rows$/i       and return $self->all;
+    /^(rows|arrayref)$/i       and return $self->all;
 
     # CASE firstrow : just the first row
     /^firstrow$/i   and return $self->next;
+
+    # CASE hashref : all data rows, put into a hashref
+    /^hashref$/i   and do {
+      @key_cols or @key_cols = $self->{source}->primKey;
+      my %hash;
+      while (my $row = $self->next) {
+        my @key           = @{$row}{@key_cols};
+        my $last_key_item = pop @key;
+        my $node          = \%hash;
+        $node = $node->{$_} ||= {} foreach @key;
+        $node->{$last_key_item} = $row;
+      }
+      return \%hash;
+    };
 
     # CASE flat_arrayref : flattened columns from each row
     /^flat(?:_array(?:ref)?)?$/ and do {

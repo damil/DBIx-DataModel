@@ -93,25 +93,6 @@ sub noUpdateColumns {
 }
 
 
-
-sub primKey {
-  my $self = shift; 
-
-  # get primKey columns
-  my @primKey = @{$self->classData->{primKey}};
-
-  # if called as instance method, get primKey values
-  @primKey = @{$self}{@primKey} if ref $self;
-
-  # choose what to return depending on context
-  return @primKey if wantarray;
-  not(@primKey > 1) 
-    or croak "cannot return a multi-column primary key in a scalar context";
-  return $primKey[0];
-}
-
-
-
 sub componentRoles {
   my $self  = shift; 
   my $class = ref($self) || $self;
@@ -423,8 +404,6 @@ This module implements
 =item L<autoUpdateColumns|DBIx::DataModel::Doc::Reference/autoUpdateColumns>
 
 =item L<noUpdateColumns|DBIx::DataModel::Doc::Reference/noUpdateColumns>
-
-=item L<primKey|DBIx::DataModel::Doc::Reference/primKey>
 
 =item L<fetch|DBIx::DataModel::Doc::Reference/fetch>
 

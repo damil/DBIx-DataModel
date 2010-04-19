@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.24 18.04.2010
+  - implemented 'primKey' for views, and moved method to Source.pm
+  - added the -resultAs => "hashref" option to select()
+
 v1.23 29.03.2010
   - back to use POSIX qw(INT_MAX); # because import () breaks on 5.8, 
     see http://rt.cpan.org/Public/Bug/Display.html?id=55989

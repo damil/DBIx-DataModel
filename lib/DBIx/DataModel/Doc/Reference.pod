@@ -1081,11 +1081,13 @@ you are doing.
 
 =head2 primKey
 
-  my @primKeyColumns = $table->primKey;
+  my @primKeyColumns = $source->primKey;
   my @primKeyValues  = $obj->primKey;
 
 If called as a class method, returns the list of columns
-registered as primary key for that table (via C<< Schema->Table(..) >>).
+registered as primary key for that table (via C<< Schema->Table(..) >>),
+or computed as primary key for that view (concatenation of primary
+keys of joined tables that are in a 1-to-many association).
 
 If called as an instance method, returns the list of values 
 in those columns.
@@ -1345,8 +1347,9 @@ L<statement|DBIx::DataModel::Doc::Glossary/statement> :
                              -pageIndex   => $pageIndex,
                              -columnTypes => \%columnTypes,
                              -resultAs  => 'rows'      || 'firstrow' 
-                                        || 'subquery'  || 'flat_arrayref' 
+                                        || 'hashref'   || [hashref => @cols]
                                         || 'sth'       || 'sql' 
+                                        || 'subquery'  || 'flat_arrayref' 
                                         || 'statement' || 'fast_statement');
   
   $all_records = $target->select();
@@ -1582,6 +1585,20 @@ to an empty list is returned.
 
 The result will be just the first data row, blessed into an object of the 
 class. If there is no data, C<undef> is returned.
+
+
+=item B<hashref> || B<< [hashref => @cols] >>
+
+The result will be a hashref. Keys in the hash correspond to distinct
+values of the specified columns, and values are data row objects.
+If the argument is given as C<< [hashref => @cols] >>, the column(s)
+are specified by the caller; otherwise if the argument is given
+as a simple string, C<@cols> will default to C<< $source->primKey >>.
+If there is more than one column, the result will be a tree of nested hashes.
+This C<-resultAs> is normally used only where the key fields values 
+for each row are unique. If multiple rows are returned with the same
+values for the key fields then later rows overwrite earlier ones.
+
 
 =item B<flat_arrayref>
 

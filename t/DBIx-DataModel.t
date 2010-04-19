@@ -5,7 +5,7 @@ use DBI;
 use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
-use constant N_DBI_MOCK_TESTS => 95;
+use constant N_DBI_MOCK_TESTS => 98;
 use constant N_BASIC_TESTS    => 15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -364,6 +364,50 @@ die_ok {$emp->emp_id};
     my %hash = @$pairs;
     is_deeply(\%hash, {foo1 => 'foo2', bar1 => 'bar2'}, "resultAs => 'flat_arrayref'");
   }
+
+
+  # select -resultAs => 'hashref'
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [ [qw/emp_id foo/],
+                                 [qw/1 1/], 
+                                 [qw/2 2/],
+                                 [qw/1 1bis/],
+                                ];
+  my $hashref = HR::Employee->select(
+    -resultAs => 'hashref'
+   );
+  is_deeply($hashref, {1 => {emp_id => 1, foo => '1bis'},
+                       2 => {emp_id => 2, foo => 2}},
+              "resultAs => 'hashref'");
+
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [ [qw/emp_id foo/],
+                                 [qw/1 1/], 
+                                 [qw/2 2/],
+                                 [qw/1 1bis/],
+                                ];
+  $hashref = HR->join(qw/Employee activities/)->select(
+    -resultAs => [hashref => qw/emp_id foo/],
+   );
+  is_deeply($hashref, {1 => {1      => {emp_id => 1, foo => 1},
+                             '1bis' => {emp_id => 1, foo => '1bis'}},
+                       2 => {2      => {emp_id => 2, foo => 2}}},
+              'resultAs => [hashref => @cols]');
+
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [ [qw/emp_id act_id/],
+                                 [qw/1 1/], 
+                                 [qw/2 2/],
+                                 [qw/1 1bis/],
+                                ];
+  $hashref = HR->join(qw/Employee activities/)->select(
+    -resultAs => 'hashref'
+   );
+  is_deeply($hashref, {1 => {1      => {emp_id => 1, act_id => 1},
+                             '1bis' => {emp_id => 1, act_id => '1bis'}},
+                       2 => {2      => {emp_id => 2, act_id => 2}}},
+              'resultAs => [hashref => @cols]');
+
 
 
   # subquery

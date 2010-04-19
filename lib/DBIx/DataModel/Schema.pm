@@ -410,6 +410,7 @@ sub join {
 
   my ($table_shortname) = ($table =~ /^.*::(.+)$/);
   my @parentTables  = ($table);
+  my @primKey       = $table->primKey;
   my %sources;     $sources{$table_alias || $table_shortname} = $source_info;
   my %aliases;     $aliases{$table_alias || $table->db_table} = $source_info; 
   my @seenSources = ($source_info);
@@ -461,7 +462,7 @@ sub join {
     }
 
     # build SQL join syntax
-    my $nextTable = $joinData->{table};
+    my $nextTable    = $joinData->{table};
     my $where        = $joinData->{where};
     my $dbTableLeft  =  $source_info->{alias} 
                      || $source_info->{table}->db_table;
@@ -483,6 +484,10 @@ sub join {
 
     # set table as a parent for the view
     push @parentTables, $nextTable;
+
+    # if 1-to-many, add primKey of nextTable to primKey of this view
+    push @primKey, $nextTable->primKey 
+      if _multipl_max($joinData->{multiplicity}) > 1;
 
   } # end foreach (@roles)
 
@@ -517,17 +522,10 @@ sub join {
   $class->View(@view_args);
 
   # add alias information
+  $viewName->classData->{tableAliases} = \%aliases;
 
-
-  # in Perl5.10, when reaching here while called from "require",
-  # called itself from "STORABLE_thaw", then the method cache is 
-  # not yet available. So we replace the method call by a direct
-  # functional call to the method implementation
-  # COMMENTED : 
-
-$viewName->classData->{tableAliases} = \%aliases;
-
-##  DBIx::DataModel::Base::classData($viewName)->{tableAliases} = \%aliases;
+  # add primKey information
+  $viewName->classData->{primKey} = \@primKey;
 
   return $viewName;
 }
