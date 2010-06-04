@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.25 03.06.2010
+  - added the -returning option to insert()
+
 v1.24 18.04.2010
   - implemented 'primKey' for views, and moved method to Source.pm
   - added the -resultAs => "hashref" option to select()

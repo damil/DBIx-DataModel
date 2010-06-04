@@ -230,7 +230,10 @@ L<insert() reference|DBIx::DataModel::Doc::Reference/"insert">.
 The precondition for this to work is that the 
 relationship between the two classes should be a 
 L<Composition|DBIx::DataModel::Doc::Reference/"Composition">.
+A datastructure containing the keys of all generated records
+can be retrieved by using the option 
 
+  my $tree_of_keys = $table->insert(..., -returning => {});
 
 =head2 Cascaded delete
 

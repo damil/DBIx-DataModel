@@ -10,7 +10,7 @@ WriteMakefile
                            'Carp' => 0,
                            'DBI' => 0,
                            'Module::Build' => 0,
-                           'SQL::Abstract' => '1.51',
+                           'SQL::Abstract' => '1.61',
                            'Scalar::Util' => 0,
                            'Storable' => 0,
                            'Task::Weaken' => 0,

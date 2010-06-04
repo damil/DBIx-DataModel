@@ -276,8 +276,6 @@ contribute to various parts of the final SQL.
 
 =head3 Example
 
-This is useful for example when doing something like 
-
   # create a statement with initial conditions on the department
   my $statement = $department->join(qw/activities employee/);
   

@@ -4,8 +4,9 @@ no warnings 'uninitialized';
 use DBI;
 use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
+use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 98;
+use constant N_DBI_MOCK_TESTS => 99;
 use constant N_BASIC_TESTS    => 15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -452,7 +453,7 @@ die_ok {$emp->emp_id};
                               dpt_code => 'Anna-Magdalena'}]};
 
 
-  my $emp_id = HR::Employee->insert($tree);
+  my $emp_id = HR::Employee->insert(dclone($tree));
   my $sql_insert_activity = 'INSERT INTO t_activity (d_begin, d_end, '
                           . 'dpt_code, emp_id) VALUES (?, ?, ?, ?)';
 
@@ -464,6 +465,12 @@ die_ok {$emp->emp_id};
           ['1721-12-01', '1750-07-18', 'Anna-Magdalena', $emp_id],
           "cascaded insert");
 
+  # test the -returning => {} option
+  $dbh->{mock_start_insert_id} = 10;
+  $result   = HR::Employee->insert(dclone($tree), -returning => {});
+  my $expected = { emp_id     => 10, 
+                   activities => [{act_id => 11}, {act_id => 12}]};
+  is_deeply($result, $expected,  "results from -returning => {}");
 
 
   HR::MyView->select({c3 => 22});

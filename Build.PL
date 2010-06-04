@@ -13,10 +13,10 @@ my $builder = Module::Build->new(
         'Test::More'    => 0,
 	'Carp'          => 0,
 	'DBI'           => 0,
-	'SQL::Abstract' => 1.51,
+	'SQL::Abstract' => 1.61,
 	'Module::Build' => 0,
-    'Acme::Damn'    => 0,
-    'Scalar::Util'  => 0,
+        'Acme::Damn'    => 0,
+        'Scalar::Util'  => 0,
 	'Storable'      => 0,
     },
     build_requires => {

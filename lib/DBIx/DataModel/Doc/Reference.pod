@@ -443,8 +443,8 @@ named C<insert_into_...> is also installed, that will
 create new objects of the associated class, taking care
 of the linking automatically :
 
-  $anEmployee->insert_into_activities({d_begin => $today, 
-                                       dpt_id  => $dpt});
+  $an_employee->insert_into_activities({d_begin => $today, 
+                                        dpt_id  => $dpt});
 
 This is equivalent to
 
@@ -1753,7 +1753,8 @@ plain datastructures; this is the case for example with L<YAML::Syck/Dump>.
 =head2 insert
 
   my @ids = $table->insert({col1 => $val1, col2 => $val2, ...}, 
-                           {...});
+                           {...},
+                           %options);
   # or
   my @ids = $table->insert([qw/ col1   col2   .../],
                            [    $val1, $val2, ... ],
@@ -1810,12 +1811,6 @@ otherwise, C<DBIx::DataModel> will call
 
 =back
 
-Values returned by calls to L<_singleInsert()|/"_singleInsert"> are 
-collected into a flattened array, and then returned by C<insert()>;
-usually, these are the primary keys of the inserted records. 
-If this array contains several values and C<insert()> was called 
-from a scalar context, a warning is issued.
-
 If the table is a composite class (see L<Composition()|/"Composition">
 above), then the component parts may be supplied within the hashref,
 with keys equal to the role names, and values given as arrayrefs of
@@ -1828,6 +1823,42 @@ in.  For example :
                          activities => [{d_begin  => '01.01.1695',
         			         d_end    => '18.07.1750',
 	        		         dpt_code => 'CPT'}]});
+
+
+The C<%options> are specified at the I<end> of the argument list; 
+currently there is only one option C<-returning>, with an argument
+that may be either a scalar, an arrayref or an empty hashref :
+
+=over
+
+=item *
+
+if it is a scalar or an arrayref, that value is passed
+to L<SQL::Abstract/insert> and finally to the SQL level 
+(INSERT ... RETURNING ...);  whatever is returned from the 
+database for each single record gets flattened into a single
+list transmitted back to the caller.
+
+=item *
+
+if it is an empty hashref, the return value is also a list of hashrefs
+(one for each inserted record), containing the column name(s) and
+value(s) of the primary key for that record, and possibly containing
+subhashes or subarrays for other records created through cascaded
+inserts.
+
+=item *
+
+if this option is absent, values returned by calls to
+L<_singleInsert()|/"_singleInsert"> are collected into a flattened
+array, and then returned by C<insert()>; usually, these are the
+primary keys of the inserted records.  If this array contains several
+values and C<insert()> was called from a scalar context, a warning is
+issued.
+
+=back
+
+
 
 =head2 update
 

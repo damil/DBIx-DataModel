@@ -9,7 +9,7 @@ use warnings;
 use strict;
 use Carp;
 use base 'DBIx::DataModel::Base';
-use SQL::Abstract 1.51;
+use SQL::Abstract 1.61;
 use DBIx::DataModel::Table;
 use DBIx::DataModel::View;
 use POSIX        (); # INT_MAX
@@ -289,8 +289,15 @@ sub _Assoc_normal {
 
       # add join information into records that will be inserted
       foreach my $record (@_) {
+
+        # if this is a scalar, it's no longer a record, but an arg to insert()
+        last if !ref $record; # since args are at the end, we exit the loop
+
+        # check that we won't overwrite existing data
 	not (grep {$record->{$_}} @$cols_ref) or
 	  croak "args to $meth_name should not contain values in @$cols_ref";
+
+        # insert values for the join
 	@{$record}{@$cols_ref} = @{$self}{@$foreign_cols_ref};
       }
 

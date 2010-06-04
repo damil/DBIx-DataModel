@@ -130,11 +130,25 @@ sub insert {
   my ($class, @records) = @_;
   not ref($class) or croak "insert() should be called as class method";
 
+  # end of list may contain options, recognized because option name is a scalar
+  my %options;
+  while (@records > 2 && ! ref $records[-2]) {
+    my ($opt_val, $opt_name) = (pop @records, pop @records);
+    $options{$opt_name} = $opt_val;
+  }
+  my $want_subhash = ref $options{-returning} eq 'HASH';
+
+  # currently the only option is 'returning'
+  my $n_keys = keys %options;
+  $n_keys == 0 or ($n_keys == 1 && (keys %options)[0] eq '-returning')
+    or die "invalid options to ->insert() : " . join " / ", %options;
+
   # if data is received as arrayrefs, transform it into a list of hashrefs.
   # NOTE : this is kind of dumb; a more efficient implementation
   # would be to prepare one single DB statement and then execute it on
-  # each data row, but that would require some refactoring of _singleInsert
-  # and _rawInsert.
+  # each data row, or even SQL like INSERT ... VALUES(...), VALUES(..), ...
+  # (supported by some DBMS), but that would require some refactoring 
+  # of _singleInsert and _rawInsert.
   if (ref $records[0] eq 'ARRAY') {
     my $header_row = shift @records;
     foreach my $data_row (@records) {
@@ -149,11 +163,10 @@ sub insert {
   }
 
   # check that there is at least one record to insert
-  @records or croak "insert(): not enough arguments";
-
-  my @ids; # to hold primary keys of inserted records
+  @records or croak "insert(): not record to insert";
 
   # insert each record, one by one
+  my @results;
   foreach my $record (@records) {
     bless $record, $class;
     $record->applyColumnHandler('toDB');
@@ -162,60 +175,95 @@ sub insert {
     delete $record->{$_} foreach $class->noUpdateColumns;
     my $subrecords = $record->_weed_out_subtrees;
 
-    # do the insertion
-    push @ids, $record->_singleInsert();
+    # do the insertion. Result depends on %options
+    my @single_result = $record->_singleInsert(%options);
 
-    # insert the subtrees
-    $record->_insert_subtrees($subrecords);
+    # insert the subtrees into DB, and keep the return vals if $want_subhash
+    if ($subrecords) {
+      my $subresults = $record->_insert_subtrees($subrecords, %options);
+      if ($want_subhash) {
+        ref $single_result[0] eq 'HASH'
+          or die "_singleInsert(..., -returning => {}) did not return a hashref";
+        $single_result[0]{$_} = $subresults->{$_} for keys %$subresults;
+      }
+    }
+
+    push @results, @single_result;
   }
 
   # choose what to return according to context
-  return @ids if wantarray;             # list context
-  return      if not defined wantarray; # void context
-  carp "insert({...}, {...}, ..) called in scalar context" if @ids > 1;
-  return $ids[0];                       # scalar context
+  return @results if wantarray;             # list context
+  return          if not defined wantarray; # void context
+  carp "insert({...}, {...}, ..) called in scalar context" if @results > 1;
+  return $results[0];                       # scalar context
 }
 
 
 sub _singleInsert {
-  my ($self) = @_; # assumes %$self only contains scalars, and noUpdateColumns
-                   # have already been removed 
+  my ($self, %options) = @_; 
+  # assumes %$self only contains scalars, and noUpdateColumns
+  #  have already been removed 
+
   my $class  = ref $self or croak "_singleInsert called as class method";
 
-  $self->_rawInsert;
+  # call DB insert
+  my @result = $self->_rawInsert(%options);
 
-  # make sure the object has its own key
-  my @primKeyCols = $class->primKey;
-  unless (@{$self}{@primKeyCols}) {
-    my $n_columns = @primKeyCols;
+  # if $options{-returning} was a scalar or arrayref, return that result
+  return @result if @result; 
+
+  # otherwise: first make sure we have the primary key
+  my @prim_key_cols = $class->primKey;
+  if (grep {not defined $self->{$_}} @prim_key_cols) {
+    my $n_columns = @prim_key_cols;
     not ($n_columns > 1) 
       or croak "cannot ask for last_insert_id: primary key in $class "
              . "has $n_columns columns";
+    my $pk_col = $prim_key_cols[0];
+    $self->{$pk_col} = $self->_get_last_insert_id($pk_col);
+  }
 
-    my ($dbh, %dbh_options) = $class->schema->dbh;
+  # now return the primary key, either as a hashref or as a list
+  if ($options{-returning} && ref $options{-returning} eq 'HASH') {
+    my %result;
+    $result{$_} = $self->{$_} for @prim_key_cols;
+    return \%result;
+  }
+  else {
+    return @{$self}{@prim_key_cols};
+  }
+}
 
-    # fill the primary key from last_insert_id returned by the DBMS
-    my $pk_col = $primKeyCols[0];
-    my $table  = $class->db_table;
-    $self->{$pk_col}
+
+
+sub _get_last_insert_id {
+  my ($self, $col) = @_;
+  my $class = ref $self;
+  my ($dbh, %dbh_options) = $class->schema->dbh;
+  my $table  = $class->db_table;
+
+  my $id
       # either callback given by client ...
       = $dbh_options{last_insert_id} ? 
-          $dbh_options{last_insert_id}->($dbh, $table, $pk_col)
+          $dbh_options{last_insert_id}->($dbh, $table, $col)
+
       # or catalog and/or schema given by client ...
       : (exists $dbh_options{catalog} || exists $dbh_options{schema}) ?
           $dbh->last_insert_id($dbh_options{catalog}, $dbh_options{schema},
-                               $table, $pk_col)
+                               $table, $col)
+
       # or plain call to last_insert_id() with all undefs
       :   $dbh->last_insert_id(undef, undef, undef, undef);
-  }
 
-  return @{$self}{@primKeyCols};
+  return $id;
 }
 
 
 sub _rawInsert {
-  my ($self) = @_; 
-  my $class  = ref $self or croak "_rawInsert called as class method";
+  my ($self, %options) = @_; 
+  my $class = ref $self or croak "_rawInsert called as class method";
+  my $use_returning 
+    = $options{-returning} && ref $options{-returning} ne 'HASH';
 
   # need to clone into a plain hash because that's what SQL::Abstract wants...
   my %clone = %$self;
@@ -229,12 +277,15 @@ sub _rawInsert {
 
   # perform the insertion
   my $schema_data = $class->schema->classData;
-  my ($sql, @bind) = $schema_data->{sqlAbstr}
-                                 ->insert($class->db_table, \%clone);
+  my @sqla_args   = ($class->db_table, \%clone);
+  push @sqla_args, {returning => $options{-returning}} if $use_returning;
+  my ($sql, @bind) = $schema_data->{sqlAbstr}->insert(@sqla_args);
   $class->_debug($sql . " / " . join(", ", @bind) );
   my $sth = $class->schema->dbh->prepare($sql);
   $schema_data->{lasth} = $sth if $schema_data->{keepLasth};
   $sth->execute(@bind);
+  return $sth->fetchrow_array if $use_returning;
+  return;                      # otherwise
 }
 
 
@@ -244,33 +295,33 @@ sub _weed_out_subtrees {
 
   my %is_component;
   $is_component{$_} = 1 foreach $class->componentRoles;
-  my $subrecords = {};
+  my %subrecords;
 
   foreach my $k (keys %$self) {
     my $v = $self->{$k};
     if (ref $v) {
-      $is_component{$k} ? $subrecords->{$k} = $v 
+      $is_component{$k} ? $subrecords{$k} = $v 
                         : carp "unexpected reference $k in record, deleted";
       delete $self->{$k};
     }
   }
-  return $subrecords;
+  return keys %subrecords ? \%subrecords : undef;
 }
 
 
 sub _insert_subtrees {
-  my ($self, $subrecords) = @_;
+  my ($self, $subrecords, %options) = @_;
   my $class = ref $self;
-  if (keys %$subrecords) {  # if there are component objects to insert
-    while (my ($role, $arrayref) = each %$subrecords) { # insert_into each role
-      UNIVERSAL::isa($arrayref, 'ARRAY')
-          or croak "Expected an arrayref for component role $role in $class";
-      next if not @$arrayref;
-      my $meth = "insert_into_$role";
-      $self->$meth(@$arrayref);
-      $self->{$role} = $arrayref;
-    }
+  my %results;
+  while (my ($role, $arrayref) = each %$subrecords) { # insert_into each role
+    UNIVERSAL::isa($arrayref, 'ARRAY')
+        or croak "Expected an arrayref for component role $role in $class";
+    next if not @$arrayref;
+    my $meth = "insert_into_$role";
+    $results{$role} = [$self->$meth(@$arrayref, %options)];
+    $self->{$role} = $arrayref; # reinject into source object
   }
+  return \%results;
 }
 
 sub update { _modifyData('update', @_); }

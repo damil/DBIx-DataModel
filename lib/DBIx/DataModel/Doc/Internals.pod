@@ -77,7 +77,7 @@ argument is true.
 
 =head2 _rawInsert
 
-  $obj->_rawInsert;
+  $obj->_rawInsert(%options);
 
 Internal implementation for insertions into the database :
 takes keys and values within C<%$obj>, generates SQL for 
@@ -85,12 +85,17 @@ insertion of those values into C<< $obj->dbTable >>,
 and executes it. Never called directly, but used by the protected method
 L<_singleInsert|DBIx::DataModel::Doc::Reference/"_singleInsert">.
 
+The optional C<%options> argument can contain one single key : C<-returning>.
+If that option is present, and the value is either a scalar or an arrayref, 
+then it will be passed as an option to L<SQL::Abstract/insert>, and the
+returned value(s) will be fetched from the sth and returned to the caller.
+
 
 =head1 "PROTECTED" METHODS
 
 =head2 _singleInsert
 
-  $obj->_singleInsert;
+  $obj->_singleInsert(%options);
 
 Implementation for inserting a record into the
 database; should never be called directly, but is used as 
@@ -115,7 +120,33 @@ documentation.
 You may redeclare C<_singleInsert> in your own table classes,
 for example if you need to compute a key by other means, like
 constructing it from other fields, or generating it from
-a random number. That key should be both inserted into the 
-object and returned to the caller.
+a random number. 
+
+The return value from C<_singleInsert> depends on C<%options> :
+
+=over
+
+=item *
+
+if C<< $options{-returning} >> is a scalar or arrayref,
+that option is passed to C<_rowInsert>,  then 
+to L<SQL::Abstract/insert> and finally to the SQL level 
+(INSERT ... RETURNING ...);  whatever is returned from the 
+database gets transmitted back to the caller.
+
+=item *
+
+if C<< $options{-returning} >> is a hashref, the 
+return value is also a hashref, containing the column
+name(s) and value(s) of the primary key for that record
+
+=item *
+
+if C<< $options{-returning} >> is absent, the
+return value is the list of values of the primary key
+for that record.
+
+=back
+
 
 

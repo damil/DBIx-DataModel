@@ -44,9 +44,8 @@ L<GLOSSARY|DBIx::DataModel::Doc::Glossary>
 =head1 NAMESPACES, CLASSES, METHODS
 
 C<DBIx::DataModel> automatically generates Perl classes for Schemas,
-Tables and Views. The client code can insert a
-additional methods into the generated
-classes : just switch to the package and define your code. 
+Tables and Views. The client code can insert additional methods into
+the generated classes : just switch to the package and define your code. 
 
   # DBIx::DataModel creates packages 'MySchema' and 'MySchema::Activity'
   DBIx::DataModel->Schema('MySchema') 
