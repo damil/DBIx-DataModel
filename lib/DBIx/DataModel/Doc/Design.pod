@@ -1008,3 +1008,4 @@ a future release C<DBIx::DataModel> :
     ->select(..., -resultAs => 'statement'); but needs that
        - -resultAs => 'statement' does 'refine' but not 'sqlize'
        - next() accepts an unexecuted statement and automatically executes it
+  - dbh(undef) should erase the current $dbh

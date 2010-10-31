@@ -142,22 +142,22 @@ SKIP: {
 
 
   $lst = HR::Employee->select;
-  sqlLike('SELECT * FROM t_employee', [], 'empty select');
+  sqlLike('SELECT * FROM T_Employee', [], 'empty select');
 
   $lst = HR::Employee->select(-for => 'read only');
-  sqlLike('SELECT * FROM t_employee FOR READ ONLY', [], 'for read only');
+  sqlLike('SELECT * FROM T_Employee FOR READ ONLY', [], 'for read only');
 
 
   $lst = HR::Employee->select([qw/firstname lastname emp_id/],
 			  {firstname => {-like => 'D%'}});
   sqlLike('SELECT firstname, lastname, emp_id '.
-	  'FROM t_employee ' .
+	  'FROM T_Employee ' .
 	  "WHERE (firstname LIKE ?)", ['D%'], 'like select');
 
 
   $lst = HR::Employee->select({firstname => {-like => 'D%'}});
   sqlLike('SELECT * '.
-	  'FROM t_employee ' .
+	  'FROM T_Employee ' .
 	  "WHERE ( firstname LIKE ? )", ['D%'], 'implicit *');
 
 
@@ -166,7 +166,7 @@ SKIP: {
 			  [qw/d_birth/]);
 
   sqlLike('SELECT firstname AS fn, lastname AS ln '.
-	  'FROM t_employee ' .
+	  'FROM T_Employee ' .
 	  "ORDER BY d_birth", [], 'order_by select');
 
 
@@ -176,7 +176,7 @@ SKIP: {
                                  [qw/bar 2002-02-02/] ];
   $lst = HR::Employee->select(-columns => [qw/lastname|ln d_birth|db/]);
   sqlLike('SELECT lastname AS ln, d_birth AS db '.
-	  'FROM t_employee', 
+	  'FROM T_Employee', 
           [], 'column aliases');
   is($lst->[0]{db}, "01.01.2001", "fromDB handler on column alias");
 
@@ -184,13 +184,13 @@ SKIP: {
   $lst = HR::Employee->select(-distinct => "lastname, firstname");
 
   sqlLike('SELECT DISTINCT lastname, firstname '.
-	  'FROM t_employee' , [], 'distinct 1');
+	  'FROM T_Employee' , [], 'distinct 1');
 
 
   $lst = HR::Employee->select(-distinct => [qw/lastname firstname/]);
 
   sqlLike('SELECT DISTINCT lastname, firstname '.
-	  'FROM t_employee' , [], 'distinct 2');
+	  'FROM T_Employee' , [], 'distinct 2');
 
 
   $lst = HR::Employee->select(-columns => ['lastname', 
@@ -202,33 +202,33 @@ SKIP: {
 
 
   sqlLike('SELECT lastname, COUNT(firstname) AS n_emp '.
-	  'FROM t_employee '.
+	  'FROM T_Employee '.
 	  'GROUP BY lastname HAVING ((n_emp >= ?)) '.
 	  'ORDER BY n_emp DESC', [2], 'group by');
 
 
 
   $lst = HR::Employee->select(-orderBy => [qw/+col1 -col2 +col3/]);
-  sqlLike('SELECT * FROM t_employee ORDER BY col1 ASC, col2 DESC, col3 ASC', 
+  sqlLike('SELECT * FROM T_Employee ORDER BY col1 ASC, col2 DESC, col3 ASC', 
           [], '-orderBy prefixes');
 
 
 
   $emp2 = HR::Employee->fetch(123);
-  sqlLike('SELECT * FROM t_employee WHERE (emp_id = ?)', 
+  sqlLike('SELECT * FROM T_Employee WHERE (emp_id = ?)', 
           [123], 'fetch');
 
   $emp2 = HR::Employee->select(-fetch => 123);
-  sqlLike('SELECT * FROM t_employee WHERE (emp_id = ?)', 
+  sqlLike('SELECT * FROM T_Employee WHERE (emp_id = ?)', 
           [123], 'select(-fetch)');
 
   $emp2 = HR::Employee->fetch("");
-  sqlLike('SELECT * FROM t_employee WHERE (emp_id = ?)', 
+  sqlLike('SELECT * FROM T_Employee WHERE (emp_id = ?)', 
           [""], 'fetch (empty string)');
 
 
   $emp2 = HR::Employee->fetch(undef);
-  sqlLike('SELECT * FROM t_employee WHERE (emp_id IS NULL)', 
+  sqlLike('SELECT * FROM T_Employee WHERE (emp_id IS NULL)', 
           [], 'fetch (undef)');
 
 
@@ -263,21 +263,21 @@ die_ok {$emp->emp_id};
   $lst = $emp->activities;
 
   sqlLike('SELECT * ' .
-	  'FROM t_activity ' .
+	  'FROM T_Activity ' .
 	  "WHERE ( emp_id = ? )", [999], 'activities');
 
 
   $lst = $emp->activities([qw/d_begin d_end/]);
 
   sqlLike('SELECT d_begin, d_end ' .
-	  'FROM t_activity ' .
+	  'FROM T_Activity ' .
 	  "WHERE ( emp_id = ? )", [999], 'activities column list');
 
 
   $lst = $emp->activities({d_begin => {">=" => '2000-01-01'}});
 
   sqlLike('SELECT * ' .
-	  'FROM t_activity ' .
+	  'FROM T_Activity ' .
 	  "WHERE (d_begin >= ? AND emp_id = ?)", ['2000-01-01', 999], 
 	    'activities where criteria');
 
@@ -287,13 +287,13 @@ die_ok {$emp->emp_id};
                           [qw/d_begin d_end/]);
 
   sqlLike('SELECT d_begin AS db, d_end AS de ' .
-	  'FROM t_activity ' .
+	  'FROM T_Activity ' .
 	  "WHERE (emp_id = ?) ".
 	  'ORDER BY d_begin, d_end', [999], 
 	    'activities order by');
 
   $act = $emp->activities(-fetch => 123);
-  sqlLike('SELECT * FROM t_activity WHERE (act_id = ? AND emp_id = ? )', 
+  sqlLike('SELECT * FROM T_Activity WHERE (act_id = ? AND emp_id = ? )', 
           [123, 999], 'activities(-fetch)');
 
 
@@ -437,7 +437,7 @@ die_ok {$emp->emp_id};
 
   # insertion into related class
   $emp->insert_into_activities({d_begin =>'2000-01-01', d_end => '2000-02-02'});
-  sqlLike('INSERT INTO t_activity (d_begin, d_end, emp_id) ' .
+  sqlLike('INSERT INTO T_Activity (d_begin, d_end, emp_id) ' .
             'VALUES (?, ?, ?)', ['2000-01-01', '2000-02-02', 999],
 	    'add_to_activities');
 
@@ -454,10 +454,10 @@ die_ok {$emp->emp_id};
 
 
   my $emp_id = HR::Employee->insert(dclone($tree));
-  my $sql_insert_activity = 'INSERT INTO t_activity (d_begin, d_end, '
+  my $sql_insert_activity = 'INSERT INTO T_Activity (d_begin, d_end, '
                           . 'dpt_code, emp_id) VALUES (?, ?, ?, ?)';
 
-  sqlLike('INSERT INTO t_employee (firstname, lastname) VALUES (?, ?)',
+  sqlLike('INSERT INTO T_Employee (firstname, lastname) VALUES (?, ?)',
           ["Johann Sebastian", "Bach"],
           $sql_insert_activity, 
           ['1707-01-01', '1720-07-01', 'Maria-Barbara', $emp_id],
@@ -485,10 +485,10 @@ die_ok {$emp->emp_id};
   $view->select("lastname, dpt_name", {gender => 'F'});
 
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_employee LEFT OUTER JOIN t_activity ' .
-	  'ON t_employee.emp_id=t_activity.emp_id ' .		
-	  'LEFT OUTER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Employee LEFT OUTER JOIN T_Activity ' .
+	  'ON T_Employee.emp_id=T_Activity.emp_id ' .		
+	  'LEFT OUTER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (gender = ?)', ['F'], 'join');
 
 
@@ -496,10 +496,10 @@ die_ok {$emp->emp_id};
   $view2->select("lastname, dpt_name", {gender => 'F'});
 
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_employee INNER JOIN t_activity ' .
-	  'ON t_employee.emp_id=t_activity.emp_id ' .		
-	  'LEFT OUTER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Employee INNER JOIN T_Activity ' .
+	  'ON T_Employee.emp_id=T_Activity.emp_id ' .		
+	  'LEFT OUTER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (gender = ?)', ['F'], 'join with explicit roles');
 
 
@@ -509,10 +509,10 @@ die_ok {$emp->emp_id};
   $view3->select("lastname, dpt_name", {gender => 'F'});
 
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_activity INNER JOIN t_employee ' .
-	  'ON t_activity.emp_id=t_employee.emp_id ' .
-	  'INNER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Activity INNER JOIN T_Employee ' .
+	  'ON T_Activity.emp_id=T_Employee.emp_id ' .
+	  'INNER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (gender = ?)', ['F'], 'join with indirect role');
 
 
@@ -523,9 +523,9 @@ die_ok {$emp->emp_id};
       ->select({gender => 'F'});
 
   sqlLike('SELECT * ' .
-	  'FROM t_activity ' .
-	  'INNER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Activity ' .
+	  'INNER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (emp_id = ? AND gender = ?)', [999, 'F'], 
 	  'join (instance method)');
 
@@ -535,9 +535,9 @@ die_ok {$emp->emp_id};
              -where   => {gender => 'F'});
 
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_activity AS act INNER JOIN t_employee AS emp ' .
+	  'FROM T_Activity AS act INNER JOIN T_Employee AS emp ' .
 	  'ON act.emp_id=emp.emp_id ' .
-	  'INNER JOIN t_department AS dpt ' .
+	  'INNER JOIN T_Department AS dpt ' .
 	  'ON act.dpt_id=dpt.dpt_id ' .
 	  'WHERE (gender = ?)', ['F'], 'table aliases');
 
@@ -547,10 +547,10 @@ die_ok {$emp->emp_id};
              -where   => {gender => 'F'});
 
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_activity INNER JOIN t_employee ' .
-	  'ON t_activity.emp_id=t_employee.emp_id ' .
-	  'INNER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Activity INNER JOIN T_Employee ' .
+	  'ON T_Activity.emp_id=T_Employee.emp_id ' .
+	  'INNER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (gender = ?)', ['F'], 'explicit sources');
 
 
@@ -560,9 +560,9 @@ die_ok {$emp->emp_id};
              -where   => {gender => 'F'});
 
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_activity AS act INNER JOIN t_employee AS emp ' .
+	  'FROM T_Activity AS act INNER JOIN T_Employee AS emp ' .
 	  'ON act.emp_id=emp.emp_id ' .
-	  'INNER JOIN t_department AS dpt ' .
+	  'INNER JOIN T_Department AS dpt ' .
 	  'ON act.dpt_id=dpt.dpt_id ' .
 	  'WHERE (gender = ?)', ['F'], 
           'both table aliases and explicit sources');
@@ -572,10 +572,10 @@ die_ok {$emp->emp_id};
     ->select(-columns => [qw/lastname dpt_name/], 
              -where   => {gender => 'F'});
   sqlLike('SELECT lastname, dpt_name ' .
-	  'FROM t_department AS dpt '.
-	  'LEFT OUTER JOIN t_activity AS act ' .
+	  'FROM T_Department AS dpt '.
+	  'LEFT OUTER JOIN T_Activity AS act ' .
 	  'ON dpt.dpt_id=act.dpt_id ' .
-          'LEFT OUTER JOIN t_employee AS emp ' .
+          'LEFT OUTER JOIN T_Employee AS emp ' .
 	  'ON act.emp_id=emp.emp_id ' .
 	  'WHERE (gender = ?)', ['F'], 
           'both table aliases and explicit sources, reversed');
@@ -589,10 +589,10 @@ die_ok {$emp->emp_id};
            ->select(-columns => [qw/emp.lastname|ln emp.d_birth|db/], 
                     -where   => {gender => 'F'});
   sqlLike('SELECT emp.lastname AS ln, emp.d_birth AS db ' .
-	  'FROM t_department AS dpt '.
-	  'LEFT OUTER JOIN t_activity AS act ' .
+	  'FROM T_Department AS dpt '.
+	  'LEFT OUTER JOIN T_Activity AS act ' .
 	  'ON dpt.dpt_id=act.dpt_id ' .
-          'LEFT OUTER JOIN t_employee AS emp ' .
+          'LEFT OUTER JOIN T_Employee AS emp ' .
 	  'ON act.emp_id=emp.emp_id ' .
 	  'WHERE (gender = ?)', ['F'], 
           'column types on table and column aliases (sql)');
@@ -609,9 +609,9 @@ die_ok {$emp->emp_id};
   die_ok {$statement->next}; # statement is not executed yet
   my $row = $statement->execute($emp)->next;
   sqlLike('SELECT * ' .
-	  'FROM t_activity ' .
-	  'INNER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Activity ' .
+	  'INNER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (emp_id = ? AND gender = ? AND gender != ?)', [999, 'F', 'M'],
 	  'statement prepare/execute');
 
@@ -624,9 +624,9 @@ die_ok {$emp->emp_id};
 
   my $dpts = $emp->departments(-where =>{gender => 'F'});
   sqlLike('SELECT * ' .
-	  'FROM t_activity ' .
-	  'INNER JOIN t_department ' .
-	  'ON t_activity.dpt_id=t_department.dpt_id ' .
+	  'FROM T_Activity ' .
+	  'INNER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (emp_id = ? AND gender = ?)', [999, 'F'], 
 	  'N-to-N Association ');
 
@@ -634,9 +634,9 @@ die_ok {$emp->emp_id};
   my $dpt = bless {dpt_id => 123}, 'HR::Department';
   my $empls = $dpt->employees;
   sqlLike('SELECT * ' .
-	  'FROM t_activity ' .
-	  'INNER JOIN t_employee ' .
-	  'ON t_activity.emp_id=t_employee.emp_id ' .
+	  'FROM T_Activity ' .
+	  'INNER JOIN T_Employee ' .
+	  'ON T_Activity.emp_id=T_Employee.emp_id ' .
 	  'WHERE (dpt_id = ?)', [123], 
 	  'N-to-N Association 2 ');
 
@@ -648,7 +648,7 @@ die_ok {$emp->emp_id};
 			 d_birth => '01.01.1950',
 			 last_login => '01.09.2005'});
 
-  sqlLike('UPDATE t_employee SET d_birth = ?, firstname = ? '.
+  sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ? '.
 	  'WHERE (emp_id = ?)', ['1950-01-01', 'toto', 999], 'update');
 
 
@@ -658,7 +658,7 @@ die_ok {$emp->emp_id};
 			 last_login => '01.09.2005',
 			 emp_id => 999});
 
-  sqlLike('UPDATE t_employee SET d_birth = ?, firstname = ? '.
+  sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ? '.
 	  'WHERE (emp_id = ?)', ['1950-01-01', 'toto', 999], 'update2');
 
 
@@ -671,7 +671,7 @@ die_ok {$emp->emp_id};
 
   $emp->update;
 
-  sqlLike('UPDATE t_employee SET d_birth = ?, firstname = ?, lastname = ? '.
+  sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ?, lastname = ? '.
 	  'WHERE (emp_id = ?)', 
 	  ['1950-01-01', 'toto', 'Bodin De Boismortier', 999], 'update3');
 
@@ -680,7 +680,7 @@ die_ok {$emp->emp_id};
     sub{"someUser, someTime"}
   );
   HR::Employee->update(\%emp2);
-  sqlLike('UPDATE t_employee SET d_birth = ?, firstname = ?, ' .
+  sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ?, ' .
 	    'last_modif = ?, lastname = ? WHERE (emp_id = ?)', 
 	  ['1950-01-01', 'toto', "someUser, someTime", 
 	   'Bodin De Boismortier', 999], 'autoUpdate');
@@ -693,7 +693,7 @@ die_ok {$emp->emp_id};
   HR::Employee->insert({firstname => "Felix",
                     lastname  => "Mendelssohn"});
 
-  sqlLike('INSERT INTO t_employee (created_by, firstname, last_modif, lastname) ' .
+  sqlLike('INSERT INTO T_Employee (created_by, firstname, last_modif, lastname) ' .
             'VALUES (?, ?, ?, ?)',
 	  ['firstUser, firstTime', 'Felix', 'someUser, someTime', 'Mendelssohn'],
           'autoUpdate / insert');
@@ -701,14 +701,14 @@ die_ok {$emp->emp_id};
 
   $emp = HR::Employee->blessFromDB({emp_id => 999});
   $emp->delete;
-  sqlLike('DELETE FROM t_employee '.
+  sqlLike('DELETE FROM T_Employee '.
 	  'WHERE (emp_id = ?)', [999], 'delete');
 
 
   $emp = HR::Employee->blessFromDB({emp_id => 999, spouse_id => 888});
   my $emp_spouse = $emp->spouse;
   sqlLike('SELECT * ' .
-	  'FROM t_employee ' .
+	  'FROM T_Employee ' .
 	  "WHERE ( emp_id = ? )", [888], 'spouse self-ref assoc.');
 
 

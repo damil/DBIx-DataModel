@@ -24,3 +24,4 @@ Build.bat$
 \.bak$
 \#$
 \b\.#
+^MYMETA.yml$

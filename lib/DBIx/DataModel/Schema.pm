@@ -13,7 +13,7 @@ use SQL::Abstract 1.61;
 use DBIx::DataModel::Table;
 use DBIx::DataModel::View;
 use POSIX        (); # INT_MAX
-use Scalar::Util (); # blessed
+use Scalar::Util qw/blessed reftype/;
 
 our @CARP_NOT = qw/DBIx::DataModel         DBIx::DataModel::Source
 		   DBIx::DataModel::Table  DBIx::DataModel::View         /;
@@ -112,10 +112,10 @@ sub _subclass { # this is the implementation of DBIx::DataModel->Schema(..)
 
   # _SqlDialect : needs some reshuffling of args, for backwards compatibility :
   # input : scalar or hashref; output : array
+  no warnings 'uninitialized';
   my @dialect_args = 
-    UNIVERSAL::isa($params{sqlDialect}, 'HASH') 
-	? %{$params{sqlDialect}}
-	: ( $params{sqlDialect} || 'Default' );
+    reftype($params{sqlDialect}) eq 'HASH' ? %{$params{sqlDialect}}
+                                           : $params{sqlDialect} || 'Default';
 
   $pckName->_SqlDialect(@dialect_args);
 
@@ -906,11 +906,11 @@ sub _unbless {
   my $obj = shift;
 
   no strict;               # because Acme::Damn will only be loaded on-demand
-  Acme::Damn::damn($obj) if Scalar::Util::blessed($obj);
+  Acme::Damn::damn($obj) if blessed $obj;
 
   for (ref $obj) {
-    /HASH/  and do {  _unbless($_) foreach values %$obj;  };
-    /ARRAY/ and do {  _unbless($_) foreach @$obj;         };
+    /^HASH$/  and do {  _unbless($_) foreach values %$obj;  };
+    /^ARRAY$/ and do {  _unbless($_) foreach @$obj;         };
   }
 }
 

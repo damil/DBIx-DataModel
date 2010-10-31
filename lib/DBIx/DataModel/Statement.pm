@@ -7,8 +7,7 @@ use warnings;
 use strict;
 use Carp;
 use List::Util      qw/min first/;
-use Scalar::Util    qw/weaken/;
-use UNIVERSAL       qw/isa/;
+use Scalar::Util    qw/weaken reftype/;
 use Storable        qw/dclone/;
 use POSIX           qw/INT_MAX/;
 
@@ -98,10 +97,12 @@ sub bind {
 
   # arguments can be a list, a hashref or an arrayref
   if (@args == 1) {
-    if    (isa $args[0], 'HASH')  {@args = %{$args[0]}}
-    elsif (isa $args[0], 'ARRAY') {my $i = 0;
-                                   @args = map {($i++, $_)} @{$args[0]}}
-    else                          {croak "unexpected arg type to bind()"}
+    for (reftype($args[0]) || "") {
+      /^HASH$/  and do {@args = %{$args[0]}; last;};
+      /^ARRAY$/ and do {my $i = 0; @args = map {($i++, $_)} @{$args[0]}; last};
+      #otherwise
+      croak "unexpected arg type to bind()";
+    }
   }
   elsif (@args == 3) { # name => value, \%args (see L<DBI/bind_param>)
     my $indices = $self->{param_indices}{$args[0]};
@@ -144,7 +145,11 @@ sub refine {
 
   SWITCH:
     for ($k) {
+
+      # -where : combine with previous 'where' clauses in same statement
       /^-where$/ and do {$self->_add_conditions($v); last SWITCH};
+
+      # -fetch : special select() on primary key
       /^-fetch$/ and do {
         # build a -where clause on primary key
         my $primKey    = ref($v) ? $v : [$v];
@@ -161,12 +166,20 @@ sub refine {
 
         last SWITCH;
       };
-      /^(-distinct | -columns | -orderBy  | -groupBy   | -having | -for
-       | -resultAs | -postSQL | -preExec  | -postExec  | -postFetch
-       | -limit    | -offset  | -pageSize | -pageIndex | -columnTypes  )$/x
+
+      # backwards compatibility
+      s/^-postFetch$/-postBless/;
+      # NEXT RELEASE:  and carp "-postFetch is obsolete, use '-postBless'";
+
+      # other args are just stored, will be used later
+      /^-(distinct | columns | orderBy  | groupBy   | having | for
+       |  resultAs | postSQL | preExec  | postExec  | postBless
+       |  limit    | offset  | pageSize | pageIndex | columnTypes  )$/x
          and do {$args->{$k} = $v; last SWITCH};
+
       # otherwise
       croak "invalid arg : $k";
+
     } # end SWITCH
   } # end while
 
@@ -243,7 +256,7 @@ sub sqlize {
   $self->bind($self->{pre_bound_params}) if $self->{pre_bound_params};
 
   # compute callback to apply to data rows
-  my $callback = $self->{args}{-postFetch};
+  my $callback = $self->{args}{-postBless};
   weaken(my $weak_self = $self);   # weaken to avoid a circular ref in closure
   $self->{row_callback} 
     = $callback ? sub {$weak_self->_blessFromDB($_[0]);
@@ -352,9 +365,10 @@ sub select {
   }
   else { # we were called with unnamed args (all optional!), so we try
          # to guess which is which from their datatypes.
-    $more_args{-columns} = shift unless !@_ or isa $_[0], 'HASH' ;
-    $more_args{-where}   = shift unless !@_ or isa $_[0], 'ARRAY';
-    $more_args{-orderBy} = shift unless !@_ or isa $_[0], 'HASH' ;
+    no warnings 'uninitialized';
+    $more_args{-columns} = shift unless !@_ or reftype $_[0] eq 'HASH' ;
+    $more_args{-where}   = shift unless !@_ or reftype $_[0] eq 'ARRAY';
+    $more_args{-orderBy} = shift unless !@_ or reftype $_[0] eq 'HASH' ;
     croak "too many args for select()" if @_;
   }
 
@@ -364,7 +378,7 @@ sub select {
   my $args = $self->{args}; # all combined args
 
   my $callbacks = join ", ", grep {exists $args->{$_}} 
-                                  qw/-preExec -postExec -postFetch/;
+                                  qw/-preExec -postExec -postBless/;
 
  SWITCH:
   my ($resultAs, @key_cols) 
@@ -392,8 +406,8 @@ sub select {
 
     # CASE sth : return the DBI statement handle
     /^sth$/i        and do {
-        not $args->{-postFetch}
-          or croak "-postFetch incompatible with -resultAs=>'sth'";
+        not $args->{-postBless}
+          or croak "-postBless incompatible with -resultAs=>'sth'";
         return $self->{sth};
       };
 
@@ -414,7 +428,12 @@ sub select {
       @key_cols or @key_cols = $self->{source}->primKey;
       my %hash;
       while (my $row = $self->next) {
-        my @key           = @{$row}{@key_cols};
+        my @key;
+        foreach my $col (@key_cols) {
+          my $val = $row->{$col};
+          $val = '' if not defined $val; # $val might be 0, so no '||'
+          push @key, $val;
+        }
         my $last_key_item = pop @key;
         my $node          = \%hash;
         $node = $node->{$_} ||= {} foreach @key;
@@ -776,13 +795,14 @@ sub _add_conditions { # merge conditions for L<SQL::Abstract/where>
   my %merged;
 
   foreach my $cond ($self->{args}{-where}, $new_conditions) {
-    if    (isa $cond, 'HASH')  {
+    my $reftype = reftype($cond) || '';
+    if    ($reftype eq 'HASH')  {
       foreach my $col (keys %$cond) {
         $merged{$col} = $merged{$col} ? [-and => $merged{$col}, $cond->{$col}]
                                       : $cond->{$col};
       }
     }
-    elsif (isa $cond, 'ARRAY') {
+    elsif ($reftype eq 'ARRAY') {
       $merged{-nest} = $merged{-nest} ? {-and => [$merged{-nest}, $cond]}
                                       : $cond;
     }
@@ -1048,7 +1068,7 @@ no more data rows. The numeric argument is forbidden
 on fast statements (i.e. when L</reuseRow> has been called).
 
 Each row is blessed into an object of the proper class,
-and is passed to the C<-postFetch> callback (if applicable).
+and is passed to the C<-postBless> callback (if applicable).
 
 
 =head2 all

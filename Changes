@@ -1,5 +1,10 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.26 31.10.2010
+  - -postFetch renamed as -postBless
+  - no longer import deprecated UNIVERSAL qw/isa/
+  - fix tests broken by SQL::Abstract::Test 1.69 no longer case-insensitive
+
 v1.25 03.06.2010
   - added the -returning option to insert()
 

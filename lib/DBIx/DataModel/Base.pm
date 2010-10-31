@@ -80,6 +80,20 @@ sub _setClassData {
 }
 
 
+sub _parseEndingOptions {
+  my ($class_or_self, $args_ref, $regex) = @_;
+
+  # end of list may contain options, recognized because option name is a
+  # scalar matching the given regex
+  my %options;
+  while (@$args_ref >= 2 && !ref $args_ref->[-2] 
+                         && $args_ref->[-2] && $args_ref->[-2] =~ $regex) {
+    my ($opt_val, $opt_name) = (pop @$args_ref, pop @$args_ref);
+    $options{$opt_name} = $opt_val;
+  }
+  return \%options;
+}
+
 
 
 1; # End of DBIx::DataModel::Base

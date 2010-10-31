@@ -1,3 +1,6 @@
+## TODO: -returning => [], meaning return a list of arrayrefs containing primKeys
+
+
 package DBIx::DataModel::Table;
 
 use warnings;
@@ -6,7 +9,7 @@ use strict;
 use Carp;
 use base 'DBIx::DataModel::Source';
 use Storable     qw/freeze/;
-use Scalar::Util qw/refaddr/;
+use Scalar::Util qw/refaddr reftype/;
 
 
 sub DefaultColumns {
@@ -109,7 +112,8 @@ sub fetch {
   my %select_args;
 
   # if last argument is a hashref, it contains arguments to the select() call
-  if (UNIVERSAL::isa($_[-1], 'HASH')) {
+  no warnings 'uninitialized';
+  if (reftype $_[-1] eq 'HASH') {
     %select_args = %{pop @_};
   }
 
@@ -127,21 +131,15 @@ sub fetch_cached {
 
 
 sub insert {
-  my ($class, @records) = @_;
+  my $class = shift;
   not ref($class) or croak "insert() should be called as class method";
 
   # end of list may contain options, recognized because option name is a scalar
-  my %options;
-  while (@records > 2 && ! ref $records[-2]) {
-    my ($opt_val, $opt_name) = (pop @records, pop @records);
-    $options{$opt_name} = $opt_val;
-  }
-  my $want_subhash = ref $options{-returning} eq 'HASH';
+  my $options      = $class->_parseEndingOptions(\@_, qr/^-returning$/);
+  my $want_subhash = ref $options->{-returning} eq 'HASH';
 
-  # currently the only option is 'returning'
-  my $n_keys = keys %options;
-  $n_keys == 0 or ($n_keys == 1 && (keys %options)[0] eq '-returning')
-    or die "invalid options to ->insert() : " . join " / ", %options;
+  # records to insert
+  my @records = @_;
 
   # if data is received as arrayrefs, transform it into a list of hashrefs.
   # NOTE : this is kind of dumb; a more efficient implementation
@@ -175,15 +173,16 @@ sub insert {
     delete $record->{$_} foreach $class->noUpdateColumns;
     my $subrecords = $record->_weed_out_subtrees;
 
-    # do the insertion. Result depends on %options
-    my @single_result = $record->_singleInsert(%options);
+    # do the insertion. Result depends on %$options
+    my @single_result = $record->_singleInsert(%$options);
 
     # insert the subtrees into DB, and keep the return vals if $want_subhash
     if ($subrecords) {
-      my $subresults = $record->_insert_subtrees($subrecords, %options);
+      my $subresults = $record->_insert_subtrees($subrecords, %$options);
       if ($want_subhash) {
         ref $single_result[0] eq 'HASH'
-          or die "_singleInsert(..., -returning => {}) did not return a hashref";
+          or die "_singleInsert(..., -returning => {}) "
+               . "did not return a hashref";
         $single_result[0]{$_} = $subresults->{$_} for keys %$subresults;
       }
     }
@@ -293,10 +292,12 @@ sub _weed_out_subtrees {
   my ($self) = @_; 
   my $class = ref $self;
 
-  my %is_component;
-  $is_component{$_} = 1 foreach $class->componentRoles;
+  # which "components" were declared through Schema->Composition(...)
+  my %is_component = map {($_ => 1)} $class->componentRoles;
+
   my %subrecords;
 
+  # extract references that correspond to component names
   foreach my $k (keys %$self) {
     my $v = $self->{$k};
     if (ref $v) {
@@ -305,6 +306,7 @@ sub _weed_out_subtrees {
       delete $self->{$k};
     }
   }
+
   return keys %subrecords ? \%subrecords : undef;
 }
 
@@ -313,14 +315,20 @@ sub _insert_subtrees {
   my ($self, $subrecords, %options) = @_;
   my $class = ref $self;
   my %results;
-  while (my ($role, $arrayref) = each %$subrecords) { # insert_into each role
-    UNIVERSAL::isa($arrayref, 'ARRAY')
-        or croak "Expected an arrayref for component role $role in $class";
+
+  while (my ($role, $arrayref) = each %$subrecords) {
+    reftype $arrayref eq 'ARRAY'
+      or croak "Expected an arrayref for component role $role in $class";
     next if not @$arrayref;
+
+    # insert via the "insert_into_..." method
     my $meth = "insert_into_$role";
     $results{$role} = [$self->$meth(@$arrayref, %options)];
-    $self->{$role} = $arrayref; # reinject into source object
+
+    # also reinject in memory into source object
+    $self->{$role} = $arrayref; 
   }
+
   return \%results;
 }
 
