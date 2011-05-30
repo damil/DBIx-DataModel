@@ -6,7 +6,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 99;
+use constant N_DBI_MOCK_TESTS => 101;
 use constant N_BASIC_TESTS    => 15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -118,7 +118,7 @@ SKIP: {
   eval "use DBD::Mock 1.36; 1"
     or skip "DBD::Mock 1.36 does not seem to be installed", N_DBI_MOCK_TESTS;
 
-  my $dbh = DBI->connect('DBI:Mock:', '', '', {RaiseError => 1});
+  my $dbh = DBI->connect('DBI:Mock:', '', '', {RaiseError => 1, AutoCommit => 1});
 
   # sqlLike : takes a list of SQL regex and bind params, and a test msg.
   # Checks if those match with the DBD::Mock history.
@@ -140,6 +140,10 @@ SKIP: {
   HR->dbh($dbh);
   isa_ok(HR->dbh, 'DBI::db', 'dbh handle');
 
+  HR->dbh(undef);
+  is(HR->dbh, undef, 'dbh handle was unset');
+
+  HR->dbh($dbh);
 
   $lst = HR::Employee->select;
   sqlLike('SELECT * FROM T_Employee', [], 'empty select');
@@ -227,9 +231,7 @@ SKIP: {
           [""], 'fetch (empty string)');
 
 
-  $emp2 = HR::Employee->fetch(undef);
-  sqlLike('SELECT * FROM T_Employee WHERE (emp_id IS NULL)', 
-          [], 'fetch (undef)');
+  die_ok {$emp2 = HR::Employee->fetch(undef)};
 
 
   # successive calls to fetch_cached 
@@ -362,8 +364,13 @@ die_ok {$emp->emp_id};
 
     my $pairs = HR::Employee->select(-columns  => [qw/col1 col2/],
                                      -resultAs => 'flat_arrayref');
-    my %hash = @$pairs;
-    is_deeply(\%hash, {foo1 => 'foo2', bar1 => 'bar2'}, "resultAs => 'flat_arrayref'");
+    is_deeply($pairs, [qw/foo1 foo2 bar1 bar2/], "resultAs => 'flat_arrayref'");
+
+    $dbh->{mock_clear_history} = 1;
+    $dbh->{mock_add_resultset} = [map {[reverse @$_]} @fake_rs];
+    $pairs = HR::Employee->select(-columns  => [qw/col2 col1/],
+                                  -resultAs => 'flat_arrayref');
+    is_deeply($pairs, [qw/foo2 foo1 bar2 bar1/], "resultAs => 'flat_arrayref'");
   }
 
 

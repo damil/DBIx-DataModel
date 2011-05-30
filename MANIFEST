@@ -29,3 +29,4 @@ t/MsAccess.t
 t/ParentClasses.t
 t/pod.t
 t/Storable.t
+META.json

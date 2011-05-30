@@ -157,6 +157,10 @@ sub refine {
         @pk_columns == @$primKey
           or croak sprintf "fetch from %s: primary key should have %d values",
                            $self->{source}, scalar(@pk_columns);
+        foreach my $val (@$primKey) {
+          defined $val
+            or croak "fetch from $self->{source}: undefined val in primary key";
+        }
         my %where = ();
         @where{@pk_columns} = @$primKey;
         $self->_add_conditions(\%where);
@@ -445,11 +449,13 @@ sub select {
     # CASE flat_arrayref : flattened columns from each row
     /^flat(?:_array(?:ref)?)?$/ and do {
       $self->reuseRow;
-      my @cols;
+      my @vals;
+      my $hash_key_name = $self->{sth}{FetchHashKeyName} || 'NAME';
+      my $cols = $self->{sth}{$hash_key_name};
       while (my $row = $self->next) {
-        push @cols, values %$row;
+        push @vals, @{$row}{@$cols};
       }
-      return \@cols;
+      return \@vals;
     };
 
 
@@ -467,7 +473,8 @@ sub reuseRow {
 
   # create a reusable hash and bind_columns to it (see L<DBI/bind_columns>)
   my %row;
-  $self->{sth}->bind_columns(\(@row{@{$self->{sth}{NAME}}}));
+  my $hash_key_name = $self->{sth}{FetchHashKeyName} || 'NAME';
+  $self->{sth}->bind_columns(\(@row{@{$self->{sth}{$hash_key_name}}}));
   $self->{reuseRow} = \%row; 
 }
 

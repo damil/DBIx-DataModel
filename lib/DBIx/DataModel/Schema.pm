@@ -565,25 +565,32 @@ sub dbh {
   my ($class, $dbh, %dbh_options) = @_;
   my $classData = $class->classData;
 
-  if ($dbh) {
+  if (@_ > 1) {
 
     # also support syntax ->dbh([$dbh, %dbh_options])
-    ($dbh, %dbh_options) = @$dbh if ref $dbh eq 'ARRAY' && ! keys %dbh_options;
+    ($dbh, %dbh_options) = @$dbh 
+      if $dbh && ref $dbh eq 'ARRAY' && ! keys %dbh_options;
 
     # forbid change of dbh while doing a transaction
     not $classData->{dbh} or $classData->{dbh}[0]{AutoCommit}
       or croak "cannot change dbh(..) while in a transaction";
 
-    # $dbh must be a database handle
-    $dbh->isa('DBI::db')
-      or croak "invalid dbh argument";
+    if ($dbh) {
+      # $dbh must be a database handle
+      $dbh->isa('DBI::db')
+        or croak "invalid dbh argument";
 
-    # only accept $dbh with RaiseError set
-    $dbh->{RaiseError} 
-      or croak "arg to dbh(..) must have RaiseError=1";
+      # only accept $dbh with RaiseError set
+      $dbh->{RaiseError} 
+        or croak "arg to dbh(..) must have RaiseError=1";
 
-    # store the dbh
-    $classData->{dbh} = [$dbh, %dbh_options];
+      # store the dbh
+      $classData->{dbh} = [$dbh, %dbh_options];
+    }
+    else {
+      # $dbh was undef, so remove previous dbh
+      delete $classData->{dbh};
+    }
   }
 
   my $return_dbh = $classData->{dbh} || [];

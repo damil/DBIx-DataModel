@@ -1025,6 +1025,8 @@ However, a nested transaction may temporarily change
 the database handle by supplying it as argument to the 
 L</doTransaction> method.
 
+To unset the database handle, call C<< $schema->dbh(undef) >>.
+
 =head2 schema
 
   $schema = $class->schema;
@@ -2110,5 +2112,11 @@ L<DBIx::DataModel::Statement|DBIx::DataModel::Statement> API.
 
 C<preselectWhere> is no longer needed (superseded by the
 C<Statement::refine> method).
+
+=item *
+
+C<-postFetch> in C<< select(..., -postFetch => sub {... } ... ) >>
+is now called C<-postBless>
+
 
 =back
