@@ -6,7 +6,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 101;
+use constant N_DBI_MOCK_TESTS => 100;
 use constant N_BASIC_TESTS    => 15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -260,8 +260,6 @@ is($emp->emp_id, 999, 'autoload table');
   HR::Employee->Autoload(0);
 die_ok {$emp->emp_id};
 
-
-
   $lst = $emp->activities;
 
   sqlLike('SELECT * ' .
@@ -356,7 +354,7 @@ die_ok {$emp->emp_id};
   # select -resultAs => 'flat_arrayref'
   SKIP : {
     $DBD::Mock::VERSION >= 1.39
-      or skip "need DBD::Mock 1.39 or greater", 1;
+      or skip "need DBD::Mock 1.39 or greater", 2;
 
     my @fake_rs = ([qw/col1 col2/], [qw/foo1 foo2/], [qw/bar1 bar2/]);
     $dbh->{mock_clear_history} = 1;
@@ -613,7 +611,6 @@ die_ok {$emp->emp_id};
   $statement->refine(-where => {gender => 'F'});
   $statement->refine(-where => {gender => {'!=' => 'M'}});
   $statement->prepare;
-  die_ok {$statement->next}; # statement is not executed yet
   my $row = $statement->execute($emp)->next;
   sqlLike('SELECT * ' .
 	  'FROM T_Activity ' .

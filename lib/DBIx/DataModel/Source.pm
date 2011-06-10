@@ -101,23 +101,28 @@ sub blessFromDB {
 }
 
 
-sub createStatement {
-  my $class = shift;
-
-  not ref($class) 
-    or croak "createStatement() should be called as class method";
-  return $class->schema->classData->{statementClass}
-                       ->new($class, @_);
-}
-
 
 
 sub select {
   my ($class, @args) = @_;
   not ref($class) 
     or croak "select() should be called as class method";
-  return $class->createStatement->select(@args);
+
+  my $statement = $class->schema->classData->{statementClass}->new($class);
+  return $statement->select(@args);
 }
+
+
+sub createStatement {
+  my $class = shift;
+
+  warn "->createStatement() is obsolete, use "
+     . "->select(.., -resultAs => 'statement')";
+
+  return $class->select(@_, -resultAs => 'statement');
+}
+
+
 
 
 sub applyColumnHandler {
@@ -181,7 +186,8 @@ sub join {
     = @other_roles  ? $schema->join($join_data->{table}, 
                                     @other_roles)     # build a view
                     : $join_data->{table};            # just take the table
-  my $statement = $source->createStatement(-where => \%criteria);
+  my $statement = $source->select(-where    => \%criteria,
+                                  -resultAs => 'statement');
 
   # if called as an instance method
   if (ref $self) {

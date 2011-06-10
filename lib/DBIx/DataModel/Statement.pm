@@ -7,7 +7,7 @@ use warnings;
 use strict;
 use Carp;
 use List::Util      qw/min first/;
-use Scalar::Util    qw/weaken reftype/;
+use Scalar::Util    qw/weaken reftype dualvar/;
 use Storable        qw/dclone/;
 use POSIX           qw/INT_MAX/;
 
@@ -35,6 +35,12 @@ use overload
 our @CARP_NOT = qw/DBIx::DataModel::Schema DBIx::DataModel::Source
 		   DBIx::DataModel::Table  DBIx::DataModel::View   /;
 
+use constant {
+  NEW      => dualvar(1, "new"),
+  SQLIZED  => dualvar(2, "sqlized"),
+  PREPARED => dualvar(3, "prepared"),
+  EXECUTED => dualvar(4, "executed"),
+};
 
 #----------------------------------------------------------------------
 # PUBLIC METHODS
@@ -49,7 +55,7 @@ sub new {
 
   # build the object
   my $self = bless {
-    status           => "new",
+    status           => NEW,
     source           => $source,
     args             => {-where => $source->classData->{where}},
     pre_bound_params => {},
@@ -69,7 +75,7 @@ sub new {
 
 sub clone {
   my ($self) = @_;
-  $self->{status} eq "new" or $self->{status} eq "sqlized"
+  $self->{status} < PREPARED
     or croak "can't clone() when in status $self->{status}";
 
   return dclone($self);
@@ -84,7 +90,7 @@ sub status {
 sub sql {
   my ($self) = @_;
 
-  $self->{status} ne "new"
+  $self->{status} >= SQLIZED
     or croak "can't call sql() when in status $self->{status}";
 
   return wantarray ? ($self->{sql}, @{$self->{bound_params} || []})
@@ -116,7 +122,7 @@ sub bind {
 
   # do bind (different behaviour according to status)
   my %args = @args;
-  if ($self->{status} eq "new") {
+  if ($self->{status} == NEW) {
     while (my ($k, $v) = each %args) {
       $self->{pre_bound_params}{$k} = $v;
     }
@@ -136,7 +142,7 @@ sub bind {
 sub refine {
   my ($self, %more_args) = @_;
 
-  $self->{status} eq "new"
+  $self->{status} == NEW
     or croak "can't refine() when in status $self->{status}";
 
   my $args = $self->{args};
@@ -178,7 +184,8 @@ sub refine {
       # other args are just stored, will be used later
       /^-(distinct | columns | orderBy  | groupBy   | having | for
        |  resultAs | postSQL | preExec  | postExec  | postBless
-       |  limit    | offset  | pageSize | pageIndex | columnTypes  )$/x
+       |  limit    | offset  | pageSize | pageIndex | columnTypes
+       |  prepareAttrs )$/x
          and do {$args->{$k} = $v; last SWITCH};
 
       # otherwise
@@ -196,7 +203,7 @@ sub refine {
 sub sqlize {
   my ($self, @args) = @_;
 
-  $self->{status} eq "new"
+  $self->{status} < SQLIZED
     or croak "can't sqlize() when in status $self->{status}";
 
   # merge new args into $self->{args}
@@ -249,7 +256,7 @@ sub sqlize {
   # keep $sql / @bind in $self, and set new status
   $self->{sql}          = $sql;
   $self->{bound_params} = \@bind;
-  $self->{status}       = "sqlized";
+  $self->{status}       = SQLIZED;
 
   # analyze placeholders, and replace by pre_bound params if applicable
   if (my $regex = $self->{placeholderRegex}) {
@@ -278,25 +285,27 @@ sub prepare {
 
   my $source = $self->{source};
 
-  $self->sqlize(@args) if @args or $self->{status} eq "new";
+  $self->sqlize(@args) if @args or $self->{status} < SQLIZED;
 
-  $self->{status} eq "sqlized"
+  $self->{status} == SQLIZED
     or croak "can't prepare() when in status $self->{status}";
 
   # log the statement and bind values
   $source->_debug("PREPARE $self->{sql} / @{$self->{bound_params}}");
 
   # call the database
-  my $dbh    = $source->schema->dbh or croak "Schema has no dbh";
-  my $method = $source->schema->dbiPrepareMethod;
-  $self->{sth} = $dbh->$method($self->{sql});
+  my $dbh       = $source->schema->dbh or croak "Schema has no dbh";
+  my $method    = $source->schema->dbiPrepareMethod;
+  my @call_args = ($self->{sql});
+  push @call_args, $self->{prepareAttrs} if $self->{prepareAttrs};
+  $self->{sth}  = $dbh->$method(@call_args);
 
   # keep lasth if required to
   my $schema_data = $source->schema->classData;
   $schema_data->{lasth} = $self->{sth}    if $schema_data->{keepLasth};
 
   # new status and return
-  $self->{status} = "prepared";
+  $self->{status} = PREPARED;
   return $self;
 }
 
@@ -306,8 +315,7 @@ sub execute {
   my ($self, @bind_args) = @_;
 
   # if not prepared yet, prepare it
-  $self->prepare          if $self->{status} eq 'new'
-                          or $self->{status} eq 'sqlized';
+  $self->prepare                              if $self->{status} < PREPARED;
 
   push @bind_args, offset => $self->{offset}  if $self->{offset};
 
@@ -353,11 +361,12 @@ sub execute {
   # postExec callback
   $args->{-postExec}->($sth)               if $args->{-postExec};
 
-  $self->{status} = 'executed';
+  $self->{status} = EXECUTED;
   return $self;
 }
 
 
+my $stmt_regex = qr/statement|cursor|iter(ator)?/i;
 
 sub select {
   my $self = shift;
@@ -377,7 +386,6 @@ sub select {
   }
 
   $self->refine(%more_args)   if keys %more_args;
-  $self->sqlize               if $self->{status} eq "new";
 
   my $args = $self->{args}; # all combined args
 
@@ -389,6 +397,15 @@ sub select {
     = ref $args->{-resultAs} ? @{$args->{-resultAs}}
                              : ($args->{-resultAs} || "rows");
   for ($resultAs) {
+
+    # CASE statement : the DBIx::DataModel::Statement object 
+    /^($stmt_regex)$/i and do {
+        delete $self->{args}{-resultAs};
+        return $self;
+      };
+
+    # for all other cases, must first sqlize the statement
+    $self->sqlize if $self->{status} < SQLIZED;
 
     # CASE sql : just return the SQL and bind values
     /^sql$/i        and do {
@@ -413,12 +430,6 @@ sub select {
         not $args->{-postBless}
           or croak "-postBless incompatible with -resultAs=>'sth'";
         return $self->{sth};
-      };
-
-    # CASE statement : the DBIx::DataModel::Statement object 
-    /^(fast[-_ ]?)?(statement|cursor|iter(ator)?)$/i and do {
-        $self->reuseRow if $1; # if "fast"
-        return $self;
       };
 
     # CASE rows : all data rows (this is the default)
@@ -446,6 +457,12 @@ sub select {
       return \%hash;
     };
 
+    # CASE fast_statement : creates a reusable row
+    /^fast[-_ ]?($stmt_regex)$/i and do {
+        $self->reuseRow;
+        return $self;
+      };
+
     # CASE flat_arrayref : flattened columns from each row
     /^flat(?:_array(?:ref)?)?$/ and do {
       $self->reuseRow;
@@ -459,6 +476,7 @@ sub select {
     };
 
 
+
     # OTHERWISE
     croak "unknown -resultAs value: $_"; 
   }
@@ -468,7 +486,7 @@ sub select {
 sub reuseRow {
   my ($self) = @_;
 
-  $self->{status} eq 'executed'
+  $self->{status} == EXECUTED
     or croak "cannot reuseRow() when in state $self->{status}";
 
   # create a reusable hash and bind_columns to it (see L<DBI/bind_columns>)
@@ -482,10 +500,9 @@ sub reuseRow {
 
 sub rowCount {
   my ($self) = @_;
-  $self->{status} eq 'executed'
-    or croak "cannot count rows when in state $self->{status}";
 
   if (! exists $self->{rowCount}) {
+    $self->sqlize if $self->{status} < SQLIZED;
     my ($sql, @bind) = $self->sql;
     $sql =~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i
       or croak "can't count rows from sql: $sql";
@@ -511,8 +528,7 @@ sub rowNum {
 sub next {
   my ($self, $n_rows) = @_;
 
-  $self->{status} eq "executed"
-    or croak "can't call next() when in status $self->{status}";
+  $self->execute if $self->{status} < EXECUTED;
 
   my $sth      = $self->{sth}          or croak "absent sth in statement";
   my $callback = $self->{row_callback} or croak "absent callback in statement";
@@ -546,8 +562,7 @@ sub next {
 sub all {
   my ($self) = @_;
 
-  $self->{status} eq "executed"
-    or croak "can't call all() when in status $self->{status}";
+  $self->execute if $self->{status} < EXECUTED;
 
   my $sth      = $self->{sth}          or croak "absent sth in statement";
   my $callback = $self->{row_callback} or croak "absent callback in statement";
@@ -835,7 +850,7 @@ DBIx::DataModel::Statement - DBIx::DataModel statement objects
   # statement creation
   my $stmt = DBIx::DataModel::Statement->new($source, @args);
   # or
-  my $stmt = My::Table->createStatement;
+  my $stmt = My::Table->select(-resultAs => 'statement');
   #or
   my $stmt = My::Table->join(qw/role1 role2 .../);
 
@@ -901,8 +916,10 @@ a DBI sth has been created.
 
 =head2 status
 
-Returns the current status or the statement (one of
-C<new>, C<sqlized>, C<prepared>, C<executed>).
+Returns the current status or the statement. This is a
+L<dualvar|Scalar::Util/dualvar> with a
+string component (C<new>, C<sqlized>, C<prepared>, C<executed>)
+and an integer component (1, 2, 3, 4).
 
 =head2 sql
 

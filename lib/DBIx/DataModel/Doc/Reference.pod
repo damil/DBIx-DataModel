@@ -1310,19 +1310,6 @@ Using these arguments, the cache can be cleared or tied to
 a caching module.
 
 
-=head2 createStatement
-
-  my $statement = $table->createStatement;
-
-Creates a statement that will search the target table (or view).
-The statement can then be refined, sqlized, prepared and 
-finally executed (see
-L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>
-and 
-the L<statement lifecycle|DBIx::DataModel::Doc::Design/"STATEMENT OBJECTS">
-).
-
-
 =head2 select
 
 Given a C<$target>, which could be either a 
@@ -1330,46 +1317,48 @@ L<table|DBIx::DataModel::Doc::Glossary/table>, a
 L<view|DBIx::DataModel::Doc::Glossary/view> or a 
 L<statement|DBIx::DataModel::Doc::Glossary/statement> :
 
-
-  $records = $target->select(\@columns, \%where, \@order);
-  
-  $records = $target->select(-columns     => \@columns, 
-                             # OR : -distinct => \@columns,
-                             -where       => \%where,
-                             # OR : -fetch => $key,
-                             # OR : -fetch => \@key,
-                             -groupBy     => \@groupings,
-                             -having      => \%criteria,
-                             -orderBy     => \@order,
-                             -for         => 'read only',
-                             -postSQL     => \&postSQL_callback,
-                             -preExec     => \&preExec_callback,
-                             -postExec    => \&preExec_callback,
-                             -postBless   => \&postBless_callback,
-                             -limit       => $limit,
-                             -offset      => $offset,
-                             -pageSize    => $pageSize,
-                             -pageIndex   => $pageIndex,
-                             -columnTypes => \%columnTypes,
-                             -resultAs  => 'rows'      || 'firstrow' 
-                                        || 'hashref'   || [hashref => @cols]
-                                        || 'sth'       || 'sql' 
-                                        || 'subquery'  || 'flat_arrayref' 
-                                        || 'statement' || 'fast_statement');
+  $records = $target->select(
+     -columns      => \@columns, 
+       # OR : -distinct => \@columns,
+     -where       => \%where,
+       # OR : -fetch => $key,
+       # OR : -fetch => \@key,
+     -groupBy      => \@groupings,
+     -having       => \%criteria,
+     -orderBy      => \@order,
+     -for          => 'read only',
+     -postSQL      => \&postSQL_callback,
+     -preExec      => \&preExec_callback,
+     -postExec     => \&preExec_callback,
+     -postBless    => \&postBless_callback,
+     -prepareAttrs => \%attrs,
+     -limit        => $limit,
+     -offset       => $offset,
+     -pageSize     => $pageSize,
+     -pageIndex    => $pageIndex,
+     -columnTypes  => \%columnTypes,
+     -resultAs     => 'rows'      || 'firstrow' 
+                   || 'hashref'   || [hashref => @cols]
+                   || 'sth'       || 'sql' 
+                   || 'subquery'  || 'flat_arrayref' 
+                   || 'statement' || 'fast_statement'
+  );
   
   $all_records = $target->select();
 
 Applies a SQL SELECT to the C<$target>, and returns a
 result as specified by the C<-resultAs> argument (see below).
 
-If C<$target> is a table or a view, C<select> is just an alias
-to C<< $target->createStatement->select(...) >>.
+Arguments are all optional and are passed by name.
 
-Arguments are all optional and may be passed either by name or by position
-(but you cannnot combine both positional and named arguments in a single call).
-Positional arguments should be considered as deprecated; named arguments
-are recommended because they are much more readable and offer a richer
-set of options.
+For backwards compatibility, an alternative syntax can be 
+expressed by position, as in :
+
+  $records = $target->select(\@columns, \%where, \@order);
+
+However this should be considered as deprecated; named arguments are
+recommended because they are much more readable and offer a richer set
+of options.
 
 
 =head3 Named arguments to C<select()>
@@ -1534,6 +1523,11 @@ i.e. the row is already an object of the proper class and
 column handlers have been applied.
 
 
+=item C<< -prepareAttrs => \%attrs >>
+
+Optional attributes that will be transmitted
+to L<DBI/prepare>.
+
 =item C<< -pageSize => $pageSize >>
 
 specifies how many rows will be retrieved per "page" of data.
@@ -1640,7 +1634,7 @@ when using aggregator functions :
 
 =item B<statement>
 
-The result will be an instance of an executed
+The result will be an instance of a
 L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>.
 That object has a  C<next> method that fetches the 
 next datarow and blesses it into the appropriate object, or

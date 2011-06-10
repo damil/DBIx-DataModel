@@ -565,6 +565,7 @@ sub dbh {
   my ($class, $dbh, %dbh_options) = @_;
   my $classData = $class->classData;
 
+  # if some args, then this is a "setter" (updating the dbh)
   if (@_ > 1) {
 
     # also support syntax ->dbh([$dbh, %dbh_options])
@@ -588,7 +589,7 @@ sub dbh {
       $classData->{dbh} = [$dbh, %dbh_options];
     }
     else {
-      # $dbh was undef, so remove previous dbh
+      # $dbh was explicitly undef, so remove previous dbh
       delete $classData->{dbh};
     }
   }

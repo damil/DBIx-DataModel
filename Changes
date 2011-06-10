@@ -1,5 +1,11 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.28
+  - fixed tests when DBD::Mock < 1.39 ("skip" statement was wrong)
+  - statement status is a dualvar (int, string)
+  - $source->createStatement() is deprecated
+  - new parameter for select() : -prepareAttrs 
+
 v1.27 30.05.2011
   - fetch() : do not allow undefs in primary key
   - reuseRow() : hash key names are taken from $sth->{FetchHashKeyName};

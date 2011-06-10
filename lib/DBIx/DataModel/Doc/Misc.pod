@@ -163,9 +163,11 @@ that will accept additional "where" criteria, like every regular method.
   package MySchema::Person;
   sub children {
     my $self      = shift; # remaining args in @_ will be passed to select()
+    my $class     = ref $self;
     my $id        = $self->{pers_id};
-    my $statement = Person->createStatement(-where => [mother_id => $id, 
-					               father_id => $id]);
+    my $statement = $class->select(-where => [mother_id => $id, 
+                                              father_id => $id],
+                                   -resultAs => 'statement');
     return $statement->select(@_);
   }
 

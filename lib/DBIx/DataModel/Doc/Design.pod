@@ -375,7 +375,7 @@ sth is executed, ready to extract data rows.
 =head3 State diagram
 
 
-  +--------+ createStatement() +--------------------+
+  +--------+     select()      +--------------------+
   | source |------------------>|    newStatement    |<----<-------,
   +--------+                   +--------------------+     |       |
                     sqlize()      |    |   |    refine()  |       |
@@ -1004,8 +1004,6 @@ a future release C<DBIx::DataModel> :
   - reflection methods (list of roles, etc.)
   - update with subtrees (insert/update on dependent records. Quid: delete?)
   - auto-unjoin (API for partioning columns into subobjects).
-  - could probably dispense with createStatement method (replace by
-    ->select(..., -resultAs => 'statement'); but needs that
-       - -resultAs => 'statement' does 'refine' but not 'sqlize'
-       - next() accepts an unexecuted statement and automatically executes it
   - inheritance between tables: a) support for Postgres; b) support for DB views
+  - support for DBI TraceLevel
+  - execute() : check for unbound "dbidm placeholders"
