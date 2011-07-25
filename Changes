@@ -1,6 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
-v1.28
+v1.29 25.07.2011
+  - fixed limit/offset in Statement::JDBC (old bug never discovered!)
+
+v1.28 10.06.2011
   - fixed tests when DBD::Mock < 1.39 ("skip" statement was wrong)
   - statement status is a dualvar (int, string)
   - $source->createStatement() is deprecated

@@ -41,14 +41,13 @@ sub _limit_offset {
 
   # do nothing to the SQL or bind parameters (limit and offset
   # will be handled in prepare() and execute(), see below)
-
 }
 
 sub prepare {
   my ($self, @args) = @_;
   my $limit = $self->{args}{-limit};
   $self->SUPER::prepare(@args);
-  $self->setMaxRows($limit) if $limit;
+  $self->setMaxRows($limit + $self->{offset}) if $limit;
   return $self;
 }
 
@@ -56,7 +55,7 @@ sub prepare {
 sub execute {
   my ($self, @args) = @_;
   $self->SUPER::execute(@args);
-  $self->{sth}->absolute($self->{offset}) if $self->{offset};
+  $self->absolute($self->{offset}) if $self->{offset};
   return $self;
 }
 
