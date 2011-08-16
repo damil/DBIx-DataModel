@@ -6,7 +6,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 100;
+use constant N_DBI_MOCK_TESTS => 103;
 use constant N_BASIC_TESTS    => 15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -524,15 +524,27 @@ die_ok {$emp->emp_id};
   die_ok {$emp->join(qw/activities foo/)};
   die_ok {$emp->join(qw/foo bar/)};
 
-  $emp->join(qw/activities department/)
-      ->select({gender => 'F'});
-
+  # join from an instance
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [ [qw/act_id  dpt_id/],
+                                 [qw/111     222   /],  ];
+  my $act_dpt = $emp->join(qw/activities department/)
+                    ->select({gender => 'F'});
   sqlLike('SELECT * ' .
 	  'FROM T_Activity ' .
 	  'INNER JOIN T_Department ' .
 	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (emp_id = ? AND gender = ?)', [999, 'F'], 
 	  'join (instance method)');
+
+  # re-join back from that instance
+  $act_dpt->[0]->join(qw/activities employee/)->select();
+  sqlLike('SELECT * ' .
+	  'FROM T_Activity ' .
+	  'INNER JOIN T_Employee ' .
+	  'ON T_Activity.emp_id=T_Employee.emp_id ' .
+	  'WHERE (dpt_id = ?)', 
+          [222], 'join (instance method) from a previous join');
 
   # table aliases
   HR->join(qw/Activity|act employee|emp department|dpt/)
@@ -603,8 +615,26 @@ die_ok {$emp->emp_id};
           'column types on table and column aliases (sql)');
   is($lst->[0]{db}, "01.01.2001", "fromDB handler on table and column alias");
 
-
-
+  # column types on column aliases, without table alias
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [ [qw/ln  db/],
+                                 [qw/foo 2001-01-01/], 
+                                 [qw/bar 2002-02-02/] ];
+  $lst = HR->join(qw/Department|dpt dpt.activities|act act.employee/)
+           ->select(-columns => [qw/T_Employee.lastname|ln 
+                                    T_Employee.d_birth|db/],
+                    -where   => {gender => 'F'});
+  sqlLike('SELECT T_Employee.lastname AS ln, T_Employee.d_birth AS db ' .
+	  'FROM T_Department AS dpt '.
+	  'LEFT OUTER JOIN T_Activity AS act ' .
+	  'ON dpt.dpt_id=act.dpt_id ' .
+          'LEFT OUTER JOIN T_Employee ' .
+	  'ON act.emp_id=T_Employee.emp_id ' .
+	  'WHERE (gender = ?)', 
+          ['F'], 
+          'column types on column aliases, without table alias');
+  is($lst->[0]{db}, "01.01.2001", 
+     "fromDB handler on column alias, without table alias");
 
   # stepwise statement prepare/execute
   $statement = HR::Employee->join(qw/activities department/);
@@ -619,10 +649,7 @@ die_ok {$emp->emp_id};
 	  'WHERE (emp_id = ? AND gender = ? AND gender != ?)', [999, 'F', 'M'],
 	  'statement prepare/execute');
 
-
-
   # many-to-many association
-
   HR->Association([qw/Employee   employees   * activities employee/],
 			[qw/Department departments * activities department/]);
 
