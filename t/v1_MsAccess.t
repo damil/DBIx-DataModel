@@ -11,17 +11,12 @@ use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
 
 sub die_ok(&) { my $code=shift; eval {$code->()}; ok($@, $@);}
 
-
-
-BEGIN {use_ok("DBIx::DataModel");}
-
-  BEGIN { DBIx::DataModel->Schema('HR', sqlDialect => 'MsAccess'); }
+use_ok("DBIx::DataModel", -compatibility=> 1.0);
+DBIx::DataModel->Schema('HR', sqlDialect => 'MsAccess');
   
-  BEGIN {
     HR->Table(Employee   => T_Employee   => qw/emp_id/);
     HR->Table(Department => T_Department => qw/dpt_id/);
     HR->Table(Activity   => T_Activity   => qw/act_id/);
-  }
 
   HR->Composition([qw/Employee   employee   1 /],
                   [qw/Activity   activities * /]);
@@ -79,8 +74,9 @@ SKIP: {
 	  'FROM t_employee LEFT OUTER JOIN (t_activity ' .
 	  'LEFT OUTER JOIN (t_department) ' .
 	  'ON t_activity.dpt_id=t_department.dpt_id) ' .
-	  'ON t_employee.emp_id=t_activity.emp_id ' .		
-	  'WHERE (gender = ?)', ['F'], 'join (MsAccess)');
+	  'ON t_employee.emp_id=t_activity.emp_id ' .
+	  'WHERE (gender = ?)',
+          ['F'], 'schema join (MsAccess)');
 
 
   $emp->join(qw/activities department/)
@@ -89,8 +85,9 @@ SKIP: {
 	  'FROM t_activity ' .
 	  'INNER JOIN (t_department) ' .
 	  'ON t_activity.dpt_id=t_department.dpt_id ' .
-	  'WHERE (emp_id = ? AND gender = ?)', [999, 'F'], 
-	  'selectFromRoles (MsAccess)');
+	  'WHERE (emp_id = ? AND gender = ?)', 
+          [999, 'F'], 
+	  'instance join (MsAccess)');
 
 };
 

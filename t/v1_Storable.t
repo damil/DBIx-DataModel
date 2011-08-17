@@ -3,12 +3,12 @@ use warnings;
 no warnings 'uninitialized';
 use DBI;
 
-use constant N_TESTS => 3;
-use Test::More tests => N_TESTS;
+use constant N_TESTS => 2;
+use Test::More tests => N_TESTS + 1;
 use POSIX qw/_exit/;
 use IO::Handle;
 
-use DBIx::DataModel;
+use_ok("DBIx::DataModel", -compatibility=> 1.0);
 
 SKIP:
 {
@@ -40,12 +40,15 @@ SKIP:
 
     # do the following in an eval() to make sure that _exit is called anyway
     eval {
-      my $view    = HR->join(qw/Employee activities department/);
-      my @records = map {bless {"foo$_" => "bar$_"}, $view} 1..3;
-      my $isa     = \@{$view . "::ISA"};
+      my $statement  = HR->join(qw/Employee activities department/);
+
+      my $join_meta  = $statement->meta_source;
+      my $join_class = $join_meta->class;
+      my @records = map {bless {"foo$_" => "bar$_"}, $join_class} 1..3;
+      my $isa     = \@{$join_class . "::ISA"};
 
       # serialize the instances and some class information
-      store_fd [\@records, $view, $isa, $view->classData], $parent_fh;
+      store_fd [\@records, $join_class, $isa], $parent_fh;
       $parent_fh->flush;
 
       wait;
@@ -57,14 +60,14 @@ SKIP:
   }
   else {       # is child
     # deserialize the instance and class information
+
     my $struct = fd_retrieve($child_fh);
-    my ($records, $view, $isa, $classData) = @$struct;
+    my ($records, $join_class, $isa) = @$struct;
 
     # check that class info is consistent (class has been properly recreated)
 
-    is($view, ref $records->[0], 'class name');
-    is_deeply($isa, \@{$view . "::ISA"}, 'ISA array');
-    is_deeply($classData, $view->classData, 'class data');
+    is($join_class, ref $records->[0], 'class name');
+    is_deeply($isa, \@{$join_class . "::ISA"}, 'ISA array');
   } 
 
 } # end SKIP

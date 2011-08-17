@@ -7,7 +7,7 @@ use constant N_BASIC_TESTS    => 1;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
 
-use_ok("DBIx::DataModel");
+use_ok("DBIx::DataModel", -compatibility=> 1.0);
 
 SKIP: {
   eval "use DBD::Mock 1.36; 1"

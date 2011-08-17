@@ -3,18 +3,21 @@
 use strict;
 use warnings;
 use DBI;
-use DBIx::DataModel;
-
 use constant N_DBI_MOCK_TESTS => 1;
 
-use Test::More tests => N_DBI_MOCK_TESTS;
+use Test::More tests => N_DBI_MOCK_TESTS + 1;
+
+BEGIN {
+  use_ok("DBIx::DataModel", -compatibility=> 1.0);
+  DBIx::DataModel->Schema('Foo');
+}
+
 
 # fake method Foo::dbh() that uses an eval {}
-DBIx::DataModel->Schema('Foo');
 package Foo;
 sub dbh {
   my $class = shift;
-  eval { $class .= "" }; # this succesful eval{} will clear $@ !
+  eval { 1 }; # this succesful eval{} will clear $@ !
   $class->SUPER::dbh(@_);
 }
 
