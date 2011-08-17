@@ -3,18 +3,71 @@ package DBIx::DataModel;
 #----------------------------------------------------------------------
 # see POD doc at end of file
 
-use 5.006;
+use 5.008;
 use warnings;
 use strict;
-use DBIx::DataModel::Schema;
+use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '1.29';
+use DBIx::DataModel::Meta::Schema;
 
-sub Schema {
-  my $class = shift;
+our $VERSION = '1.99_05'; # dev release
+$VERSION = eval $VERSION if $VERSION =~ /_/; # numify
 
-  return DBIx::DataModel::Schema->_subclass(@_);
+# compatibility setting : see import(); for the moment, automatic compat 1.0
+our $COMPATIBILITY = 1.0;
+# future : our $COMPATIBILITY = $VERSION;
+
+# Modules considered to belong to the same family for carp/croak (see L<Carp>).
+# All inner classes import the same list.
+our @CARP_NOT = qw[
+  DBIx::DataModel::Compatibility::V0
+  DBIx::DataModel::Compatibility::V1
+  DBIx::DataModel::Meta
+  DBIx::DataModel::Meta::Association
+  DBIx::DataModel::Meta::Path
+  DBIx::DataModel::Meta::Schema
+  DBIx::DataModel::Meta::Source
+  DBIx::DataModel::Meta::Source::Join
+  DBIx::DataModel::Meta::Source::Table
+  DBIx::DataModel::Meta::Source::View
+  DBIx::DataModel::Meta::Type
+  DBIx::DataModel::Schema
+  DBIx::DataModel::Schema::Generator
+  DBIx::DataModel::Source
+  DBIx::DataModel::Source::Table
+  DBIx::DataModel::Source::View
+  DBIx::DataModel::Statement
+  DBIx::DataModel::Statement::JDBC
+  SQL::Abstract
+  SQL::Abstract::More
+];
+
+
+sub define_schema {
+  my ($class, %params) = @_;
+  my $meta_schema = DBIx::DataModel::Meta::Schema->new(%params);
+  return $meta_schema;
 }
+
+sub Schema { # syntactic sugar for ->define_schema()
+  my ($class, $schema_class_name, %params) = @_;
+  my $meta_schema = $class->define_schema(class => $schema_class_name, %params);
+  return $meta_schema->class;
+}
+
+
+
+sub import {
+  my ($class, %args) = @_;
+  if (exists $args{-compatibility}) {
+    $COMPATIBILITY = $args{-compatibility} # explicit number
+                  || $VERSION;             # undef : means no compatibility
+  }
+
+  require DBIx::DataModel::Compatibility::V1 if $COMPATIBILITY < 1.99;
+  require DBIx::DataModel::Compatibility::V0 if $COMPATIBILITY < 1.00;
+}
+
 
 
 1; # End of DBIx::DataModel
@@ -25,80 +78,205 @@ __END__
 
 DBIx::DataModel - UML-based Object-Relational Mapping (ORM) framework
 
+=head1 VERSION
+
+This is a B<development release>, in preparation for version 2.0.
+
+Version 2 of C<DBIx::DataModel> is a major refactoring from versions
+1.*, with a number of incompatible changes in the API (classes
+renamed, arguments renamed or reorganized, etc. -- see
+L<DBIx::DataModel::Doc::Delta_2.0>). For the moment, 
+a compatibility layer is automatically loaded, so that applications
+written for prior versions will continue to work
+(see L<DBIx::DataModel::Compatibility::V1>). Some time in the
+future, the compatibility layer will be deprecated, and will need to be
+explicitly required through
+
+  use DBIx::DataModel -compatibility => 1.0;
+
+Update of the documentation for version 2 is still under way;
+B<many parts of the current doc are still inaccurate or obsolete>.
+
+
 =head1 SYNOPSIS
 
-=head2 in file "MySchema.pm"
+=head2 in file "My/Schema.pm"
 
 =head3 Schema 
 
-Declare the schema, which automatically creates a Perl package.
+Load C<DBIx::DataModel>, without any backwards compatibility.
 
-  # do NOT declare here "package MySchema;"
-  use DBIx::DataModel;
-  DBIx::DataModel->Schema('MySchema'); # 'MySchema' is now a Perl package
+  use DBIx::DataModel -compatibility => undef;
+
+Declare the schema, either in shorthand notation :
+
+  DBIx::DataModel->Schema('MySchema');
+
+or in verbose form : 
+
+  DBIx::DataModel->define_schema(
+    class => 'My::Schema',
+    %options,
+  );
+
+This automatically creates a Perl class named C<My::Schema>.
+
+Various parameters may be specified within C<%options>, like
+for example special columns to be filled automatically 
+or to be ignored in every table : 
+
+  my $last_modif_generator = sub {$ENV{REMOTE_USER}.", ".scalar(localtime)};
+  my %options = (
+    auto_update_columns => {last_modif => $last_modif_generator},
+    no_update_columns   => [qw/date_modif time_modif/],
+  );
+
+=head3 Types
+
+Declare a "column type" with some handlers, either in shorthand notation :
+
+  My::Schema->Type(Date => 
+     from_DB  => sub {$_[0] =~ s/(\d\d\d\d)-(\d\d)-(\d\d)/$3.$2.$1/},
+     to_DB    => sub {$_[0] =~ s/(\d\d)\.(\d\d)\.(\d\d\d\d)/$3-$2-$1/},
+     validate => sub {$_[0] =~ m/(\d\d)\.(\d\d)\.(\d\d\d\d)/},
+   );
+
+or in verbose form :
+
+  My::Schema->metadm->define_type(
+    name     => 'Date',
+    handlers => {
+      from_DB  => sub {$_[0] =~ s/(\d\d\d\d)-(\d\d)-(\d\d)/$3.$2.$1/},
+      to_DB    => sub {$_[0] =~ s/(\d\d)\.(\d\d)\.(\d\d\d\d)/$3-$2-$1/},
+      validate => sub {$_[0] =~ m/(\d\d)\.(\d\d)\.(\d\d\d\d)/},
+    });
+
+This does I<not> create a Perl class; it just defines an internal datastructure
+that will be attached to some columns in some tables. Here are some other
+examples of column types :
+
+  # 'percent' conversion between database (0.8) and user (80)
+  My::Schema->metadm->define_type(
+    name     => 'Percent',
+    handlers => {
+      from_DB  => sub {$_[0] *= 100 if $_[0]},
+      to_DB    => sub {$_[0] /= 100 if $_[0]},
+      validate => sub {$_[0] =~ /1?\d?\d/}),
+    });
+  
+  # lists of values, stored as scalars with a ';' separator
+  My::Schema->metadm->define_type(
+    name     => 'Multivalue',
+    handlers => {
+     from_DB  => sub {$_[0] = [split /;/, $_[0] || ""]     },
+     to_DB    => sub {$_[0] = join ";", @$_[0] if ref $_[0]},
+    });
 
 =head3 Tables
 
-Declare the tables with 
-C<< (Perl name, DB name, primary key column(s)) >>.
-Each table then becomes a Perl package (prefixed with the Schema name).
+Declare the tables, either in shorthand notation :
 
-  MySchema->Table(qw/Employee   Employee   emp_id/)
-          ->Table(qw/Department Department dpt_id/)
-          ->Table(qw/Activity   Activity   act_id/);
+  MySchema->Table(qw/Employee   T_Employee   emp_id/)
+          ->Table(qw/Department T_Department dpt_id/)
+          ->Table(qw/Activity   T_Activity   act_id/);
+
+or in verbose form :
+
+  My::Schema->metadm->define_table(
+    class       => 'Employee',
+    db_name     => 'T_Employee',
+    primary_key => 'emp_id',
+  );
+  My::Schema->metadm->define_table(
+    class       => 'Department',
+    db_name     => 'T_Department',
+    primary_key => 'dpt_id',
+  );
+  My::Schema->metadm->define_table(
+    class       => 'Activity',
+    db_name     => 'T_Activity',
+    primary_key => 'act_id',
+  );
+
+Each table then becomes a Perl class (prefixed with the Schema name,
+i.e. C<My::Schema::Employee>, etc.).
+
+=head3 Column types within tables
+
+Declare column types within these tables :
+
+  #                                          type name  => applied_to_columns
+  #                                          =========     ==================
+  My::Schema::Employee->metadm->set_column_type(Date    => qw/d_birth/);
+  My::Schema::Activity->metadm->set_column_type(Date    => qw/d_begin d_end/);
+  My::Schema::Activity->metadm->set_column_type(Percent => qw/activity_rate/);
 
 =head3 Associations
 
-Declare associations or compositions in UML style
-( C<< [table1 role1 multiplicity1 join1], [table2...] >>).
+Declare associations or compositions in UML style, either in
+shorthand notation :
 
-  MySchema->Composition([qw/Employee   employee   1 /],
-                        [qw/Activity   activities * /])
-          ->Association([qw/Department department 1 /],
-                        [qw/Activity   activities * /]);
+  #                           class      role     multiplicity  join
+  #                           =====      ====     ============  ====
+  My::Schema->Composition([qw/Employee   employee   1           emp_id /],
+                          [qw/Activity   activities *           emp_id /])
+            ->Association([qw/Department department 1           /],
+                          [qw/Activity   activities *           /]);
+
+
+or in verbose form :
+
+  My::Schema->define_association(
+    kind => 'Composition',
+    A    => {
+      table        => My::Schema::Employee->metadm,
+      role         => 'employee',
+      multiplicity => 1,
+      join_cols    => [qw/emp_id/],
+    },
+    B    => {
+      table        => My::Schema::Activity->metadm,
+      role         => 'activities',
+      multiplicity => '*',
+      join_cols    => [qw/emp_id/],
+    },
+  );
+  My::Schema->define_association(
+    kind => 'Association',
+    A    => {
+      table        => My::Schema::Department->metadm,
+      role         => 'department',
+      multiplicity => 1,
+    },
+    B    => {
+      table        => My::Schema::Activity->metadm,
+      role         => 'activities',
+      multiplicity => '*',
+    },
+  );
 
 Declare a n-to-n association, on top of the linking table
 
-  MySchema->Association([qw/Department departments * activities department/]);
-                        [qw/Employee   employees   * activities employee/]);
+  My::Schema->Association([qw/Department departments * activities department/],
+                          [qw/Employee   employees   * activities employee/]);
+  # or
+  My::Schema->define_association(
+    kind => 'Association',
+    A    => {
+      table        => My::Schema::Department->metadm,
+      role         => 'departments',
+      multiplicity => '*',
+      join_cols    => [qw/activities department/],
+    },
+    B    => {
+      table        => My::Schema::Employee->metadm,
+      role         => 'employees',
+      multiplicity => '*',
+      join_cols    => [qw/activities employee/],
+    },
+  );
 
-=head3 Columns
 
-Declare "column types" with some handlers ..
-
-  # date conversion between database (yyyy-mm-dd) and user (dd.mm.yyyy)
-  MySchema->ColumnType(Date => 
-     fromDB   => sub {$_[0] =~ s/(\d\d\d\d)-(\d\d)-(\d\d)/$3.$2.$1/},
-     toDB     => sub {$_[0] =~ s/(\d\d)\.(\d\d)\.(\d\d\d\d)/$3-$2-$1/},
-     validate => sub {$_[0] =~ m/(\d\d)\.(\d\d)\.(\d\d\d\d)/});
-  
-  # 'percent' conversion between database (0.8) and user (80)
-  MySchema->ColumnType(Percent => 
-     fromDB   => sub {$_[0] *= 100 if $_[0]},
-     toDB     => sub {$_[0] /= 100 if $_[0]},
-     validate => sub {$_[0] =~ /1?\d?\d/});
-  
-  MySchema->ColumnType(Multivalue =>
-     fromDB   => sub {$_[0] = [split /;/, $_[0] || ""]     },
-     toDB     => sub {$_[0] = join ";", @$_[0] if ref $_[0]});
-
-.. and apply these "column types" to some of our columns
-
-  MySchema::Employee->ColumnType(Date    => qw/d_birth/);
-  MySchema::Activity->ColumnType(Date    => qw/d_begin d_end/)
-                    ->ColumnType(Percent => qw/activity_rate/);
-
-Declare a column that will be filled automatically
-at each update
-
-  MySchema->AutoUpdateColumns(last_modif => 
-    sub{$ENV{REMOTE_USER}.", ".scalar(localtime)});
-
-Declare a column that will be not be sent when
-updating records (for example if that column is 
-filled automatically by the database) 
-
-  MySchema->NoUpdateColumns(qw/date_modif time_modif/);
 
 
 =head3 Additional methods
@@ -106,7 +284,7 @@ filled automatically by the database)
 For details that could not be expressed in a declarative way,
 just add a new method into the table class :
 
-  package MySchema::Activity; 
+  package My::Schema::Activity; 
   
   sub activePeriod {
     my $self = shift;
@@ -118,7 +296,7 @@ just add a new method into the table class :
 
 Declare how to automatically expand objects into data trees
 
-  MySchema::Activity->AutoExpand(qw/employee department/);
+  My::Schema::Activity->metadm->set_auto_expand(qw/employee department/);
 
 =head3 Automatic schema generation
 
@@ -134,43 +312,36 @@ See L<DBIx::DataModel::Schema::Generator>.
 
 =head3 Database connection
 
-  use MySchema;
+  use My::Schema;
   use DBI;
   my $dbh = DBI->connect($dsn, ...);
-  MySchema->dbh($dbh);
+  My::Schema->dbh($dbh);
 
 =head3 Simple data retrieval
 
 Search employees whose name starts with 'D'
 (select API is taken from L<SQL::Abstract>)
 
-  my $empl_D = MySchema::Employee->select(
+  my $empl_D = My::Schema::Employee->select(
     -where => {lastname => {-like => 'D%'}}
   );
 
 idem, but we just want a subset of the columns, and order by age.
 
-  my $empl_F = MySchema::Employee->select(
+  my $empl_F = My::Schema::Employee->select(
     -columns => [qw/firstname lastname d_birth/],
     -where   => {lastname => {-like => 'F%'}},
     -orderBy => 'd_birth'
   );
 
 Print some info from employees. Because of the
-'fromDB' handler associated with column type 'date', column 'd_birth'
+'from_DB' handler associated with column type 'date', column 'd_birth'
 has been automatically converted to display format.
 
   foreach my $emp (@$empl_D) {
     print "$emp->{firstname} $emp->{lastname}, born $emp->{d_birth}\n";
   }
 
-Same thing, but using method calls instead of direct access to the
-hashref (must enable AUTOLOAD in the table or the whole schema)
-
-  MySchema::Employee->Autoload(1); # or MySchema->Autoload(1)
-  foreach my $emp (@$empl_D) {
-    printf "%s %s, born %s\n", $emp->firstname, $emp->lastname, $emp->d_birth;
-  }
 
 =head3 Methods to follow joins
 
@@ -178,7 +349,7 @@ Follow the joins through role methods
 
   foreach my $act (@{$emp->activities}) {
     printf "working for %s from $act->{d_begin} to $act->{d_end}", 
-      $act->department->name;
+      $act->department->{name};
   }
 
 Role methods can take arguments too, like C<select()>
@@ -195,7 +366,7 @@ a data tree in memory; then remove all class information and
 export that tree.
 
   $_->expand('activities') foreach @$empl_D;
-  my $export = MySchema->unbless({employees => $empl_D});
+  my $export = My::Schema->unbless({employees => $empl_D});
   use Data::Dumper; print Dumper ($export); # export as PerlDump
   use XML::Simple;  print XMLout ($export); # export as XML
   use JSON;         print to_json($export); # export as Javascript
@@ -211,14 +382,14 @@ encounter a blessed reference.
 Select associated tables directly from a database join, 
 in one single SQL statement (instead of iterating through role methods).
 
-  my $lst = MySchema->join(qw/Employee activities department/)
-                    ->select(-columns => [qw/lastname dept_name d_begin/],
-                             -where   => {d_begin => {'>=' => '2000-01-01'}});
+  my $lst = My::Schema->join(qw/Employee activities department/)
+                      ->select(-columns => [qw/lastname dept_name d_begin/],
+                               -where   => {d_begin => {'>=' => '2000-01-01'}});
 
 Same thing, but forcing INNER joins
 
-  my $lst = MySchema->join(qw/Employee <=> activities <=> department/)
-                    ->select(...);
+  my $lst = My::Schema->join(qw/Employee <=> activities <=> department/)
+                      ->select(...);
 
 
 =head3 Statements and pagination
@@ -227,7 +398,7 @@ Instead of retrieving directly a list or records, get a
 L<statement|DBIx::DataModel::Statement> :
 
   my $statement 
-    = MySchema->join(qw/Employee activities department/)
+    = My::Schema->join(qw/Employee activities department/)
               ->select(-columns  => [qw/lastname dept_name d_begin/],
                        -where    => {d_begin => {'>=' => '2000-01-01'}},
                        -resultAs => 'statement');
@@ -243,7 +414,7 @@ Retrieve several rows at once
 Go to a specific page and retrieve the corresponding rows
 
   my $statement 
-    = MySchema->join(qw/Employee activities department/)
+    = My::Schema->join(qw/Employee activities department/)
               ->select(-columns  => [qw/lastname dept_name d_begin/],
                        -resultAs => 'statement',
                        -pageSize => 10);
@@ -260,13 +431,14 @@ Go to a specific page and retrieve the corresponding rows
 For fetching related rows : prepare a statement before the loop, execute it
 at each iteration.
 
-
-  my $statement = My::Table->join(qw/role1 role2/)
-                           ->prepare(-columns => ...,
-                                     -where   => ...);
+  my $statement = My::Table->join(qw/role1 role2/);
+  $statement->prepare(-columns => ...,
+                      -where   => ...);
   my $list = My::Table->select(...);
   foreach my $obj (@$list) {
     my $related_rows = $statement->execute($obj)->all;
+    # or
+    my $related_rows = $statement->bind($obj)->select;
     ... 
   }
 
@@ -359,7 +531,9 @@ efficiency through fine control of collaboration with the DBI layer
 
 =item *
 
-improved API for SQL::Abstract (named parameters, simplified 'orderBy')
+uses L<SQL::Abstract::More> for an improved API
+over L<SQL::Abstract> (named parameters, additional clauses,
+simplified 'order_by', etc.)
 
 =item *
 
@@ -369,7 +543,7 @@ clear conceptual distinction between
 
 =item *
 
-data sources         (tables and views),
+data sources         (tables and joins),
 
 =item *
 
@@ -397,6 +571,12 @@ named placeholders
 
 nested, cross-database transactions
 
+item *
+
+choice between 'single-schema' mode (default, more economical) 
+and 'multi-schema' mode (optional, more flexible, but a little
+more costly in memory)
+
 =back
 
 C<DBIx::DataModel> is used in production
@@ -413,7 +593,8 @@ Here are some current limitations of C<DBIx::DataModel> :
 =item no schema versioning
 
 C<DBIx::DataModel> knows very little about the database
-schema (only tables, primary and foreign keys); therefore
+schema (only tables, primary and foreign keys, and possibly
+some columns, if they need special 'Types'); therefore
 it provides no support for schema changes (and seldom
 needs to know about them).
 
@@ -424,14 +605,25 @@ in memory, and therefore provides no support for automatically
 propagating changes into the database; the client code has
 explicitly manage C<insert> and C<update> operations.
 
-
-=item no 'cascaded update' nor 'insert or create'
+=item no 'cascaded update' nor 'insert or update'
 
 Cascaded inserts and deletes are supported, but not cascaded updates.
-This would need 'insert or create', which at the moment is not
+This would need 'insert or update', which at the moment is not
 supported either.
 
 =back
+
+=head2 Backwards compatibility
+
+Major version 2.0 and 1.0 introduced some incompatible
+changes in the architecture 
+(see L<DBIx::DataModel::Doc::Delta_2.0>
+ and L<DBIx::DataModel::Doc::Delta_1.0>).
+
+Compatibility layers can be loaded on demand by supplying
+the desired version number upon loading C<DBIx::DataModel> :
+
+  use DBIx::DataModel 2.0 -compatibility => 0.8;
 
 
 =head1 INDEX TO THE DOCUMENTATION
@@ -462,7 +654,7 @@ summarizes the main steps to get started with the framework.
 =item *
 
 The L<REFERENCE|DBIx::DataModel::Doc::Reference> chapter
-is a complete reference to all methods, structured along usage steps:
+is a complete reference to all methods, structured along usage steps :
 creating a schema, populating it with table and associations,
 parameterizing the framework, and finally data retrieval and
 manipulation methods.
@@ -490,8 +682,9 @@ implement these terms.
 
 =item *
 
-The L<DELTA_1.0|DBIx::DataModel::Doc::Delta_1.0> chapter
-summarizes the differences with previous version 0.35.
+The L<DELTA_2.0|DBIx::DataModel::Doc::Delta_2.0>
+and L<DELTA_1.0|DBIx::DataModel::Doc::Delta_1.0> chapters
+summarize the differences with previous versions.
 
 
 =item *
@@ -510,9 +703,12 @@ general L<REFERENCE|DBIx::DataModel::Doc::Reference> chapter).
 
 =back
 
+Presentation slides are also available at
+L<http://www.slideshare.net/ldami/dbix-datamodel-endetail>
+
 =head1 SIDE-EFFECTS
 
-Upon loading, L<DBIx::DataModel::View> adds a coderef
+Upon loading, L<DBIx::DataModel::Join> adds a coderef
 into global C<@INC> (see L<perlfunc/require>), so that it can take 
 control and generate a class on the fly when retrieving frozen
 objects from L<Storable/thaw>. This should be totally harmless unless
@@ -541,7 +737,7 @@ Terrence Brannon for many fixes in the documentation.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2006-2009 by Laurent Dami.
+Copyright 2006-2011 by Laurent Dami.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 

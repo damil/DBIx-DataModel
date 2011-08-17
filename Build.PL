@@ -9,15 +9,22 @@ my $builder = Module::Build->new(
     dist_author         => 'Laurent Dami <laurent.dami AT etat.ge.ch>',
     dist_version_from   => 'lib/DBIx/DataModel.pm',
     requires => {
-        'perl'          => 5.006,
+        'perl'          => 5.008,
         'Test::More'    => 0,
 	'Carp'          => 0,
 	'DBI'           => 0,
-	'SQL::Abstract' => 1.61,
+	'SQL::Abstract::More' => 0,
 	'Module::Build' => 0,
         'Acme::Damn'    => 0,
         'Scalar::Util'  => 0,
 	'Storable'      => 0,
+
+        # new dependencies in 2.0 
+        'namespace::autoclean' => 0,
+        'MRO::Compat'          => 0,
+        'Module::Load'         => 0,
+        'Params::Validate'     => 0,
+
     },
     build_requires => {
         'Task::Weaken'  => 0,

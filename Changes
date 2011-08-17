@@ -1,5 +1,26 @@
 Revision history for Perl extension DBIx::DataModel.
 
+
+v1.99_05 14.08.2011
+
+v1.99_04 13.08.2011
+  - fixed broken test on perl 5.8/5.10 (MRO::Compat loaded too late)
+  - yet more doc (Design.pod)
+
+v1.99_03 06.08.2011
+  - Reference.pod finished. Still work to do on other pods.
+
+v1.99_02 02.08.2011
+  - many updates in doc (not totally finished yet)
+
+v1.99_01 31.07.2011
+  MAJOR REVISION, see Doc/Delta_2.0.pod
+  - new metaclass / reflection layer
+  - use base ==> use parent
+  - deprecated Autoload()
+  - removed keepLasth, lasth
+  - dropped support for positional args to select()
+
 v1.29 25.07.2011
   - fixed limit/offset in Statement::JDBC (old bug never discovered!)
 

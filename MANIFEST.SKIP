@@ -25,3 +25,4 @@ Build.bat$
 \#$
 \b\.#
 ^MYMETA.yml$
+^MYMETA\.json$

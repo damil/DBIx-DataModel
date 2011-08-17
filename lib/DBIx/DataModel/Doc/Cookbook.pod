@@ -54,6 +54,46 @@ a C<DBI> connection, a L<SQL::Translator> parser, or a
 C<DBIx::Class> schema. 
 See L<DBIx::DataModel::Schema::Generator|DBIx::DataModel::Schema::Generator>.
 
+=head2 Add custom methods into a generated table class
+
+Defining methods in any Perl class does not require to have a I<file>
+corresponding to that class; it suffices to define the method within
+the appropriate I<package>. So the easiest way to add methods into
+tables is to first let C<DBIx::DataModel> create the schema and table
+classes, and then switch to those packages, all in the same file :
+
+
+  # define schema, tables, associations (current package doesn't matter)
+  DBIx::DataModel->Schema('Some::Schema')
+    ->Table(qw/Foo foo foo_id/)
+    ->Table(...)
+    ->Association(...)
+    ->...;
+
+  # add a method into table 'Foo'
+  package Some::Schema::Foo;
+  sub my_added_method {
+    my $self = shift;
+    ...
+  }
+
+  # go back to main package
+  package main;
+  ...
+   
+
+Another way to achieve the same result is to use C<DBIx::DataModel>'s 
+L<internal utility method|DBIx::DataModel::Meta::Utils/define_method>
+for injecting methods into classes :
+
+   use DBIx::DataModel::Meta::Utils;
+   DBIx::DataModel::Meta::Utils->define_method(
+      class          => 'Some::Schema::Foo',
+      name           => 'my_added_method,
+      body           => sub {my $self = shift; ...},
+    );
+  
+
 =head2 Object inflation/deflation
 
 Here is an example of inflating/deflating a scalar value from 
@@ -61,21 +101,23 @@ the database into a Perl object :
 
   # declare column type
   use Date::Simple;
-  $schema->ColumnType(Date_simple => 
-    fromDB => sub {Date::Simple->new($_[0]) if $_[0] },
-    toDB   => sub {$_[0] = $_[0]->as_str    if $_[0] },
+  $schema->Type(Date_simple => 
+    from_DB => sub {Date::Simple->new($_[0]) if $_[0] },
+    to_DB   => sub {$_[0] = $_[0]->as_str    if $_[0] },
   );
   
   # apply column type to columns
-  My::Table1->ColumnType(Date_simple => qw/d_start d_end/);
-  My::Table2->ColumnType(Date_simple => qw/d_birth/);
+  My::Table1->metadm->define_column_type(Date_simple => qw/d_start d_end/);
+  My::Table2->metadm->define_column_type(Date_simple => qw/d_birth/);
 
-B<Caveat>: the C<fromDB> / C<toDB> functions do not apply
+B<Caveat>: the C<from_DB> / C<to_DB> functions do not apply
 automatically within C<-where> conditions. So the following
 would not work :
 
   use Date::Simple qw/today/;
-  my $rows = My::Table->select(-where => {d_end => {'<' => today()}});
+  my $rows = $schema->table($name)->select(
+    -where => {d_end => {'<' => today()}},
+  );
 
 because C<today()> returns a C<Date::Simple> object that will
 not be understood by L<SQL::Abstract|SQL::Abstract> when
@@ -84,13 +126,17 @@ enough to inspect the C<-where> conditions and decide
 which column types to apply, so you have to do it yourself :
 
   my $today = today()->as_str;
-  my $rows = My::Table->select(-where => {d_end => {'<' => $today}});
+  my $rows = $schema->table($name)->select(
+    -where => {d_end => {'<' => $today}},
+  );
 
 
 =head2 Schema versioning
 
 Currently C<DBIx::DataModel> has no specific support
-for schema versioning. Choose L<DBIx::Class> instead.
+for schema versioning. See CPAN module L<DBIx::VersionedSchema>,
+or switch to the L<DBIx::Class> ORM, that has good support for
+schema versioning.
 
 
 =head1 DATA RETRIEVAL
@@ -100,41 +146,49 @@ for schema versioning. Choose L<DBIx::Class> instead.
 Use normal SQL syntax for aggregators, and give them
 column aliases (with a vertical bar C<|>) in order to retrieve the results.
 
-  my $row = $source->select(-columns => [qw/MAX(col1)|max_col1
-                                            AVG(col2)|foo
-                                            COUNT(DISTINCT(col3))|bar/],
-                            -where    => ...,
-                            -resultAs => 'firstrow');
+  my $row = $source->select(-columns   => [qw/MAX(col1)|max_col1
+                                              AVG(col2)|foo
+                                              COUNT(DISTINCT(col3))|bar/],
+                            -where     => ...,
+                            -result_as => 'firstrow');
   print "max is : $row->{max_col1}, average is $row->{foo}";
 
 Or you can dispense with column aliases, and retrieve the results
-directly into an arrayref, using C<< -resultAs => 'flat_arrayref' >> :
+directly into an arrayref, using C<< -result_as => 'flat_arrayref' >> :
 
-  my $array_ref = $source->select(-columns => [qw/MAX(col1)
-                                                 AVG(col2)
-                                                 COUNT(DISTINCT(col3))/],
-                                  -where    => ...,
-                                  -resultAs => 'flat_arrayref');
+  my $array_ref = $source->select(-columns   => [qw/MAX(col1)
+                                                   AVG(col2)
+                                                   COUNT(DISTINCT(col3))/],
+                                  -where     => ...,
+                                  -result_as => 'flat_arrayref');
   my ($max_col1, $avg_col2, $count_col3) = @$array_ref;
 
-B<Caveat>: currently, C<fromDB> handlers do not apply to aggregator functions
-(this might be improved in a future version).
+B<Caveat>: currently, C<from_DB> handlers do not apply to 
+aggregator functions. So if the aggregated result needs any transformation,
+you have to specify a column type for it :
+
+  my $row = $source->select(
+    -columns      => [qw/MAX(d_begin)|max_d_begin MIN(d_end)|min_d_end .../],
+    -where        => ...,
+    -column_types => {Date_simple => [qw/max_d_begin min_d_end/],
+    -result_as    => 'firstrow'
+  );
 
 
 =head2 Database functions or stored procedures
 
 Like above: normal SQL syntax and column aliases.
 
-  my $rows = $source->select(-columns => [qw/FOOBAR(col1,col2)|foobar
+  my $rows = $source->select(-columns => [qw/FUNC(col1,col2)|func
                                             (col3+99)|big_col3/],
                              -where    => ...,
                              );
-  print "$_->{foobar} and $_->{big_col3}" foreach @$rows;
+  print "$_->{func} and $_->{big_col3}" foreach @$rows;
 
 
 =head2 Nested queries
 
-  my $subquery = $source1->select(..., -resultAs => 'subquery');
+  my $subquery = $source1->select(..., -result_as => 'subquery');
   my $rows     = $source2->select(
       -columns => ...,
       -where   => {foo => 123, bar => {-not_in => $subquery}}
@@ -146,14 +200,14 @@ There is no need for a hashref inflator: rows returned
 by a C<select()> can be used directly as hashrefs.
 For example here is a loop that prints a hash slice from  each row :
 
-  my $rows       = My::Table->select(...);
+  my $rows       = $schema->table($name)->select(...);
   my @print_cols = qw/col3 col6 col7/;
   foreach my $row (@$rows) {
     print @{$row}{@print_cols};
   }
 
 In fact, each row is a I<blessed> hashref. This can be a problem
-with some external modules like L<JSON> that croaks when encoding
+with some external modules like L<JSON> that croak when encoding
 a blessed reference. In that case you can use the C<unbless> function
 
   foreach my $row (@$rows) {
@@ -165,9 +219,18 @@ a blessed reference. In that case you can use the C<unbless> function
 
 =head2 Custom SQL
 
-Create a L<DBIx::DataModel::View|DBIx::DataModel::View> to encapsulate your 
-SQL.
 
+Create a 'Perl view' to encapsulate your SQL, i.e. a 
+L<DBIx::DataModel::Source::Table>, possibly with 
+a C<where> clause :
+
+  $meta_schema->define_table(
+    name     => 'MyView',
+    db_table => 'TABLE1 EXOTIC JOIN TABLE2 ON ...',
+    where    => {col1 => $filter1, col2 => $filter2}
+    parents  => [map {meta_schema->table($_)} qw/Table1 Table2/],
+  );
+  
 
 =head1 DATA UPDATE
 
@@ -181,19 +244,31 @@ SQL.
   # so far nothing has happened in the database
   
   # now do the transaction
-  $schema->doTransaction($to_do);
+  $schema->do_transaction($to_do);
 
 =head2 Nested transaction
 
-  $schema->doTransaction(sub {
-    do_something;
-    $schema->doTransaction(sub { 
-      some_nested_code();
-    });
-    $schema->doTransaction(sub { 
-      some_other_nested_code();
-   });
+  $schema->do_transaction(sub {
+    do_something();
+    $schema->do_transaction(sub { some_nested_code();       });
+    $schema->do_transaction(sub { some_other_nested_code(); });
   });
+
+=head2 Nested transaction involving another database
+
+  $schema->dbh($initial_dbh);
+  $schema->do_transaction(sub {
+
+    # start working in $initial_dbh
+    do_something();
+
+    # now some work in $other_dbh
+    $schema->do_transaction(sub { some_nested_code();       }, $other_dbh);
+
+    # here, implicitly we are back in $initial_dbh
+    $schema->do_transaction(sub { some_other_nested_code(); });
+  });
+  # commits in both $initial_dbh and $other_dbh are performed here
 
 
 =head2 Generating random keys
@@ -226,10 +301,9 @@ Override the C<_singleInsert> method
 First insert an arrayref of subrecords within the 
 main record hashref; then call C<insert> on that main
 record. See example in 
-L<insert() reference|DBIx::DataModel::Doc::Reference/"insert">.
-The precondition for this to work is that the 
-relationship between the two classes should be a 
-L<Composition|DBIx::DataModel::Doc::Reference/"Composition">.
+L<insert()|DBIx::DataModel::Doc::Reference/"insert()">.
+This only works if the two classes are associated through a 
+L<Composition|DBIx::DataModel::Doc::Reference/"Composition()">.
 A datastructure containing the keys of all generated records
 can be retrieved by using the option 
 
@@ -238,15 +312,15 @@ can be retrieved by using the option
 =head2 Cascaded delete
 
   # first gather information tree from the database
-  my $author = Author->fetch($author_id);
+  my $author = My::DB::Author->fetch($author_id);
   my $distribs = $author->expand('distributions');
   $_->expand('modules') foreach @$distribs;
   
   # then delete the whole tree from the database
   $author->delete;
 
-This only works if the relationship between classes is a 
-L<Composition|DBIx::DataModel::Doc::Reference/"Composition">.
+This only works if the two classes are associated through a 
+L<Composition|DBIx::DataModel::Doc::Reference/"Composition()">.
 The C<expand> operations retrieve related records and add them
 into a tree in memory. Then C<delete> removes from the database
 all records found in the tree; therefore this is not a "true" cascaded 
@@ -258,10 +332,40 @@ database, rather than at the ORM layer.
 
 =head2 Timestamp validation
 
-[WRITE EXAMPLE ]
-
-(make sure that the record was not touched between the time
+Goal : make sure that the record was not touched between the time
 it was presented to the user (display form) and the time
-the user wants to update or delete that record).
+the user wants to update or delete that record. 
 
+In order to do this, we will suppose that every record in every
+table has a timestamp field C<TS_MODIF>, updated automatically by
+a trigger within the database. Below is a callback function that 
+checks if the timestamp is still valid :
+
+  sub _check_time_stamp {
+    my ($record, $table, $where) = @_;
+    if ($where) { # this is an update, not an insert
+
+      my $displayed_timestamp = delete $record->{TS_MODIF};
+      my $db_record  = $record->schema->table($table)->select(
+        -columns   => 'TS_MODIF',
+        -where     => $where,
+        -for       => 'update', # optional, depends on your RDBMS
+        -result_as => 'firstrow',
+      )
+        or croak "fetch timestamp: could not find record "
+               . join(" / ", %$where);
+     my $db_timestamp = $db_record->{TS_MODIF};
+     $db_timestamp == $displayed_timestamp
+       or croak "record in $table was modified by somebody else; please "
+              . "refresh your screen and try again";
+     }
+  }
+
+This callback function can then be registered as an I<auto_update_column>
+when defining the schema :
+
+  DBIx::DataModel->define_schema(
+   class               => 'My::Schema,
+   auto_update_columns => {TS_MODIF => \&_check_time_stamp},
+  );
 

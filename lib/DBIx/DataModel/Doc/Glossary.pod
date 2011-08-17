@@ -59,7 +59,19 @@ and optionally gives names to the association itself and to the
 roles of the partipating tables.
 An association declaration in C<DBIx::DataModel> involves similar 
 information, except that no more than two tables can participate,
-and role names are mandatory.
+and at least one role name is mandatory.
+
+=item component
+
+The second participant in a L</composition> relationship, i.e.
+some object which "is part of" another object. A component object
+cannot live outside of its composite object.
+
+=item composite
+
+The first participant in a L</composition> relationship, i.e.
+some object which "contains" another object. If the composite
+object is deleted, all its components are also deleted.
 
 =item composition
 
@@ -88,13 +100,12 @@ L<DBI|DBI> layer to the application layer.
 
 A collection of callback functions or I<handlers>, 
 declared in a L</schema> through the 
-L<ColumnType|DBIx::DataModel::Doc::Reference/"ColumnType">
+L<Type()|DBIx::DataModel::Doc::Reference/"Type()">
 method. This column type can then be associated with
 various column names in various tables; as a result, 
-the C<fromDB> and C<toDB> handlers will be called 
+the C<from_DB> and C<to_DB> handlers will be called 
 automatically, respectively  after reading a value
 from the database or before writing a value to the database.
-
 
 =item compile time
 
@@ -108,9 +119,7 @@ for declarations like C<Schema(...)>, C<Table(...)>,
 C<Association(...)>, because these declarations
 usually belong to a module that will be
 loaded through L<use|perlfunc/use>, and therefore will be 
-executed at compile-time. By convention, compile-time
-methods start with an uppercase letter.
-
+executed at compile-time. 
 
 =item DB
 
@@ -130,14 +139,11 @@ A DBI database handle, created by a call to L<DBI/connect>.
 
 =item fast statement 
 
-A L</statement> for which the method 
-L<reuseRow|DBIx::DataModel::Statement/"reuseRow"> has been called :
-each row from the database will be retrieved into the same memory
-location, using DBI's L<fetch|DBI/fetch> and
+A L</statement> in which each row from the database will be retrieved
+into the same memory location, using DBI's L<fetch|DBI/fetch> and
 L<bind_columns|DBI/bind_columns> methods. This is the fastest way to
 get data, but it requires special care to handle each row immediately,
 before that row gets overwritten by the next row.
-
 
 
 =item foreign key
@@ -172,11 +178,11 @@ A database operation which consists of taking rows from several sources
 and producing new data rows. The result contains columns merged from 
 those sources, according to the L</join condition>.
 See the 
-L<join method|DBIx::DataModel::Reference/join>.
+L<join method|DBIx::DataModel::Reference/define_join()>.
 
 =item join condition
 
-A rule which states which rows from one source will be merged with 
+A rule that states which rows from one source will be merged with 
 which rows from another source while performing a join.
 A typical join condition states that the
 L</foreign key> of the first table should match the L</primary key>
@@ -212,7 +218,13 @@ Object-Oriented.
 Object-Relational Management system : a 
 framework of classes and methods
 to encapsulate interactions with a L</RDBMS>.
-C<DBIx::DataModel> is one of several ORMs for Perl.
+There are many ORMs for Perl; C<DBIx::DataModel> is just one of them.
+
+=item path method
+
+A method automatically installed in a L</table> class
+when an L</association> is declared. Path methods
+are used to get access to related records in other tables.
 
 =item primary key
 
@@ -223,12 +235,6 @@ single row within a table.
 
 Relational DataBase Management System.
 
-=item role method
-
-A method automatically installed in a L</table> class
-when an L</association> is declared. Role methods
-are used to get access to related records in other tables.
-
 
 =item role name
 
@@ -237,9 +243,9 @@ In UML notation, each side of an association may be decorated with a
 they are used mainly when a same class participates in several associations,
 and disambiguation is necessary. 
 However, when declaring an 
-L<association|DBIx::DataModel::Doc::Reference/"Association">
+L<Association()|DBIx::DataModel::Doc::Reference/"Association()">
 in C<DBIx::DataModel>, role names are mandatory, because they 
-are used to generate methods for navigating between
+are used to generate path methods for navigating between
 the two participating classes.
 
 =item record
@@ -255,7 +261,8 @@ a L</table> or a L</view>.
 
 =item schema
 
-A subclass of L<DBIx::DataModel::Schema|DBIx::DataModel::Schema>, that
+An instance of a subclass of 
+L<DBIx::DataModel::Schema|DBIx::DataModel::Schema>, that
 holds information about its tables, views and associations, and
 encapsulates a L</dbh>.
 
@@ -265,7 +272,13 @@ Either a L</table> or a L</view>.
 
 =item SQLA
 
-Abreviation for L<SQL::Abstract>, the SQL generator module
+Abreviation for L<SQL::Abstract>, a SQL generator module
+used by several L</ORM>s.
+
+
+=item SQLAM
+
+Abreviation for L<SQL::Abstract::More>, the SQL generator module
 used by C<DBIx::DataModel>.
 
 
@@ -273,37 +286,38 @@ used by C<DBIx::DataModel>.
 
 An instance of L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>, 
 that encapsulates an SQL query. 
-See L<DBIx::DataModel::Doc::Design/"STATEMENT OBJECTS">.
+See L<DBIx::DataModel::Doc::Reference/"STATEMENT METHODS">.
 
 
 =item sth
 
 A DBI statement handle, created by a call to L<DBI/prepare>.
+C<DBIx::DataModel> encapsulates C<$sth> handles within
+L</statement> objects.
 
 
 =item table
 
-A subclass of L<DBIx::DataModel::Table|DBIx::DataModel::Table>, 
-created by method L<DBIx::DataModel::Schema/Table>, 
+A subclass of L<DBIx::DataModel::Source::Table|DBIx::DataModel::Source::Table>, 
+created by method L<DBIx::DataModel::Doc::Reference/Table()>, 
 that encapsulates access to a database table (or database view).
 
 
 =item UML
 
 The I<Unified Modeling Language>, a graphical notation 
-for modeling software system. 
-Association declarations in C<DBIx::DataModel> 
-closely reflect the way these are represented in UML notation
-(see L<DBIx::DataModel::Doc::Reference/"Association">).
+for modeling software system. An excellent quick reference for
+UML is L<http://www.holub.com/goodies/uml/>.
 
+Association definitions in C<DBIx::DataModel> 
+are closely inspired by UML associations
+(see L<DBIx::DataModel::Doc::Reference/"Association()">).
 
 =item view
 
-A subclass of L<DBIx::DataModel::View>, 
-created either by a direct call to L<DBIx::DataModel::Schema/View>, 
-or (in most cases) by a call to  L<DBIx::DataModel::Schema/join>, 
-that encapsulates access to a database SELECT..FROM (typically 
-a join between several database tables).
+A subclass of L<DBIx::DataModel::Source::Table|DBIx::DataModel::Source::Table>, 
+created by method L<DBIx::DataModel::Doc::Reference/View()>, 
+that encapsulates a specific SQL request.
 
 =back
 

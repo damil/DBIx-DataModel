@@ -95,6 +95,15 @@ the client program. We decided to use the suffixes
 C<_id> for auto-generated keys, and C<_code> for user-supplied
 codes.
 
+All examples in this document use I<single-schema> mode, which
+is the simplest way to work with C<DBIx::DataModel>. 
+If your application needs to simultaneously work with several databases
+that share the same schema structure (like for example when
+transferring data between various sources), then you need
+to work in I<multi-schema> mode; explanations are provided
+L<DBIx::DataModel::Doc::Reference/"SCHEMA METHODS">.
+
+
 =head1 DECLARE SCHEMA AND TABLES
 
 C<DBIx::DataModel> needs to acquire some knowledge about 
@@ -105,16 +114,25 @@ by using
 L<DBIx::DataModel::Schema::Generator|DBIx::DataModel::Schema::Generator>
 to automatically create a skeleton of these declarations.
 
+First load C<DBIx::DataModel> :
 
-First declare a I<schema> :
+  use DBIx::DataModel -compability => 2.0;
 
-  use DBIx::DataModel;
+The C<-compatibility> argument tells that we don't need any compatibility 
+with versions prior to 2.0. By default, a compatibility layer for 
+version 1.0 is automatically loaded, in order not to break previous
+programs; but here, since we start a new application, that layer is not
+needed, and therefore we will avoid polluting our symbol tables with
+unnecessary code.
+
+Now define a I<schema> :
+
   DBIx::DataModel->Schema('HR');
 
 Here we have chosen a simple acronym C<HR> as the schema name, but it 
 could as well have been something like C<Human::Resources>.
 
-The schema now is a Perl class, so we invoke its C<Table>
+The schema now is a Perl class, so we can invoke its C<Table>
 method to declare the first table within the schema :
 
   HR->Table(qw/Employee      t_employee        emp_id/);
@@ -127,38 +145,37 @@ So far nothing is declared about other columns in the table.
 
 Other tables are declared in a similar fashion :
 
-  HR->Table(qw/Department    t_department      dpt_code/);
-  HR->Table(qw/Activity      t_activity        act_id/);
-  HR->Table(qw/Skill         t_skill           skill_code/);
-  HR->Table(qw/EmployeeSkill t_employee_skill  emp_id  skill_code/);
+  HR->Table(qw/Department    t_department      dpt_code/)
+    ->Table(qw/Activity      t_activity        act_id/)
+    ->Table(qw/Skill         t_skill           skill_code/)
+    ->Table(qw/EmployeeSkill t_employee_skill  emp_id  skill_code/);
 
 This last declaration has 4 arguments because the primary key
 ranges over 2 columns.
 
 =head1 DECLARE COLUMN TYPES
 
-RDBMS will usually require that dates be in ISO format of shape
+RDBMS usually require that dates be in ISO format of shape
 C<yyyy-mm-dd>. Let's assume our users are European and want
 to see and enter dates of shape C<dd.mm.yyyy>. Insert of converting
 back and forth within the client code, it's easier to do it at the ORM
 level. So we define conversion routines within a "Date" column type
 
-  HR->ColumnType(Date => 
+  HR->Type(Date => 
      fromDB => sub {$_[0] =~ s/(\d\d\d\d)-(\d\d)-(\d\d)/$3.$2.$1/   if $_[0]},
      toDB   => sub {$_[0] =~ s/(\d\d)\.(\d\d)\.(\d\d\d\d)/$3-$2-$1/ if $_[0]},
-     validate => sub {$_[0] =~ m/\d\d\.\d\d\.\d\d\d\d/});
+     validate => sub {$_[0] =~ m/\d\d\.\d\d\.\d\d\d\d/},
+   );
 
-and then apply this type to the appropriate columns
+and then apply this type to the appropriate columns, by calling the 
+L<define_column_type()|DBIx::DataModel::Doc::Reference/define_column_type()>
+method on the I<meta-table> objects associated with our tables.
 
-  HR::Employee->ColumnType(Date => qw/d_birth/);
-  HR::Activity->ColumnType(Date => qw/d_begin d_end/);
+  HR::Employee->metadm->define_column_type(Date => qw/d_birth/);
+  HR::Activity->metadm->define_column_type(Date => qw/d_begin d_end/);
 
 Here we just perform scalar conversions; another design choice 
 could be to "inflate" the data to some kind of Perl objects.
-
-Observe that C<ColumnType> is overloaded : when invoked on a schema, it
-I<defines> a column type; when invoked on a table, it
-I<applies> the column type to some columns.
 
 =head1 DECLARE ASSOCIATIONS
 
@@ -238,7 +255,9 @@ The main difference is in C<insert> and C<delete> methods, which will
 be able to perform more complex operations on data trees : for example 
 it will be possible in one method call to insert an employee together
 with its activities. Compositions also support auto-expansion 
-of data trees through the L<AutoExpand|/"AutoExpand"> method.
+of data trees through the 
+L<auto_expand()|DBIx::DataModel::Doc::Reference/auto_expand()>
+method.
 
 
 =head2 Many-to-many associations
@@ -266,7 +285,7 @@ provided in the reference section.
 
 =head1 USE THE SCHEMA
 
-To use the schema, we first need to supply it with a database
+To use the schema, we first need to give it a database
 connection :
 
   my $dbh = DBI->connect(...); # parameters according to your RDBMS
@@ -275,19 +294,21 @@ connection :
 Now we can start populating the database:
 
   my ($bach_id, $berlioz_id, $monteverdi_id) = 
-    HR::Employee->insert([qw/ firstname    lastname   /],
-                         [qw/ Johann       Bach       /],
-                         [qw/ Hector       Berlioz    /],
-                         [qw/ Claudio      Monteverdi /]);
+    HR->table('Employee')->insert([qw/ firstname    lastname   /],
+                                  [qw/ Johann       Bach       /],
+                                  [qw/ Hector       Berlioz    /],
+                                  [qw/ Claudio      Monteverdi /]);
 
 This form of C<insert()>, supplying a list of arrayrefs with column names
 in the first arrayref, is convenient for inserting a bunch of rows at
 once. The other form is to supply one or several hashrefs, where each
 hashref corresponds to a record to create, and yields the same result :
 
-    HR::Employee->insert({firstname => "Johann",  lastname => "Bach"      },
-                         {firstname => "Hector",  lastname => "Berlioz"   },
-                         {firstname => "Claudio", lastname => "Monteverdi"});
+    HR->table('Employee')->insert(
+      {firstname => "Johann",  lastname => "Bach"      },
+      {firstname => "Hector",  lastname => "Berlioz"   },
+      {firstname => "Claudio", lastname => "Monteverdi"},
+    );
 
 According to our earlier assumptions, keys are generated automatically
 within the database, so they need not be supplied here. The return
@@ -298,22 +319,26 @@ method).
 Similarly, we create some departments and skills
 (here with explicit primary keys, and using both insertion syntaxes) :
 
-  HR::Department->insert({dpt_code => "CPT",  dpt_name => "Counterpoint" },
-			 {dpt_code => "ORCH", dpt_name => "Orchestration"});
+  HR->table('Department')->insert(
+    {dpt_code => "CPT",  dpt_name => "Counterpoint" },
+    {dpt_code => "ORCH", dpt_name => "Orchestration"},
+  );
 
-  HR::Skill->insert([qw/ skill_code  skill_name /],
-                    [qw/ VL          Violin     /],
-                    [qw/ KB          Keyboard   /],
-                    [qw/ GT          Guitar     /]);
+  HR->table('Skill')->insert(
+    [qw/ skill_code  skill_name /],
+    [qw/ VL          Violin     /],
+    [qw/ KB          Keyboard   /],
+    [qw/ GT          Guitar     /],
+   );
 
 To perform updates, there is either a class method or an object method.
 Here is an example with the class method :
 
-  HR::Employee->update($bach_id => {firstname => "Johann Sebastian"});
+  HR->table('Employee')->update($bach_id => {firstname => "Johann Sebastian"});
 
 Associations have their own insert methods, named C<insert_into_*> :
 
-  my $bach = HR::Employee->fetch($bach_id); # get single record from prim.key
+  my $bach = HR->table('Employee')->fetch($bach_id); 
   
   $bach->insert_into_activities({d_begin => '01.01.1695',
 			         d_end   => '18.07.1750',
@@ -324,11 +349,13 @@ Associations have their own insert methods, named C<insert_into_*> :
 
 Compositions implement cascaded inserts from a given data tree :
 
-  HR::Employee->insert({firstname  => "Richard",  
-                        lastname   => "Strauss",
-                        activities => [ {d_begin  => '01.01.1874',
-                                         d_end    => '08.09.1949',
-                                         dpt_code => 'ORCH'      } ]});
+  HR->table('Employee')->insert(
+    {firstname  => "Richard",  
+     lastname   => "Strauss",
+     activities => [ {d_begin  => '01.01.1874',
+                      d_end    => '08.09.1949',
+                      dpt_code => 'ORCH'      } ]}
+  );
 
 and if we need the keys of records generated by those insertions, we
 can use the C<< -returning => {} >> option :
@@ -338,14 +365,14 @@ can use the C<< -returning => {} >> option :
               activities => [ {d_begin  => '01.01.1874',
                                d_end    => '08.09.1949',
                                dpt_code => 'ORCH'      } ]};
-  my $ids = HR::Employee->insert($data, -returning => {});
+  my $ids = HR->table('Employee')->insert($data, -returning => {});
   # ids now contains : { emp_id     => ..., 
   #                      activities => [{act_id => ...}]};
 
 
 The C<select()> method retrieves several records from a class :
 
-  my $all_employees = HR::Employee->select; 
+  my $all_employees = HR->table('Employee')->select; 
   foreach my $emp (@$all_employees) {
     do_something_with($emp);
   }
@@ -354,10 +381,11 @@ or maybe we want something more specific :
 
   my @columns  = qw/firstname lastname/;
   my %criteria = (lastname => {-like => 'B%'});
-  my $some_employees 
-     = HR::Employee->select(-columns => \@columns,
-                            -where   => \%criteria,
-                            -orderBy => 'd_birth');
+  my $some_employees = HR->table('Employee')->select(
+    -columns  => \@columns,
+    -where    => \%criteria,
+    -order_by => 'd_birth',
+   );
 
 From a given object, role methods allow us to get associated
 objects :
@@ -374,16 +402,14 @@ C<select()> method :
 
   my @columns = qw/d_begin d_end/;
   my %criteria = (d_end => undef);
-  my $current_activities = $someEmp->activities(-columns => \@columns,
-                                                -where   => \%criteria);
+  my $current_activities = $some_emp->activities(-columns => \@columns,
+                                                 -where   => \%criteria);
 
 And it is possible to join on several roles at once:
 
-  my $result = $someEmp->join(qw/activities department/)
-                       ->select(-columns => \@columns,
-                                -where   => \%criteria);
+  my $result = $emp->join(qw/activities department/)
+                   ->select(-columns => \@columns,
+                            -where   => \%criteria);
 
 This concludes our short tutorial. More examples are given
 in the L<Reference|DBIx::DataModel::Doc::Reference> chapter.
-
-
