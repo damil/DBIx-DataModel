@@ -2177,6 +2177,17 @@ of C<bind> for passing DBI-specific arguments.
 See L<DBI/"bind_param"> for explanations.
 
 
+=head3 reset()
+
+  $statement->reset(%args);
+
+Resets the statement back into C<NEW> state, erasing all information except references
+to the C<$schema> and C<$meta_source>.
+
+C<%args> are optional; if present, they are passed to the L</refine()> method.
+
+
+
 =head2 Proxy methods
 
 Since the statement holds references to a schema and a meta-source,

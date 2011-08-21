@@ -10,8 +10,8 @@ use strict;
 use mro 'c3';
 use Carp;
 use List::MoreUtils qw/firstval/;
+use Module::Load    qw/load/;
 use namespace::autoclean;
-
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
@@ -49,8 +49,26 @@ sub primary_key {
 
 # several class methods, only available if in single-schema mode;
 # such methods are delegated to the Statement class.
-my @methods_to_delegate = qw/select fetch fetch_cached bless_from_DB/;
-_delegate_to_statement_class($_) foreach @methods_to_delegate;
+foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
+  no strict 'refs';
+  *{$method} = sub {
+    my $class = shift;
+    not ref($class) 
+      or croak "$method() should be called as class method";
+
+    my $metadm      = $class->metadm;
+    my $meta_schema = $metadm->schema;
+    my $schema      = $meta_schema->class->singleton;
+    my $statement   = $meta_schema->statement_class->new($metadm, $schema);
+
+    return $statement->$method(@_);
+  };
+}
+
+
+
+
+
 
 sub expand {
   my ($self, $path, @options) = @_;
@@ -121,16 +139,17 @@ sub join {
 =cut
 
 
-  # call join() in ::Statement, to get another statement
   my $metadm      = $self->metadm;
   my $meta_schema = $metadm->schema;
   my $schema      = $self->schema;
-  my $statement   = $meta_schema->statement_class->new($metadm, $schema);
-  $statement = $statement->join($first_role, @other_roles);
+  my $class       = $meta_schema->connected_source_class;
+  load $class;
+  my $conn_src    = $class->new($metadm, $schema);
+  my $statement   = $conn_src->join($first_role, @other_roles);
 
   # if called as an instance method
   if (ref $self) {
-    my $left_cols = $statement->{left_cols}
+    my $left_cols = $statement->{args}{-_left_cols}
       or die "statement had no {left_cols} entry";
 
     # check that all foreign keys are present
@@ -155,23 +174,6 @@ sub join {
 
 
 
-
-sub _delegate_to_statement_class { # also used by Source::Table.pm
-  my $method = shift;
-  no strict 'refs';
-  *{$method} = sub {
-    my ($class, @args) = @_;
-    not ref($class) 
-      or croak "$method() should be called as class method";
-
-    my $metadm      = $class->metadm;
-    my $meta_schema = $metadm->schema;
-    my $schema      = $meta_schema->class->singleton;
-    my $statement   = $meta_schema->statement_class->new($metadm, $schema);
-
-    return $statement->$method(@args);
-  };
-}
 
 
 1; # End of DBIx::DataModel::Source

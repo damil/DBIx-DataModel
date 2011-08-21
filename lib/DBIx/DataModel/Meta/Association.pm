@@ -2,6 +2,7 @@ package DBIx::DataModel::Meta::Association;
 use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
+use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
 
 use Carp;

@@ -8,9 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-use DBIx::DataModel::Meta::Schema;
-
-our $VERSION = '1.99_05'; # dev release
+our $VERSION = '1.99_06'; # dev release
 $VERSION = eval $VERSION if $VERSION =~ /_/; # numify
 
 # compatibility setting : see import(); for the moment, automatic compat 1.0
@@ -45,6 +43,10 @@ our @CARP_NOT = qw[
 
 sub define_schema {
   my ($class, %params) = @_;
+
+#  require DBIx::DataModel::Meta::Schema; # TODO : find out why "require" generates a warning
+  use DBIx::DataModel::Meta::Schema;
+
   my $meta_schema = DBIx::DataModel::Meta::Schema->new(%params);
   return $meta_schema;
 }

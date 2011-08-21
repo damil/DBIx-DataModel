@@ -2,6 +2,7 @@ package DBIx::DataModel::Meta::Type;
 use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
+use DBIx::DataModel;
 
 use Scalar::Util         qw/weaken/;
 use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;

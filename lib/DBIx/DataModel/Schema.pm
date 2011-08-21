@@ -252,21 +252,22 @@ sub unbless {
 }
 
 
-# proxy methods, forwarded to the Statement class
-sub table {
-  my $self = shift;
-  ref $self or $self = $self->singleton;
+# accessors to connected sources (tables or joins) from the current schema
+#                   local method     metadm method
+#                   ============     =============
+my %accessor_map = (table         => 'table',
+                    join          => 'define_join');
+while (my ($local, $remote) = each %accessor_map) {
+  no strict 'refs';
+  *$local = sub {
+    my $self = shift;
+    ref $self or $self = $self->singleton;
 
-  my $meta_table = $self->metadm->table(@_) or return;
-  $self->metadm->statement_class->new($meta_table, $self);
-}
-
-sub join {
-  my $self = shift;
-  ref $self or $self = $self->singleton;
-
-  my $meta_join = $self->metadm->define_join(@_) or return;
-  $self->metadm->statement_class->new($meta_join, $self);
+    my $meta_source = $self->metadm->$remote(@_) or return;
+    my $cs_class = $self->metadm->connected_source_class;
+    load $cs_class;
+    return $cs_class->new($meta_source, $self);
+  }
 }
 
 

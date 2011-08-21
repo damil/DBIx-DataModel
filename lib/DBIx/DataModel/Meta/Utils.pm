@@ -12,6 +12,7 @@ use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
 use mro 'c3';
 use namespace::autoclean;
 
+use DBIx::DataModel;
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 sub define_class {

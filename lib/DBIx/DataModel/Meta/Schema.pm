@@ -2,6 +2,7 @@ package DBIx::DataModel::Meta::Schema;
 use strict;
 use warnings;
 use parent 'DBIx::DataModel::Meta';
+use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
 use DBIx::DataModel::Source::Join;
 use DBIx::DataModel::Meta::Source::Join;
@@ -33,8 +34,6 @@ my $spec = {
   auto_update_columns          => {type => HASHREF, default => {}},
   no_update_columns            => {type => HASHREF, default => {}},
 
-
-
   # beware: more members of %$spec are added below
 };
 
@@ -43,25 +42,31 @@ for my $member (qw/table join/) {
   my $capitalized = ucfirst $member;
   my $parent     = "DBIx::DataModel::Source::$capitalized";
   my $meta_class = "DBIx::DataModel::Meta::Source::$capitalized";
-  $spec->{$member."_parent"} 
-    = {type    => SCALAR|ARRAYREF, default => $parent};
-  $spec->{$member."_metaclass"} 
-    = {type => SCALAR, isa => $meta_class, default => $meta_class};
+  $spec->{$member."_parent"}    = {type    => SCALAR|ARRAYREF,
+                                   default => $parent};
+  $spec->{$member."_metaclass"} = {type    => SCALAR, 
+                                   isa     => $meta_class,
+                                   default => $meta_class};
 }
 
 # parameters for optional subclasses of the builtin metaclasses
 for my $member (qw/association path type/) {
   my $capitalized = ucfirst $member;
   my $meta_class = "DBIx::DataModel::Meta::$capitalized";
-  $spec->{$member."_metaclass"}
-    = {type => SCALAR, isa => $meta_class, default => $meta_class};
+  $spec->{$member."_metaclass"} = {type    => SCALAR, 
+                                   isa     => $meta_class, 
+                                   default => $meta_class};
 }
 
-# parameters for optional subclass of the builtin statement class
+# parameters for optional subclasses of builtin classes
 my $statement_class = 'DBIx::DataModel::Statement';
-$spec->{statement_class} 
-  = {type => SCALAR, isa => $statement_class, default => $statement_class};
-
+$spec->{statement_class}        = {type    => SCALAR, 
+                                   isa     => $statement_class,
+                                   default => $statement_class};
+my $connected_source_class = 'DBIx::DataModel::ConnectedSource';
+$spec->{connected_source_class} = {type    => SCALAR, 
+                                   isa     => $connected_source_class,
+                                   default => $connected_source_class};
 
 
 #----------------------------------------------------------------------

@@ -2,6 +2,7 @@ package DBIx::DataModel::Meta::Path;
 use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
+use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
 
 use Scalar::Util         qw/looks_like_number weaken/;

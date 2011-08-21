@@ -9,16 +9,14 @@ use strict;
 use mro 'c3';
 use parent 'DBIx::DataModel::Source';
 use Carp;
-use Storable     qw/freeze/;
-use Scalar::Util qw/refaddr reftype/;
+use Storable             qw/freeze/;
+use Scalar::Util         qw/refaddr reftype/;
+use Module::Load         qw/load/;
 use namespace::autoclean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 
-# 'insert class method only available if schema is in singleton mode;
-# this method is delegated to the Statement class.
-DBIx::DataModel::Source::_delegate_to_statement_class('insert');
 
 sub _singleInsert {
   my ($self, %options) = @_; 
@@ -174,6 +172,24 @@ sub _insert_subtrees {
 }
 
 
+# 'insert class method only available if schema is in singleton mode;
+# this method is delegated to the ConnectedSource class.
+sub insert {
+  my $class = shift;
+  not ref($class) 
+    or croak "insert() should be called as class method";
+
+  my $metadm      = $class->metadm;
+  my $meta_schema = $metadm->schema;
+  my $schema      = $meta_schema->class->singleton;
+  my $cs_class    = $meta_schema->connected_source_class;
+  load $cs_class;
+  $cs_class->new($metadm, $schema)->insert(@_);
+}
+
+
+
+
 #------------------------------------------------------------
 # update and delete
 #------------------------------------------------------------
@@ -200,9 +216,10 @@ foreach my $method (qw/update delete/) {
     # otherwise, if in single-schema mode, or called as $class->$method(@args)
     $schema ||= $meta_schema->class->singleton;
 
-    # delegate to the statement class
-    my $statement   = $meta_schema->statement_class->new($metadm, $schema);
-    return $statement->$method(@_);
+    # delegate to the connected_source class
+    my $cs_class    = $meta_schema->connected_source_class;
+    load $cs_class;
+    $cs_class->new($metadm, $schema)->$method(@_);
   };
 }
 

@@ -2,6 +2,7 @@ package DBIx::DataModel::Meta::Source::Table;
 use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta::Source";
+use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
 
 use Carp;

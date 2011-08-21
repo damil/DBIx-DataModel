@@ -15,6 +15,7 @@ use POSIX            qw/INT_MAX/;
 use Acme::Damn       qw/damn/;
 use namespace::autoclean;
 
+use DBIx::DataModel;
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 use overload
@@ -57,14 +58,12 @@ sub new {
     or croak "invalid schema for DBIx::DataModel::Statement->new()";
 
   # build the object
-  my $self = bless {
-    status           => NEW,
-    meta_source      => $meta_source,
-    schema           => $schema,
-    args             => {},
-    pre_bound_params => {},
-    bound_params     => [],
-  }, $class;
+  my $self = bless {status           => NEW,
+                    args             => {},
+                    pre_bound_params => {},
+                    bound_params     => [],
+                    meta_source      => $meta_source, 
+                    schema           => $schema}, $class;
 
   # add placeholder_regex
   my $prefix = $schema->{placeholder_prefix};
@@ -90,8 +89,6 @@ sub metadm {
 
 
 
-
-
 # don't remember why this "clone()" method was ever created.
 # Keep the code  around for a while ...
 
@@ -102,6 +99,18 @@ sub metadm {
 
 #   return dclone($self); # THINK: should use Clone::clone instead?
 # }
+
+
+sub reset {
+  my ($self, %other_args) = @_;
+
+  my $new = (ref $self)->new($self->{meta_source}, $self->{schema}, %other_args);
+  %$self = (%$new);
+
+  return $self;
+}
+
+
 
 
 #----------------------------------------------------------------------
@@ -227,8 +236,9 @@ sub refine {
       # other args are just stored, will be used later
       /^-( order_by  | group_by | having    | for
          | result_as | post_SQL | pre_exec  | post_exec  | post_bless
-         | limit     | offset   | page_size | page_index | column_types
-         | prepare_attrs        | dbi_prepare_method
+         | limit     | offset   | page_size | page_index
+         | column_types         | prepare_attrs        | dbi_prepare_method
+         | _left_cols
          )$/x
          and do {$args->{$k} = $v; last SWITCH};
 
@@ -756,6 +766,9 @@ sub _compute_from_DB_handlers {
 
 
 
+=begin MOVED_TO_CONNECTED_SOURCE_CLASS
+
+
 #----------------------------------------------------------------------
 # INSERT
 #----------------------------------------------------------------------
@@ -1003,7 +1016,9 @@ sub delete {
   if (!$where) {
     # cascaded delete
     foreach my $component_name ($meta_source->components) {
-      my $components = $self->{$component_name} or next;
+      my $components = $to_delete->{$component_name} or next;
+      ref $components eq 'ARRAY'
+        or croak "delete() : component $component_name is not an arrayref";
       $_->delete foreach @$components;
     }
     # build $where from primary key
@@ -1058,12 +1073,14 @@ sub join {
   my $source = @other_roles  ? $meta_schema->define_join($path->{to}{name},
                                                          @other_roles)
                              : $path->{to};
-  my $statement = $meta_schema->statement_class->new($source, $schema);
-  $statement->refine(-where => \%criteria);
+
+  my @stmt_args = ($source, $schema, -where => \%criteria);
 
   # keep a reference to @left_cols so that Source::join can bind them
-  $statement->{left_cols} = \@left_cols;
+  push @stmt_args, -_left_cols => \@left_cols;
 
+  # build and return the new statement
+  my $statement = $meta_schema->statement_class->new(@stmt_args);
   return $statement;
 }
 
@@ -1091,7 +1108,9 @@ sub _maybe_inject_primary_key {
   }
 }
 
+=end MOVED_TO_CONNECTED_SOURCE_CLASS
 
+=cut 
 
 1; # End of DBIx::DataModel::Statement
 
