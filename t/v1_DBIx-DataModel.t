@@ -8,7 +8,7 @@ use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
 use constant N_DBI_MOCK_TESTS => 103;
-use constant N_BASIC_TESTS    => 15;
+use constant N_BASIC_TESTS    =>  15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
 
@@ -691,9 +691,9 @@ die_ok {$emp->emp_id};
 
 
   HR::Employee->update(999, {firstname => 'toto', 
-			 d_modif => '02.09.2005',
-			 d_birth => '01.01.1950',
-			 last_login => '01.09.2005'});
+                             d_modif => '02.09.2005',
+                             d_birth => '01.01.1950',
+                             last_login => '01.09.2005'});
 
   sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ? '.
 	  'WHERE (emp_id = ?)', ['1950-01-01', 'toto', 999], 'update');

@@ -1087,33 +1087,29 @@ C<dbh>, C<dbh_options>, C<debug>,
 C<select_implicitly_for>, C<dbi_prepare_method>. 
 
 
-=head2 Creating statements
+=head2 Creating "connected sources"
 
-Data is stored in I<data sources> that are accessed through
-a given I<schema>; therefore, before issuing data manipulation
-statements, we need to establish a relationship between
-a data source and a schema : this is the job of the two 
-methods below. Both create a fresh instance
-of L<DBIx::DataModel::Statement>. The statement can then
+Data is stored in I<data sources> that are accessed through a given
+I<schema>; therefore, before issuing data manipulation statements, we
+need to establish a relationship between a data source and a schema :
+this is the job of the two methods below. Both create a
+L<DBIx::DataModel::ConnectedSource> instance.  That object can then
 perform data selection, update or deletion, as described in the next
 chapter.
 
 =head3 Schema::table()
 
-  my $statement = $schema->table($table_name);
-  my $result = $statement->select(...); # or ->insert(..), ->update(..), etc.
+  my $source = $schema->table($table_name);
+  my $result = $source->select(...); # or ->insert(..), ->update(..), etc.
 
 This is the recommended way to reach a table from a schema.
 The C<$table_name> is the Perl name that was declared in L</define_table()>,
 not the database name.
 
 The method name is (intentionally!) misleading : instead of returning
-a I<table> object or I<meta_table> object, it returns a I<statement>;
-however the statement delegates many methods to the table and therefore
-can mimic it (actually, it works like a kind of proxy). An intermediate
-statement object is needed for holding a reference to the schema : without
-this important piece of information, the table has no connection to the
-database and therefore cannot fetch any data.
+a I<table> object or I<meta_table> object, it returns a I<connected_source>;
+however that object delegates many methods to the table and therefore
+can mimic it (actually, it works like a kind of proxy). 
 
 When in single-schema mode, the C<table()> call can be replaced by a
 direct call to the table class: so for example, if we have a schema
@@ -1141,20 +1137,20 @@ at the end of this document.
 
 =head3 Schema::join()
 
-  my $statement = $schema->join($table, $path1, $path2, ...);
-  my $result    = $statement->select(...);
+  my $source = $schema->join($table, $path1, $path2, ...);
+  my $result = $source->select(...);
 
 This method calls L</define_join()> to define or retrieve a join
-subclass; then it creates a fresh statement related to that 
-join datasource and to the C<$schema>. From that statement, data
+subclass; then it creates a fresh I<connected_source> related to that 
+join datasource and to the C<$schema>. From that object, data
 can be retrieved through the L</select()> method.
 
 This C<Schema::join()> method should not be confused with
 the meta-schema navigation method L</Meta::Schema::join()>, described 
 at the end of this document, which is just an accessor method.
 
-Besides, derivatives of the present method are defined 
-in L</Statement::join()> and L</Table::join()>.
+Besides, a derivative of the present method is defined 
+in L</Table::join()>.
 
 
 =head2 Transactions
@@ -1239,6 +1235,87 @@ following methods can be called on the schema class :
 =item L</Type()>
 
 =back
+
+
+=head1 CONNECTED_SOURCE METHODS
+
+A I<connected source> is basically just a pair of references to 
+a C<$meta_source> and to a C<$schema>. Such objects are created explicitly
+through methods L</Schema::table()>  or L</Schema::join()>; they are also
+created implicitly when, in single-schema mode, class methods are called on
+table subclasses.
+
+=head2 Accessors
+
+=head3 schema()
+
+Accessor for the connected source's schema.
+
+=head3 source()
+
+Accessor for the connected source's meta-source.
+
+=head3 metadm()
+
+Also returns the meta-source.
+This is for convenience, because in something like
+
+  my $meta_table = $schema->table($table_name)->metadm;
+
+one naturally expects to get the meta-object associated with table
+C<$table_name>, forgetting the fact that the subexpression 
+C<<$schema->table($table_name) >> is a connected source and not a table!
+
+
+
+
+=head2 Data retrieval
+
+=head3 select()
+
+=head3 fetch()
+
+=head3 fetch_cached()
+
+=head3 ConnectedSource::join()
+
+
+  my $join_stmt = $source_stmt->join(qw/path1 path2 .../)->prepare;
+
+Starting from a given statement, returns a reference to another
+statement that will select a collection of data rows from tables
+associated to the current meta-source, performing the appropriate
+joins.  Internally this is implemented throught the C</define_join()>
+method, with an additional C<-where> criteria to constrain on the
+primary key(s) of the meta-source.  That statement cannot be executed
+yet, because the values of the primary key are not known until we have
+an row of that source; but the statement can already be
+L<prepare|/prepare()>d.  Later on, we can
+L<execute|/execute()> the statement by binding
+it to an instance of _class> :
+
+   my $obj          = $source_stmt->fetch(...);
+   my $related_rows = $join_stmt->execute($obj)->all;
+
+
+=head2 Data manipulation
+
+=head3 insert()
+
+=head3 update()
+
+=head3 delete()
+
+
+
+=head2 Utility methods
+
+=head3 bless_from_DB()
+
+
+
+
+
 
 
 =head1 STATEMENT METHODS
@@ -2201,37 +2278,6 @@ Accessor for the statement's schema.
 
 Accessor for the statement's meta-source.
 
-=head3 metadm()
-
-Also returns the meta-source.
-This is for convenience, because in something like
-
-  my $meta_table = $schema->table($table_name)->metadm;
-
-one naturally expects to get the meta-object associated with table
-C<$table_name>, forgetting the fact that the subexpression C<<
-$schema->table($table_name) >> is a statement and not a table!
-
-
-=head3 Statement::join()
-
-  my $join_stmt = $source_stmt->join(qw/path1 path2 .../)->prepare;
-
-Starting from a given statement, returns a reference to another
-statement that will select a collection of data rows from tables
-associated to the current meta-source, performing the appropriate
-joins.  Internally this is implemented throught the C</define_join()>
-method, with an additional C<-where> criteria to constrain on the
-primary key(s) of the meta-source.  That statement cannot be executed
-yet, because the values of the primary key are not known until we have
-an row of that source; but the statement can already be
-L<prepare|/prepare()>d.  Later on, we can
-L<execute|/execute()> the statement by binding
-it to an instance of _class> :
-
-   my $obj          = $source_stmt->fetch(...);
-   my $related_rows = $join_stmt->execute($obj)->all;
-
 
 =head2 Utility methods
 
@@ -2440,7 +2486,7 @@ calling C<Statement::delete()>.
 =head2 Table::join()
 
 
-Calls L</"Statement::join()"> to create a statement, and immediately
+Calls L</"ConnectedSource::join()"> to create a statement, and immediately
 binds it to the current object. 
 So for example if C<< $emp->{emp_id} == 987 >>, then
 

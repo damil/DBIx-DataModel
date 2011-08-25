@@ -81,11 +81,18 @@ DBIx::DataModel::Meta::Utils->define_readonly_accessors(
   __PACKAGE__, qw/meta_source schema status/,
 );
 
+=begin MOVED_TO_CONNECTED_SOURCE
+
 # additional accessor; here, 'metadm' is a synonym for 'meta_source'
 sub metadm { 
   my $self = shift;
   return $self->{meta_source};
 }
+
+
+=end MOVED_TO_CONNECTED_SOURCE
+
+=cut
 
 
 

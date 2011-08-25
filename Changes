@@ -1,5 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.99_06 21.08.2011
+  - refactoring : new class ConnectedSource, not to confuse with Statements
 
 v1.99_05 14.08.2011
 

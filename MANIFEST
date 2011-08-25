@@ -3,6 +3,7 @@ Changes
 lib/DBIx/DataModel.pm
 lib/DBIx/DataModel/Compatibility/V0.pm
 lib/DBIx/DataModel/Compatibility/V1.pm
+lib/DBIx/DataModel/ConnectedSource.pm
 lib/DBIx/DataModel/Doc/Cookbook.pod
 lib/DBIx/DataModel/Doc/Delta_1.0.pod
 lib/DBIx/DataModel/Doc/Delta_2.0.pod

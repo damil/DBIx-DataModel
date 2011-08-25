@@ -109,36 +109,6 @@ sub apply_column_handler {
 sub join {
   my ($self, $first_role, @other_roles) = @_;
 
-=begin MOVED_TO_STATEMENT
-
-  # find first join information
-  my $class = ref $self || $self;
-  my $path  = $self->metadm->path($first_role)
-    or croak "could not find role $first_role in $class";
-
-  # build search criteria on %$self from first join information
-  my (%criteria, @left_cols);
-  my $prefix;
-  while (my ($left_col, $right_col) = each %{$path->{on}}) {
-    $prefix ||= $self->schema->placeholder_prefix;
-    $criteria{$right_col} = "$prefix$left_col";
-    push @left_cols, $left_col;
-  }
-
-  # choose source (just a table or build a join) and then build a statement
-  my $schema      = $self->schema;
-  my $meta_schema = $schema->metadm;
-  my $source = @other_roles  ? $meta_schema->define_join($path->{to}{name},
-                                                         @other_roles)
-                             : $path->{to};
-  my $statement = $meta_schema->statement_class->new($source, $schema);
-  $statement->refine(-where => \%criteria);
-
-=end MOVED_TO_STATEMENT
-
-=cut
-
-
   my $metadm      = $self->metadm;
   my $meta_schema = $metadm->schema;
   my $schema      = $self->schema;

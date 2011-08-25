@@ -4,6 +4,7 @@ use warnings;
 no strict   'refs';
 no warnings 'once';
 
+require DBIx::DataModel::ConnectedSource;
 require DBIx::DataModel::Meta;
 require DBIx::DataModel::Meta::Utils;
 require DBIx::DataModel::Meta::Schema;
@@ -105,6 +106,18 @@ my $orig_Schema = \&Schema;
   return $schema_class;
 };
 
+
+
+#----------------------------------------------------------------------
+package DBIx::DataModel::ConnectedSource;
+#----------------------------------------------------------------------
+use strict;
+use warnings;
+
+sub ColumnType {
+  my ($self, $typeName, @args) = @_;
+  $self->{meta_source}->define_column_type($typeName, @args);
+}
 
 
 #----------------------------------------------------------------------
@@ -428,14 +441,6 @@ my $orig_refine = \&refine;
 *{nextPage}       = \&next_page;
 *{pageBoundaries} = \&page_boundaries;
 *{pageRows}       = \&page_rows;
-
-sub ColumnType {
-  my ($self, $typeName, @args) = @_;
-  $self->{meta_source}->define_column_type($typeName, @args);
-}
-
-
-
 
 #----------------------------------------------------------------------
 package DBIx::DataModel::Statement::JDBC;
