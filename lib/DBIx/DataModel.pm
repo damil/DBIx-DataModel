@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use DBIx::DataModel::Schema;
 
-our $VERSION = '1.29';
+our $VERSION = '1.30';
 
 sub Schema {
   my $class = shift;
@@ -524,11 +524,11 @@ you do some very special things with C<@INC>.
 Bugs should be reported via the CPAN bug tracker at
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=DBIx-DataModel>.
 
-There is a discussion group at 
+There is a discussion group at
 L<http://groups.google.com/group/dbix-datamodel>.
 
-Sources are stored in an open repository at 
-L<http://svn.ali.as/cpan/trunk/DBIx-DataModel>.
+Sources are stored in an open repository at
+L<https://github.com/damil/DBIx-DataModel/branches/v1>.
 
 =head1 AUTHOR
 

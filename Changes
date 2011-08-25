@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v1.30 25.08.2011
+  - fixed bugs in Statement::JDBC because of lazy sth creation
+
 v1.29 25.07.2011
   - fixed limit/offset in Statement::JDBC (old bug never discovered!)
 
