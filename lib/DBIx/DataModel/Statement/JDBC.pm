@@ -1,6 +1,10 @@
 #----------------------------------------------------------------------
 package DBIx::DataModel::Statement::JDBC;
 #----------------------------------------------------------------------
+use strict;
+use warnings;
+no strict 'refs';
+
 use base qw/DBIx::DataModel::Statement/;
 use DBI  qw/SQL_INTEGER/;
 
@@ -12,6 +16,7 @@ foreach my $method (qw/size           getRow
                        isBeforeFirst  isAfterLast/) {
   *{$method} = sub {
     my ($self) = @_;
+    $self->execute() if !$self->{sth};
     $self->{sth}->jdbc_func("ResultSet.$method");
   };
 }
@@ -20,6 +25,7 @@ foreach my $method (qw/size           getRow
 foreach my $method (qw/relative absolute/) {
   *{$method} = sub {
     my ($self, $int_arg) = @_;
+    $self->execute() if !$self->{sth};
     $self->{sth}->jdbc_func([$int_arg => SQL_INTEGER], "ResultSet.$method");
   };
 }
@@ -29,6 +35,7 @@ foreach my $method (qw/relative absolute/) {
 foreach my $method (qw/setMaxRows setQueryTimeout/) {
   *{$method} = sub {
     my ($self, $int_arg) = @_;
+    $self->prepare() if !$self->{sth};
     $self->{sth}->jdbc_func([$int_arg => SQL_INTEGER], "Statement.$method");
   };
 }
