@@ -13,6 +13,8 @@ use Module::Load     qw/load/;
 use namespace::autoclean;
 
 use DBIx::DataModel;
+use DBIx::DataModel::Meta::Utils;
+
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 
@@ -250,7 +252,7 @@ sub delete {
   my $self = shift;
 
   # parse arguments
-  @_ or croak "select() : not enough arguments";
+  @_ or croak "delete() : not enough arguments";
   my $is_positional_args = ref $_[0] || $_[0] !~ /^-/;
   my %args;
   my $to_delete = {};

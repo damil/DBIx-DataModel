@@ -59,7 +59,9 @@ foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
     my $metadm      = $class->metadm;
     my $meta_schema = $metadm->schema;
     my $schema      = $meta_schema->class->singleton;
-    my $statement   = $meta_schema->statement_class->new($metadm, $schema);
+    my $stmt_class  = $meta_schema->statement_class;
+    load $stmt_class;
+    my $statement   = $stmt_class->new($metadm, $schema);
 
     return $statement->$method(@_);
   };

@@ -20,6 +20,7 @@ our $COMPATIBILITY = 1.0;
 our @CARP_NOT = qw[
   DBIx::DataModel::Compatibility::V0
   DBIx::DataModel::Compatibility::V1
+  DBIx::DataModel::ConnectedSource
   DBIx::DataModel::Meta
   DBIx::DataModel::Meta::Association
   DBIx::DataModel::Meta::Path
@@ -27,13 +28,12 @@ our @CARP_NOT = qw[
   DBIx::DataModel::Meta::Source
   DBIx::DataModel::Meta::Source::Join
   DBIx::DataModel::Meta::Source::Table
-  DBIx::DataModel::Meta::Source::View
   DBIx::DataModel::Meta::Type
   DBIx::DataModel::Schema
   DBIx::DataModel::Schema::Generator
   DBIx::DataModel::Source
   DBIx::DataModel::Source::Table
-  DBIx::DataModel::Source::View
+  DBIx::DataModel::Source::Join
   DBIx::DataModel::Statement
   DBIx::DataModel::Statement::JDBC
   SQL::Abstract
@@ -44,9 +44,7 @@ our @CARP_NOT = qw[
 sub define_schema {
   my ($class, %params) = @_;
 
-#  require DBIx::DataModel::Meta::Schema; # TODO : find out why "require" generates a warning
-  use DBIx::DataModel::Meta::Schema;
-
+  require DBIx::DataModel::Meta::Schema;
   my $meta_schema = DBIx::DataModel::Meta::Schema->new(%params);
   return $meta_schema;
 }
@@ -56,7 +54,6 @@ sub Schema { # syntactic sugar for ->define_schema()
   my $meta_schema = $class->define_schema(class => $schema_class_name, %params);
   return $meta_schema->class;
 }
-
 
 
 sub import {
@@ -97,7 +94,7 @@ explicitly required through
   use DBIx::DataModel -compatibility => 1.0;
 
 Update of the documentation for version 2 is still under way;
-B<many parts of the current doc are still inaccurate or obsolete>.
+B<parts of the current doc are still inaccurate or obsolete>.
 
 
 =head1 SYNOPSIS
@@ -112,7 +109,7 @@ Load C<DBIx::DataModel>, without any backwards compatibility.
 
 Declare the schema, either in shorthand notation :
 
-  DBIx::DataModel->Schema('MySchema');
+  DBIx::DataModel->Schema('My::Schema');
 
 or in verbose form : 
 
@@ -288,8 +285,9 @@ just add a new method into the table class :
 
   package My::Schema::Activity; 
   
-  sub activePeriod {
+  sub active_period {
     my $self = shift;
+    $self->{d_begin} or croak "activity has no d_begin";
     $self->{d_end} ? "from $self->{d_begin} to $self->{d_end}"
                    : "since $self->{d_begin}";
   }
@@ -317,23 +315,25 @@ See L<DBIx::DataModel::Schema::Generator>.
   use My::Schema;
   use DBI;
   my $dbh = DBI->connect($dsn, ...);
-  My::Schema->dbh($dbh);
+  My::Schema->dbh($dbh);                     # single-schema mode
+  # or
+  my $schema = My::Schema->new(dbh => $dbh); # multi-schema mode
 
 =head3 Simple data retrieval
 
 Search employees whose name starts with 'D'
 (select API is taken from L<SQL::Abstract>)
 
-  my $empl_D = My::Schema::Employee->select(
+  my $empl_D = My::Schema->table('Employee')->select(
     -where => {lastname => {-like => 'D%'}}
   );
 
 idem, but we just want a subset of the columns, and order by age.
 
-  my $empl_F = My::Schema::Employee->select(
-    -columns => [qw/firstname lastname d_birth/],
-    -where   => {lastname => {-like => 'F%'}},
-    -orderBy => 'd_birth'
+  my $empl_F = My::Schema->table('Employee')->select(
+    -columns  => [qw/firstname lastname d_birth/],
+    -where    => {lastname => {-like => 'F%'}},
+    -order_by => 'd_birth'
   );
 
 Print some info from employees. Because of the
@@ -356,10 +356,11 @@ Follow the joins through role methods
 
 Role methods can take arguments too, like C<select()>
 
-  my $recentAct  
+  my $recent_activities
     = $dpt->activities(-where => {d_begin => {'>=' => '2005-01-01'}});
-  my @recentEmpl 
-    = map {$_->employee(-columns => [qw/firstname lastname/])} @$recentAct;
+  my @recent_employees
+    = map {$_->employee(-columns => [qw/firstname lastname/])}
+          @$recent_activities;
 
 =head3 Data export : just regular hashrefs
 
@@ -401,9 +402,9 @@ L<statement|DBIx::DataModel::Statement> :
 
   my $statement 
     = My::Schema->join(qw/Employee activities department/)
-              ->select(-columns  => [qw/lastname dept_name d_begin/],
-                       -where    => {d_begin => {'>=' => '2000-01-01'}},
-                       -resultAs => 'statement');
+                ->select(-columns   => [qw/lastname dept_name d_begin/],
+                         -where     => {d_begin => {'>=' => '2000-01-01'}},
+                         -result_as => 'statement');
 
 Retrieve a single row from the statement
 
@@ -417,15 +418,15 @@ Go to a specific page and retrieve the corresponding rows
 
   my $statement 
     = My::Schema->join(qw/Employee activities department/)
-              ->select(-columns  => [qw/lastname dept_name d_begin/],
-                       -resultAs => 'statement',
-                       -pageSize => 10);
+                ->select(-columns   => [qw/lastname dept_name d_begin/],
+                         -result_as => 'statement',
+                         -page_size => 10);
   
-  $statement->gotoPage(3);    # absolute page positioning
-  $statement->shiftPages(-2); # relative page positioning
-  my ($first, $last) = $statement->pageBoundaries;
+  $statement->goto_page(3);    # absolute page positioning
+  $statement->shift_pages(-2); # relative page positioning
+  my ($first, $last) = $statement->page_boundaries;
   print "displaying rows $first to $last:";
-  some_print_row_method($_) foreach @{$statement->pageRows};
+  some_print_row_method($_) foreach @{$statement->page_rows};
 
 
 =head3 Efficient use of statements 
@@ -433,10 +434,10 @@ Go to a specific page and retrieve the corresponding rows
 For fetching related rows : prepare a statement before the loop, execute it
 at each iteration.
 
-  my $statement = My::Table->join(qw/role1 role2/);
+  my $statement = $schema->table($name)->join(qw/role1 role2/);
   $statement->prepare(-columns => ...,
                       -where   => ...);
-  my $list = My::Table->select(...);
+  my $list = $schema->table($name)->select(...);
   foreach my $obj (@$list) {
     my $related_rows = $statement->execute($obj)->all;
     # or
@@ -449,7 +450,7 @@ memory location (avoids the overhead of allocating a hashref
 for each row). Faster, but such rows cannot be accumulated
 into an array (they must be used immediately) :
 
-  my $fast_stmt = ..->select(..., -resultAs => "fast_statement");
+  my $fast_stmt = ..->select(..., -result_as => "fast_statement");
   while (my $row = $fast_stmt->next) {
     do_something_immediately_with($row);
   }

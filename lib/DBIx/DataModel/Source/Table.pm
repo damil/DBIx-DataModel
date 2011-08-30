@@ -196,7 +196,7 @@ sub insert {
 
 # update() and delete(): differentiate between usage as
 # $obj->update(), or $class->update(@args). In both cases, we then
-# delegate to the Statement class
+# delegate to the ConnectedSource class
 
 foreach my $method (qw/update delete/) {
   no strict 'refs';

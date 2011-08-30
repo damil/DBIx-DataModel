@@ -4,17 +4,17 @@ use warnings;
 no strict   'refs';
 no warnings 'once';
 
-require DBIx::DataModel::ConnectedSource;
-require DBIx::DataModel::Meta;
-require DBIx::DataModel::Meta::Utils;
-require DBIx::DataModel::Meta::Schema;
-require DBIx::DataModel::Meta::Source;
-require DBIx::DataModel::Schema;
-require DBIx::DataModel::Source;
-require DBIx::DataModel::Source::Table;
-require DBIx::DataModel::Statement;
-require DBIx::DataModel::Statement::JDBC;
-require SQL::Abstract::More;
+use DBIx::DataModel::ConnectedSource;
+use DBIx::DataModel::Meta;
+use DBIx::DataModel::Meta::Schema;
+use DBIx::DataModel::Meta::Source;
+use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Schema;
+use DBIx::DataModel::Source;
+use DBIx::DataModel::Source::Table;
+use DBIx::DataModel::Statement;
+use DBIx::DataModel::Statement::JDBC;
+use SQL::Abstract::More;
 
 my $tmp; # used for various renaming loops
 
@@ -45,20 +45,18 @@ my $orig_Schema = \&Schema;
   # convert args received as camelCase
   DBIx::DataModel::Compatibility::V1::_rename_camelCase_keys(\%args);
 
-  # extract args that should go to Source::Schema and not Meta::Source::Schema
+  # extract args that should go to DBIDM::Schema and not DBIDM::Meta::Schema
   my %singleton_args;
   foreach my $key (qw/dbh debug  dbi_prepare_method
                       sql_abstract sql_dialect/) {
     $tmp = delete $args{$key} and $singleton_args{$key} = $tmp;
   }
 
-
-  # now view_parent is just like table_parent
+  # view_parent is now join_parent (not 100% correct, but the best we can do)
   if (my $vp = delete $args{view_parent}) {
-    $vp = [$vp] unless ref $vp;
-    $args{table_parent} ||= [];
-    $args{table_parent} = [$args{table_parent}] unless ref $args{table_parent};
-    push @{$args{table_parent}}, @$vp;
+    $args{join_parent} ||= [];
+    $args{join_parent} = [$args{join_parent}] unless ref $args{join_parent};
+    push @{$args{join_parent}}, @$vp;
   }
 
   # create the Meta::Schema
@@ -269,9 +267,6 @@ sub createStatement {
   return $class->select(@_, -resultAs => 'statement');
 }
 
-
-
-
 sub selectImplicitlyFor {
   my $self = shift;
 
@@ -280,7 +275,6 @@ sub selectImplicitlyFor {
      . "identical";
   $self->metadm->schema->class->select_implicitly_for(@_);
 }
-
 
 sub _autoloader {
   my $self = shift;
@@ -456,7 +450,7 @@ use Carp;
 # simulate previous classes, now moved into the Source:: namespace, so that
 # they can be inherited from
 #----------------------------------------------------------------------
-package DBIx::DataModel::Table; 
+package DBIx::DataModel::Table;
 #----------------------------------------------------------------------
 $INC{"DBIx/DataModel/Table.pm"} = 1;
 our @ISA = qw/DBIx::DataModel::Source::Table/;

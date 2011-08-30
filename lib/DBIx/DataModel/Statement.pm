@@ -466,7 +466,7 @@ sub select {
       };
 
     # CASE rows : all data rows (this is the default)
-    /^(rows|arrayref)$/i       and return $self->all;
+    /^(rows|arrayref)$/i  and return $self->all;
 
     # CASE firstrow : just the first row
     /^firstrow$/i   and return $self->next;
