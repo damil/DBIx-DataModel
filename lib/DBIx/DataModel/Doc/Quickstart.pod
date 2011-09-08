@@ -293,11 +293,13 @@ connection :
 
 Now we can start populating the database:
 
-  my ($bach_id, $berlioz_id, $monteverdi_id) = 
-    HR->table('Employee')->insert([qw/ firstname    lastname   /],
-                                  [qw/ Johann       Bach       /],
-                                  [qw/ Hector       Berlioz    /],
-                                  [qw/ Claudio      Monteverdi /]);
+  my ($bach_id, $berlioz_id, $monteverdi_id)
+    = HR->table('Employee')->insert(
+        [qw/ firstname    lastname   /],
+        [qw/ Johann       Bach       /],
+        [qw/ Hector       Berlioz    /],
+        [qw/ Claudio      Monteverdi /],
+    );
 
 This form of C<insert()>, supplying a list of arrayrefs with column names
 in the first arrayref, is convenient for inserting a bunch of rows at

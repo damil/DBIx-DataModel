@@ -1237,7 +1237,9 @@ following methods can be called on the schema class :
 =back
 
 
-=head1 CONNECTED_SOURCE METHODS
+=head1 CONNECTED SOURCES
+
+=head2 Principle
 
 A I<connected source> is basically just a pair of references to 
 a C<$meta_source> and to a C<$schema>. Such objects are created explicitly
@@ -1268,14 +1270,20 @@ C<<$schema->table($table_name) >> is a connected source and not a table!
 
 
 
-
 =head2 Data retrieval
 
-=head3 select()
+=head3 ConnectedSource::select()
 
-=head3 fetch()
+Proxy method to L</"Statement::select()">
 
-=head3 fetch_cached()
+=head3 ConnectedSource::fetch()
+
+
+=head3 ConnectedSource::fetch_cached()
+
+
+
+
 
 =head3 ConnectedSource::join()
 
