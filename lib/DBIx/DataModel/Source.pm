@@ -48,7 +48,7 @@ sub primary_key {
 
 
 # several class methods, only available if in single-schema mode;
-# such methods are delegated to the Statement class.
+# such methods are delegated to the ConnectedSource class.
 foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
   no strict 'refs';
   *{$method} = sub {
@@ -59,11 +59,10 @@ foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
     my $metadm      = $class->metadm;
     my $meta_schema = $metadm->schema;
     my $schema      = $meta_schema->class->singleton;
-    my $stmt_class  = $meta_schema->statement_class;
-    load $stmt_class;
-    my $statement   = $stmt_class->new($metadm, $schema);
-
-    return $statement->$method(@_);
+    my $cs_class    = $meta_schema->connected_source_class;
+    load $cs_class;
+    my $cs          = $cs_class->new($metadm, $schema);
+    return $cs->$method(@_);
   };
 }
 

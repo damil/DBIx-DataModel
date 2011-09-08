@@ -7,9 +7,11 @@ use warnings;
 use strict;
 use Carp;
 use Params::Validate qw/validate ARRAYREF HASHREF/;
-use Scalar::Util     qw/reftype/;
+use Scalar::Util     qw/reftype refaddr/;
 use Acme::Damn       qw/damn/;
 use Module::Load     qw/load/;
+use Storable         qw/freeze/;
+
 use namespace::autoclean;
 
 use DBIx::DataModel;
@@ -37,7 +39,7 @@ sub metadm {
 }
 
 # several methods are delegated to the Statement class.
-foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
+foreach my $method (qw/select bless_from_DB/) {
   no strict 'refs';
   *{$method} = sub {
     my $self = shift;
@@ -48,6 +50,32 @@ foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
     return $statement->$method(@_);
   };
 }
+
+
+
+sub fetch {
+  my $self = shift;
+  my %select_args;
+
+  # if last argument is a hashref, it contains arguments to the select() call
+  no warnings 'uninitialized';
+  if (reftype $_[-1] eq 'HASH') {
+    %select_args = %{pop @_};
+  }
+
+  return $self->select(-fetch => \@_, %select_args);
+}
+
+
+sub fetch_cached {
+  my $self = shift;
+  my $dbh_addr    = refaddr $self->schema->dbh;
+  my $freeze_args = freeze \@_;
+  return $self->{meta_source}{fetch_cached}{$dbh_addr}{$freeze_args}
+           ||= $self->fetch(@_);
+}
+
+
 
 
 
@@ -96,8 +124,11 @@ sub insert {
 
   my $source_class = $self->{meta_source}->class;
   while (my $record = shift @records) {
-    # shallow copy in order not to perturb the caller
-    $record = {%$record} unless $got_records_as_arrayrefs;
+
+    # TODO: shallow copy in order not to perturb the caller
+    # BUT : if the insert injects a primary key, we want to retrieve it !
+    # SO => contradiction
+    # $record = {%$record} unless $got_records_as_arrayrefs;
 
     # bless, apply column handers and remove unwanted cols
     bless $record, $source_class;
@@ -232,7 +263,8 @@ sub update {
   my $schema = $self->{schema};
   my @sqla_args = ($meta_source->db_from, $to_set, $where);
   my ($sql, @bind) = $schema->sql_abstract->update(@sqla_args);
-  $schema->_debug($sql . " / " . CORE::join(", ", @bind) );
+  $schema->_debug(do {no warnings 'uninitialized'; 
+                      $sql . " / " . CORE::join(", ", @bind);});
   my $method = $schema->dbi_prepare_method;
   my $sth    = $schema->dbh->$method($sql);
   $sth->execute(@bind);
@@ -369,5 +401,20 @@ sub _maybe_inject_primary_key {
 
 
 1;
+
+
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::ConnectedSource - metasource and schema paired together
+
+=head1 DESCRIPTION
+
+A I<connected source> is a pair of a C<$schema> and C<$meta_source>.
+The meta_source holds information about the data structure, and the schema
+holds a connection to the database.
+
+=cut
 
 
