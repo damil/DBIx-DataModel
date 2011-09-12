@@ -1,6 +1,6 @@
 =head1 NAME
 
-DBIx::DataModel::Doc::Delta_2.0 - Differences introduced in version 2.0
+DBIx::DataModel::Doc::Delta_v2 - Differences introduced in version 2.0
 
 =head1 DESCRIPTION
 
@@ -8,7 +8,7 @@ The architecture and Application Programming Interface (API)
 of C<DBIx::DataModel> were deeply
 refactored in version 2.0. This document enumerates the main 
 differences introduced in that version.
-For older changes, see also L<DBIx::DataModel::Doc::Delta_1.0>.
+For older changes, see also L<DBIx::DataModel::Doc::Delta_v1>.
 
 =head1 NEW META LAYER
 
@@ -28,8 +28,8 @@ of C<DBIx::DataModel>, and is also the most economical way to work with the
 database. 
 
 Even in single-schema mode, it is possible to switch between several 
-C<$dbh>, through the L<DBIx::DataModel::Schema/localize_state> 
-and L<DBIx::DataModel::Schema/do_transaction methods>. However, 
+C<$dbh>, through methods L<DBIx::DataModel::Schema/localize_state> 
+and L<DBIx::DataModel::Schema/do_transaction>. However, 
 there is of course only one connected C<$dbh> at any point in time.
 
 If the application needs to communicate with several C<$dbh> at the same
@@ -79,9 +79,9 @@ moved to a separate distribution called L<SQL::Abstract::More>.
 Arguments to methods are now systematically checked
 through L<Params::Validate>.
 This is in accordance with the principle of "defensive programming", 
-an helps to discover errors sooner.
+and helps to discover errors sooner.
 
-=head2 Extented usage for C<update()> and C<delete()>
+=head2 Extended usage for C<update()> and C<delete()>
 
 It is now possible to perform bulk updates or deletes, just like in 
 straigt SQL :
@@ -100,7 +100,7 @@ between the Perl table classes.
 
 =head2 Reorganization of data sources
 
-The former C<DBIx::DataModel::View> class is deprecated; it is now
+The former class C<DBIx::DataModel::View> is deprecated; it is now
 treated exactly like a C<Table>.
 
 A new L<DBIx::DataModel::Source::Join> class has been introduced 

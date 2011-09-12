@@ -79,12 +79,10 @@ DBIx::DataModel - UML-based Object-Relational Mapping (ORM) framework
 
 =head1 VERSION
 
-This is a B<development release>, in preparation for version 2.0.
-
 Version 2 of C<DBIx::DataModel> is a major refactoring from versions
 1.*, with a number of incompatible changes in the API (classes
 renamed, arguments renamed or reorganized, etc. -- see
-L<DBIx::DataModel::Doc::Delta_2.0>). For the moment, 
+L<DBIx::DataModel::Doc::Delta_v2>). For the moment, 
 a compatibility layer is automatically loaded, so that applications
 written for prior versions will continue to work
 (see L<DBIx::DataModel::Compatibility::V1>). Some time in the
@@ -92,10 +90,6 @@ future, the compatibility layer will be deprecated, and will need to be
 explicitly required through
 
   use DBIx::DataModel -compatibility => 1.0;
-
-Update of the documentation for version 2 is still under way;
-B<parts of the current doc are still inaccurate or obsolete>.
-
 
 =head1 SYNOPSIS
 
@@ -620,8 +614,8 @@ supported either.
 
 Major version 2.0 and 1.0 introduced some incompatible
 changes in the architecture 
-(see L<DBIx::DataModel::Doc::Delta_2.0>
- and L<DBIx::DataModel::Doc::Delta_1.0>).
+(see L<DBIx::DataModel::Doc::Delta_v2>
+ and L<DBIx::DataModel::Doc::Delta_v1>).
 
 Compatibility layers can be loaded on demand by supplying
 the desired version number upon loading C<DBIx::DataModel> :
@@ -685,8 +679,8 @@ implement these terms.
 
 =item *
 
-The L<DELTA_2.0|DBIx::DataModel::Doc::Delta_2.0>
-and L<DELTA_1.0|DBIx::DataModel::Doc::Delta_1.0> chapters
+The L<DELTA_v2|DBIx::DataModel::Doc::Delta_v2>
+and L<DELTA_v1|DBIx::DataModel::Doc::Delta_v1> chapters
 summarize the differences with previous versions.
 
 
@@ -726,8 +720,10 @@ L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=DBIx-DataModel>.
 There is a discussion group at 
 L<http://groups.google.com/group/dbix-datamodel>.
 
-Sources are stored in an open repository at 
-L<http://svn.ali.as/cpan/trunk/DBIx-DataModel>.
+Sources are stored in an open repository at
+L<http://github.com/damil/DBIx-DataModel>.
+
+
 
 =head1 AUTHOR
 
