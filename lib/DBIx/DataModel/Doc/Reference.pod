@@ -43,7 +43,7 @@ L<GLOSSARY|DBIx::DataModel::Doc::Glossary>
 B<WARNING> : Since version 2.0, a number of important changes
 have been made in the API
 (classes renamed, arguments renamed or reorganized, etc. -- see
-L<DBIx::DataModel::Doc::Delta_2.0>). 
+L<DBIx::DataModel::Doc::Delta_v2>). 
 If you need backwards compatibility, make sure to load the 
 L<1.0 compatibility layer|DBIx::DataModel::Compatibility::V1>.
 
@@ -235,7 +235,7 @@ I<structure of a meta-schema> : defining tables, associations, types,
 navigation methods, etc. Such objects are defined statically and will
 not change during program execution.
 
-By contrast, the L</"SCHEMA METHODS">
+By contrast, the L</"SCHEMAS">
 chapter below deals with properties specific to each schema instance,
 such as database connection, debugging properties, etc.
 
@@ -908,7 +908,7 @@ L<join()|/"Schema::join()"> method.
 
 
 
-=head1 SCHEMA METHODS
+=head1 SCHEMAS
 
 A C<$schema> is an I<instance> of a I<subclass> of 
 L<DBIx::DataModel::Schema>. The subclass holds a reference
@@ -1237,13 +1237,18 @@ following methods can be called on the schema class :
 =back
 
 
-=head1 CONNECTED_SOURCE METHODS
+=head1 CONNECTED SOURCES
 
-A I<connected source> is basically just a pair of references to 
-a C<$meta_source> and to a C<$schema>. Such objects are created explicitly
-through methods L</Schema::table()>  or L</Schema::join()>; they are also
-created implicitly when, in single-schema mode, class methods are called on
-table subclasses.
+=head2 Principle
+
+A I<connected source> is basically just a pair of references to a
+C<$meta_source> and to a C<$schema>. Such objects are created
+explicitly through methods L</Schema::table()> or L</Schema::join()>;
+they are also created implicitly when, in single-schema mode, class
+methods are called on table classes. The constructor is not documented
+because client code is not expected to call it directly; instead,
+client code should use the C<Schema> methods just mentioned.
+
 
 =head2 Accessors
 
@@ -1257,7 +1262,7 @@ Accessor for the connected source's meta-source.
 
 =head3 metadm()
 
-Also returns the meta-source.
+Synonym for C<source()>.
 This is for convenience, because in something like
 
   my $meta_table = $schema->table($table_name)->metadm;
@@ -1267,90 +1272,87 @@ C<$table_name>, forgetting the fact that the subexpression
 C<<$schema->table($table_name) >> is a connected source and not a table!
 
 
-
-
 =head2 Data retrieval
 
-=head3 select()
+=head3 ConnectedSource::select()
+
+Proxy method to L<Statement::select()|/"select()">
 
 =head3 fetch()
 
+  my $record = $connected_source->fetch(@key_values, \%options);
+
+Fetches a single record, from its primary key value
+(on one or several columns). This method is just syntactic sugar for 
+
+  my $record = $connected_source->select(-fetch => \@key_values, %options);
+
+(see below). C<%options> may specify arguments to L</select()>, 
+like C<-for>, C<-pre_exec>, C<-post_exec>, etc. 
+
+
 =head3 fetch_cached()
+
+  my $record = $connected_source->fetch_cached(@key_values, \%options);
+
+Like C<fetch>, except that the result is stored in a cache,
+and further calls to the same methods with the same
+parameters will return the cached record instead of going
+back to the database. The cache does not know about any updates 
+to the database, so this is mainly useful for readonly data.
+
+The cache is stored internally in
+C<< $meta_source->{fetch_cached}{$dbh_addr}{$freeze_args} >>
+(where C<$dbh_addr> is C<< Scalar::Util::refaddr(MyTable->dbh) >>
+and C<$freeze_args> is C<< Storable::freeze(@keyValues, \%options) >>).
+If needed, client code may use this information to clear the cache or tie 
+it to a more sophisticated caching module.
+
 
 =head3 ConnectedSource::join()
 
+  my $join_stmt = $connected_source->join(qw/path1 path2 .../);
+  $join_stmt->prepare();
 
-  my $join_stmt = $source_stmt->join(qw/path1 path2 .../)->prepare;
+Returns a statement that will select a collection of data rows from
+tables associated with the current meta-source, performing the
+appropriate joins.  Internally this is implemented throught the
+C</define_join()> method, with an additional C<-where> criteria to
+constrain on the primary key(s) of the meta-source.  That statement
+cannot be executed yet, because the values of the primary key are not
+known until we have an row of that source; but the statement can
+already be L<prepare|/prepare()>d.  Later on, we can
+L<execute|/execute()> the statement by binding it to an instance of
+the C<$connected_source> :
 
-Starting from a given statement, returns a reference to another
-statement that will select a collection of data rows from tables
-associated to the current meta-source, performing the appropriate
-joins.  Internally this is implemented throught the C</define_join()>
-method, with an additional C<-where> criteria to constrain on the
-primary key(s) of the meta-source.  That statement cannot be executed
-yet, because the values of the primary key are not known until we have
-an row of that source; but the statement can already be
-L<prepare|/prepare()>d.  Later on, we can
-L<execute|/execute()> the statement by binding
-it to an instance of _class> :
-
-   my $obj          = $source_stmt->fetch(...);
+   my $obj          = $connected_source->fetch(...);
    my $related_rows = $join_stmt->execute($obj)->all;
 
+This is especially useful for loop efficiency :
+
+  my $join_stmt = $connected_source->join(qw/path1 path2 .../);
+  $join_stmt->prepare();
+  my $list = $connected_source->select(...);
+  foreach my $row (@$list) {
+    my $related_rows = $join_stmt->execute($row)->all;
+    # ... work with $related_rows
+  } 
 
 =head2 Data manipulation
 
 =head3 insert()
 
-=head3 update()
-
-=head3 delete()
-
-
-
-=head2 Utility methods
-
-=head3 bless_from_DB()
-
-
-
-
-
-
-
-=head1 STATEMENT METHODS
-
-A I<statement> object encapsulates a request to the database.  It
-starts by assembling various pieces of information : the datasource to
-query, the database connection, the various clauses for generating the
-SQL request.  Once everything is ready, the database request is
-issued, and the results are collected. These steps may occur either
-all at once (which is the most frequent case), or through several
-calls to intermediate methods; see for example the methods
-L</refine()>, L</prepare()>, L</execute()> below.
-
-By default, statements are created as instances of 
-L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>; 
-but the schema may define another L</statement_class()> 
-for application-specific purposes : for instance the
-L<DBIx::DataModel::Statement::JDBC|DBIx::DataModel::Statement::JDBC>
-subclass in this distribution adds some methods specific to
-L<DBD::JDBC|DBD::JDBC> data sources, allowing to call
-JDBC methods C<getMemberCount()>, C<absolute()>, C<relative()>, etc.
-
-
-
-=head2 Data manipulation
-
-=head3 insert()
-
-  my @ids = $statement->insert({col1 => $val1, col2 => $val2, ...}, 
-                               {...},
-                               %options);
+  my @ids = $connected_source->insert(
+    {col1 => $val1, col2 => $val2, ...}, 
+    {...},
+    %options,
+  );
   # or
-  my @ids = $statement->insert([qw/ col1   col2   .../],
-                               [    $val1, $val2, ... ],
-                               ...);
+  my @ids = $connected_source->insert(
+    [qw/ col1   col2   .../],
+    [    $val1, $val2, ... ],
+    ...
+  );
 
 Inserts a collection of rows into the database, given
 either as a list of hashrefs, or as a first arrayref containing
@@ -1359,9 +1361,7 @@ values for each row to be inserted.
 
 In either form, the method applies the C<to_DB> handlers, removes the
 C<no_update> columns, and then inserts the new records into the
-database.  Because of the handlers, this operation I<may modify the
-argument data>, so it is not safe to access C<$val1>, C<$val2>,
-etc. after the call.
+database. 
 
 Primary key column(s) should of course be present 
 in the supplied hashrefs, unless the the key is auto-generated
@@ -1369,7 +1369,7 @@ by the database (see below).
 
 Each hashref will be blessed into the C<$table> class, and
 will be inserted through the internal 
-L<_singleInsert()|/"_singleInsert"> method.
+L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert"> method.
 The default implementation of this method should be good enough
 for most common uses, but you may want to refine it in your
 table classes if you need some fancy handling on primary keys
@@ -1389,7 +1389,7 @@ callback function, which gets called as
 
 =item *
 
-if options called C<catalog> and/or C<schema> are found,
+if dbh options called C<catalog> and/or C<schema> are found,
 C<DBIx::DataModel> will call 
 
   $dbh->last_insert_id($dbh_options{catalog}, $dbh_options{schema},
@@ -1402,6 +1402,8 @@ otherwise, C<DBIx::DataModel> will call
   $dbh->last_insert_id(undef, undef, undef, undef)
 
 =back
+
+=head4 Cascaded insert
 
 If the table is a composite class (see L<Composition()|/"Composition">
 above), then the component parts may be supplied within the hashref,
@@ -1416,6 +1418,7 @@ in (cascaded insert).  For example :
         			         d_end    => '18.07.1750',
 	        		         dpt_code => 'CPT'}]});
 
+=head4 Insert options
 
 The C<insert()> call may take a list of B<%options> 
 specified at the I<end> of the argument list (notice they are
@@ -1455,22 +1458,21 @@ inserts. For example:
 =item *
 
 if the C<-returning> option is absent, values returned by calls to
-L<_singleInsert()|/"_singleInsert"> are collected into a flattened
+L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert">
+are collected into a flattened
 array, and then returned by C<insert()>; usually, these are the
 primary keys of the inserted records.  If this array contains several
-values and C<insert()> was called from a scalar context, a warning is
+values, and C<insert()> was called from a scalar context, a warning is
 issued.
 
 =back
 
-
-
 =head3 update()
 
-  $statement->update(-set   => {col1 => $val1, ...},
-                     -where => \%condition);
-  $statement->update({col1 => $val1, ...});
-  $statement->update(@primary_key, {col1 => $val1, ...});
+  $connected_source->update(-set   => {col1 => $val1, ...},
+                            -where => \%condition);
+  $connected_source->update({col1 => $val1, ...});
+  $connected_source->update(@primary_key, {col1 => $val1, ...});
 
 Generates a request to the database to update one or several
 records. The API for this method accepts several syntaxes :
@@ -1506,10 +1508,10 @@ because you don't need to repeat the name of primary key columns). So
 if C<emp_id> is the primary key of table C<Employee>, then the
 following are equivalent :
 
-  HR->table('Employee'>->update({emp_id  => $eid, 
+  HR->table('Employee')->update({emp_id  => $eid, 
                                  address => $new_addr, 
                                  phone   => $new_phone});
-  HR->table('Employee'>->update($eid => {address => $new_addr, 
+  HR->table('Employee')->update($eid => {address => $new_addr, 
                                          phone   => $new_phone});
 
 =back
@@ -1532,9 +1534,9 @@ and C<('c3', 'c4', 'c5')> of updated columns are disjoint.
 
 =head3 delete()
 
-  $statement->delete(-where => \%condition);
-  $statement->delete({col1 => $val1, ...});
-  $statement->delete(@primary_key);
+  $connected_source->delete(-where => \%condition);
+  $connected_source->delete({col1 => $val1, ...});
+  $connected_source->delete(@primary_key);
 
 Generates a request to the database to delete one or several
 records. The API for this method accepts several syntaxes :
@@ -1583,38 +1585,36 @@ Yet another syntax is to directly call C<delete()> on a data row,
 without any argument : see L</Table::delete()> below.
 
 
+
+=head2 Utility methods
+
+=head3 ConnectedSource::bless_from_DB()
+
+Proxy method to L<Statement::bless_from_DB()|/"bless_from_DB()">.
+
+
+=head1 STATEMENTS
+
+A I<statement> object encapsulates a SELECT request to the database.  It
+starts by assembling various pieces of information : the datasource to
+query, the database connection, the various clauses for generating the
+SQL request.  Once everything is ready, the database request is
+issued, and the results are collected. These steps may occur either
+all at once (which is the most frequent case), or through several
+calls to intermediate methods; see for example the methods
+L</refine()>, L</prepare()>, L</execute()> below.
+
+By default, statements are created as instances of 
+L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>; 
+but the schema may define another L</statement_class()> 
+for application-specific purposes : for instance the
+L<DBIx::DataModel::Statement::JDBC|DBIx::DataModel::Statement::JDBC>
+subclass in this distribution adds some methods specific to
+L<DBD::JDBC|DBD::JDBC> data sources, allowing to call
+JDBC methods C<getMemberCount()>, C<absolute()>, C<relative()>, etc.
+
+
 =head2 Data selection
-
-
-=head3 fetch()
-
-  my $record = $statement->fetch(@key_values, \%options);
-
-Fetches a single record, from its primary key value
-(on one or several columns). This method is just syntactic sugar for 
-
-  my $record = $statement->select(-fetch => \@key_values, %options);
-
-(see below). C<%options> may specify arguments to L</select()>, 
-like C<-for>, C<-pre_exec>, C<-post_exec>, etc. 
-
-
-=head3 fetch_cached()
-
-  my $record = $statement->fetch_cached(@key_values, \%options);
-
-Like C<fetch>, except that the result is stored in a cache,
-and further calls to the same methods with the same
-parameters will return the cached record instead of going
-back to the database. The cache does not know about any updates 
-to the database, so this is mainly useful for readonly data.
-
-The cache is stored internally in
-C<< $statement->meta_source->{fetch_cached}{$dbh_addr}{$freeze_args} >>
-(where C<$dbh_addr> is C<< Scalar::Util::refaddr(MyTable->dbh) >>
-and C<$freeze_args> is C<< Storable::freeze(@keyValues, \%options) >>).
-If needed, client code may use this information to clear the cache or tie 
-it to a more sophisticated caching module.
 
 =head3 select()
 
@@ -1727,7 +1727,7 @@ a single scalar value :
 
 When calling a table directly, the C<< select(-fetch => ..) >> syntax 
 is awkward; you will most certainly prefer the syntactic
-sugar offered by the L<fetch()|"fetch"> method :
+sugar offered by the L<fetch()|"fetch()"> method :
 
   $table->fetch(@key)
 
@@ -1787,6 +1787,7 @@ like C<< -for => 'read only' >> or C<< -for => 'update' >>.
 =item C<< -post_SQL => sub{...} >>
 
 hook for specifying a callback function to be called on SQL code and
+
 bind values, before preparing the statement. It will be called as
 follows:
 
@@ -2290,7 +2291,18 @@ C<< $statement->meta_source->class >>,
 and applies the C<from_DB> column handlers.
 
 
-=head1 SOURCE METHODS
+=head1 SOURCES
+
+=head2 Principle
+
+Data rows coming from the database are blessed into I<source classes>,
+which are either I<tables> or I<joins>; such classes implement
+instance methods for manipulating the row objects, or for navigating
+to related rows. Source classes do not contain information about the
+data structure (which database table, which associations, etc.); for
+getting such information, use the C<metadm> method to access the
+I<metasource> object.
+
 
 =head2 Path methods specific to each source
 
@@ -2303,7 +2315,7 @@ so for example with
 
 the C<Department> class will have an C<activities()> method, and
 the C<Activity> class will have a C<department()> method.
-Such methods will be called I<path methods>; their
+Such methods are called I<path methods>; their
 names correspond to the UML roles defined in the association.
 Path methods always take the same arguments as the L</select()> method
 (actually, they are implemented through an internal call to C<select()>).
@@ -2327,12 +2339,14 @@ in the join; in case of name conflics, the latest table takes precedence.
 Again, it is possible to use fully qualified method names if necessary.
 
 
-=head2 Source::metadm()
+=head2 Accessors
+
+=head3 Source::metadm()
 
 Returns the meta-source instance associated with the invocant.
 
 
-=head2 schema()
+=head3 schema()
 
 Returns the instance of L<DBIx::DataModel::Schema> from which
 the current data row was retrieved. When in single-schema mode,
@@ -2341,13 +2355,13 @@ when in multi-schema mode, a reference to the schema
 is kept under C<__schema> within each row object.
 
 
-=head2 primary_key()
+=head3 primary_key()
 
   my @primary_key_columns = $class->primary_key;
   my @primary_key_values  = $object->primary_key;
 
 If called as a class method, returns the list of columns
-registered as primary key for that table (via L</Table()>).
+registered as primary key for that table (via L</Table()>),
 or computed as primary key for that view (concatenation of primary
 keys of joined tables that are in a 1-to-many association).
 
@@ -2358,36 +2372,37 @@ When called in scalar context and the primary key has only one column,
 returns that column (so you can call C<< my $k = $obj->primary_key >>).
 
 
+=head2 Data manipulation
 
-=head2 expand()
+=head3 expand()
 
-  $obj->expand($path, %options);
+  $row->expand($path, %options);
 
 Executes the method C<< $role >> to follow an Association,
-stores the result in the object itself under C<< $obj->{$path} >>,
+stores the result in the object itself under C<< $row->{$path} >>,
 and returns that result.
 This is typically used to expand an object into a tree datastructure.
-If present, C<< %options >> are passed to C<< $obj->$path(%options) >>, for
+If present, C<< %options >> are passed to C<< $row->$path(%options) >>, for
 example for specifying C<-where>, C<-columns> or C<-order_by> options.
 
 After the expansion, further calls to 
-C<< $obj->$path >> (without any arguments) will reuse 
+C<< $row->$path >> (without any arguments) will reuse 
 that same expanded result instead of calling the database again.
 This caching improves efficiency, but also introduces the risk
 of side-effects across your code : after 
 
-  $obj->expand(some_path => (-columns => [qw/just some columns/],
+  $row->expand(some_path => (-columns => [qw/just some columns/],
                              -where   => {some_field => 'restriction'}))
 
-further calls to C<< $obj->some_path() >> will just return
+further calls to C<< $row->some_path() >> will just return
 a dataset restricted according to the above criteria, instead
 of a full join. To prevent that effect, you would need to 
-C<< delete $obj->{some_path} >>, or to call the role
-with arguments, like C<< $obj->some_path(-columns => '*') >>.
+C<< delete $row->{some_path} >>, or to call the role
+with arguments, like C<< $row->some_path(-columns => '*') >>.
 
 
 
-=head2 auto_expand()
+=head3 auto_expand()
 
   $record->auto_expand( $with_recursion );
 
@@ -2402,8 +2417,8 @@ C<auto_expand> is recursively called on the expanded objects.
 
 =head2 apply_column_handler()
 
-  $class ->apply_column_handler($handler_name, \@objects);
-  $object->apply_column_handler($handler_name);
+  $class ->apply_column_handler($handler_name, \@rows);
+  $row   ->apply_column_handler($handler_name);
 
 Inspects the target object or list of objects; for every
 column that exists in the object, checks whether
@@ -2433,7 +2448,7 @@ corresponding result value is  C<undef>.
 
 =head2 has_invalid_columns
 
-  my $invalid_columns = $obj->has_invalid_columns;
+  my $invalid_columns = $row->has_invalid_columns;
   if ($invalid_columns) {
     print "wrong data in columns ", join(", ", @$invalid_columns);
   }
@@ -2457,13 +2472,15 @@ Never return C<undef>, because we would no longer be able to
 distinguish between an invalid existent column and a missing column.
 
 
-=head2 Table::update()
+=head2 Methods delegated to the ConnectedSource class
+
+=head3 Table::update()
 
   $source_class->update(@update_args);
   $source_instance->update();
 
 Both a class and an instance method, that 
-implicitly creates a a statement from  the source's schema
+implicitly creates a a connected source from  the source's schema
 and meta-source, and then calls the C<update()> method on that 
 statement. 
 
@@ -2480,15 +2497,15 @@ from the column values stored in memory within the object
   $source_instance->delete();
 
 Exactly like the C<update()> method just above, but
-calling C<Statement::delete()>.
+calling C<ConnectedSource::delete()>.
 
 
 =head2 Table::join()
 
 
-Calls L</"ConnectedSource::join()"> to create a statement, and immediately
-binds it to the current object. 
-So for example if C<< $emp->{emp_id} == 987 >>, then
+Calls L</"ConnectedSource::join()"> to create a statement, and
+immediately binds it to the current object. So for example if 
+C<< $emp->{emp_id} == 987 >>, then
 
   $emp->join(qw/activities department/)
       ->select(-where => {d_end => undef})
@@ -2507,14 +2524,19 @@ C<select()>.
 
 
 
-=head2 class methods delegated to the Statement class
+=head2 class methods delegated to the ConnectedSource class
 
 When in single-schema mode, some class methods
-are delegated to a statement created on the fly, 
+are delegated to a connecte source created on the fly, 
 using the L</singleton()> method; hence it is possible to write requests 
 like
 
   my $result = HR::Employee->select(...);
+
+instead of 
+
+  my $result = HR->table('Employee')->select(...);
+
 
 =head3 Source::select()
 
@@ -2525,8 +2547,8 @@ Equivalent to
   my $metadm      = $source->metadm;
   my $meta_schema = $metadm->schema;
   my $schema      = $meta_schema->class->singleton;
-  my $statement   = $meta_schema->statement_class->new($metadm, $schema);
-  $statement->select(%args);
+  my $cs_class    = $meta_schema->connected_source_class;
+  $cs_class->new($metadm, $schema)->select(%args);
 
 =head3 Source::fetch()
 
@@ -2539,6 +2561,7 @@ similar to C<select()> above
 =head3 Source::bless_from_DB()
 
 similar to C<select()> above
+
 
 =head1 META-SCHEMA NAVIGATION
 
@@ -2634,6 +2657,8 @@ C<$meta_schema> :
 
 =item statement_class()
 
+=item connected_source_class()
+
 =back
 
 
@@ -2662,7 +2687,7 @@ L<DBIx::DataModel::Meta::Source::Join>) :
 
 =back
 
-In addition, other methods are defined :
+In addition, the following methods return dynamic lists :
 
 =head3 ancestors()
 
@@ -2730,38 +2755,6 @@ The L<DBIx::DataModel::Meta::Schema> instance in which
 this association is declared.
 
 
-=head3 A()
-
-Returns the hashref describing the "A" end of the association.
-Keys in the hashref are :
-
-=over
-
-=item table
-
-The L<DBIx::DataModel::Meta::Source::Table> instance.
-
-=item role
-
-The optional string defining the role of this source
-in the association. 
-
-=item multiplicity
-
-An arrayref C<< [$min, $max] >> of UML minimum and maximum multiplicity.
-
-=item join_cols
-
-An arrayref of column names participating in the join on this
-side of the association.
-
-=back
-
-
-=head3 B()
-
-Returns the hashref describing the "B" end of the association.
-
 =head3 name()
 
 Returns the association name
@@ -2790,12 +2783,12 @@ The name of this path.
 
 =head3 from()
 
-Reference to the  L<DBIx::DataModel::Meta::Source> where this
+Reference to the  L<DBIx::DataModel::Meta::Source::Table> where this
 path starts.
 
 =head3 to()
 
-Reference to the  L<DBIx::DataModel::Meta::Source> where this
+Reference to the  L<DBIx::DataModel::Meta::Source::Table> where this
 path ends.
 
 =head3 on()

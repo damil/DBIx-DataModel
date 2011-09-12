@@ -273,7 +273,8 @@ a C<where> clause :
 
 =head2 Generating random keys
 
-Override the C<_singleInsert> method
+Override the 
+L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert"> method
 
   package MySchema::SomeTable;
 
@@ -365,7 +366,7 @@ This callback function can then be registered as an I<auto_update_column>
 when defining the schema :
 
   DBIx::DataModel->define_schema(
-   class               => 'My::Schema,
+   class               => 'My::Schema',
    auto_update_columns => {TS_MODIF => \&_check_time_stamp},
   );
 

@@ -177,8 +177,11 @@ subclass.
 A database operation which consists of taking rows from several sources
 and producing new data rows. The result contains columns merged from 
 those sources, according to the L</join condition>.
-See the 
-L<join method|DBIx::DataModel::Reference/define_join()>.
+Joins are implemented as subclasses of 
+L<DBIx::DataModel::Source::Join|DBIx::DataModel::Source::Join>
+--- see the 
+L<define_join()|DBIx::DataModel::Reference/define_join()> method.
+
 
 =item join condition
 
@@ -268,7 +271,7 @@ encapsulates a L</dbh>.
 
 =item source
 
-Either a L</table> or a L</view>.
+Either a L</table> or a L</join>.
 
 =item SQLA
 
@@ -312,12 +315,6 @@ UML is L<http://www.holub.com/goodies/uml/>.
 Association definitions in C<DBIx::DataModel> 
 are closely inspired by UML associations
 (see L<DBIx::DataModel::Doc::Reference/"Association()">).
-
-=item view
-
-A subclass of L<DBIx::DataModel::Source::Table|DBIx::DataModel::Source::Table>, 
-created by method L<DBIx::DataModel::Doc::Reference/View()>, 
-that encapsulates a specific SQL request.
 
 =back
 
