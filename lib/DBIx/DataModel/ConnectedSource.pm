@@ -46,7 +46,7 @@ foreach my $method (qw/select bless_from_DB/) {
 
     my $stmt_class = $self->{schema}->metadm->statement_class;
     load $stmt_class;
-    my $statement  = $stmt_class->new($self->{meta_source}, $self->{schema});
+    my $statement  = $stmt_class->new($self);
     return $statement->$method(@_);
   };
 }
@@ -245,7 +245,7 @@ sub update {
     if (@sub_refs) {
       carp "data passed to update() contained nested references : ",
             CORE::join ", ", @sub_refs;
-      delete $to_set->{@sub_refs};
+      delete @{$to_set}{@sub_refs};
       # TODO : recursive update (or insert)
     }
 
@@ -362,11 +362,14 @@ sub join {
     push @left_cols, $left_col;
   }
 
-  # choose source (just a table or build a join) and then build a statement
+  # choose source (just a table or build a join) 
   my $source = @other_roles  ? $meta_schema->define_join($path->{to}{name},
                                                          @other_roles)
                              : $path->{to};
-  my @stmt_args = ($source, $schema, -where => \%criteria);
+
+  # build args for the statement
+  my $connected_source = (ref $self)->new($source, $schema);
+  my @stmt_args = ($connected_source, -where => \%criteria);
 
   # keep a reference to @left_cols so that Source::join can bind them
   push @stmt_args, -_left_cols => \@left_cols;
@@ -414,6 +417,48 @@ DBIx::DataModel::ConnectedSource - metasource and schema paired together
 A I<connected source> is a pair of a C<$schema> and C<$meta_source>.
 The meta_source holds information about the data structure, and the schema
 holds a connection to the database.
+
+=head1 METHODS
+
+Methods are documented in 
+L<DBIx::DataModel::Doc::Reference/"CONNECTED SOURCES">
+
+
+=head2 Constructor
+
+=head3 new
+
+  my $connected_source 
+    = DBIx::DataModel::ConnectedSource->new($meta_source, $schema);
+
+
+=head2 Accessors
+
+=head3 meta_source
+
+=head3 schema
+
+=head3 metadm
+
+=head2 Data retrieval
+
+=head3 select
+
+=head3 fetch
+
+=head3 fetch_cached
+
+=head3 join
+
+
+=head2 Data manipulation
+
+=head3 insert
+
+=head3 update
+
+=head3 delete
+
 
 =cut
 

@@ -47,26 +47,22 @@ use constant {
 #----------------------------------------------------------------------
 
 sub new {
-  my ($class, $meta_source, $schema, %other_args) = @_;
+  my ($class, $connected_source, %other_args) = @_;
 
-  # check $meta_source (must be an instance of a subclass of Meta::Source)
-  $meta_source && $meta_source->isa('DBIx::DataModel::Meta::Source')
-    or croak "invalid meta_source for DBIx::DataModel::Statement->new()";
-
-  # check $schema
-  $schema && ref($schema) && $schema->isa('DBIx::DataModel::Schema')
-    or croak "invalid schema for DBIx::DataModel::Statement->new()";
+  # check $connected_source
+  $connected_source 
+    && $connected_source->isa('DBIx::DataModel::ConnectedSource')
+    or croak "invalid connected_source for DBIx::DataModel::Statement->new()";
 
   # build the object
   my $self = bless {status           => NEW,
                     args             => {},
                     pre_bound_params => {},
                     bound_params     => [],
-                    meta_source      => $meta_source, 
-                    schema           => $schema}, $class;
+                    connected_source => $connected_source}, $class;
 
   # add placeholder_regex
-  my $prefix = $schema->{placeholder_prefix};
+  my $prefix = $connected_source->schema->{placeholder_prefix};
   $self->{placeholder_regex} = qr/^\Q$prefix\E(.+)/;
 
   # parse remaining args, if any
@@ -78,8 +74,11 @@ sub new {
 
 # accessors
 DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, qw/meta_source schema status/,
+  __PACKAGE__, qw/connected_source status/,
 );
+sub meta_source {shift->{connected_source}->meta_source}
+sub schema      {shift->{connected_source}->schema}
+
 
 
 # don't remember why this "clone()" method was ever created.
@@ -94,10 +93,11 @@ DBIx::DataModel::Meta::Utils->define_readonly_accessors(
 # }
 
 
+# THINK : not documented yet, is this method useful ?
 sub reset {
   my ($self, %other_args) = @_;
 
-  my $new = (ref $self)->new($self->{meta_source}, $self->{schema}, %other_args);
+  my $new = (ref $self)->new($self->{connected_source}, %other_args);
   %$self = (%$new);
 
   return $self;
@@ -179,7 +179,7 @@ sub refine {
 
       # -where : combine with previous 'where' clauses in same statement
       /^-where$/ and do {
-        my $sqla = $self->{schema}->sql_abstract;
+        my $sqla = $self->schema->sql_abstract;
         $args->{-where} = $sqla->merge_conditions($args->{-where}, $v);
         last SWITCH;
       };
@@ -188,19 +188,19 @@ sub refine {
       /^-fetch$/ and do {
         # build a -where clause on primary key
         my $primary_key = ref($v) ? $v : [$v];
-        my @pk_columns  = $self->{meta_source}->primary_key;
+        my @pk_columns  = $self->meta_source->primary_key;
         @pk_columns
-          or croak "fetch: no primary key in source $self->{meta_source}";
+          or croak "fetch: no primary key in source " . $self->meta_source;
         @pk_columns == @$primary_key
           or croak sprintf "fetch from %s: primary key should have %d values",
-                           $self->{meta_source}, scalar(@pk_columns);
+                           $self->meta_source, scalar(@pk_columns);
         List::MoreUtils::all {defined $_} @$primary_key
-          or croak "fetch from $self->{meta_source}: "
+          or croak "fetch from " . $self->meta_source . ": "
                  . "undefined val in primary key";
 
         my %where = ();
         @where{@pk_columns} = @$primary_key;
-        my $sqla = $self->{schema}->sql_abstract;
+        my $sqla = $self->schema->sql_abstract;
         $args->{-where} = $sqla->merge_conditions($args->{-where}, \%where);
 
         # want a single record as result
@@ -227,10 +227,10 @@ sub refine {
 
 
       # other args are just stored, will be used later
-      /^-( order_by  | group_by | having    | for
-         | result_as | post_SQL | pre_exec  | post_exec  | post_bless
-         | limit     | offset   | page_size | page_index
-         | column_types         | prepare_attrs        | dbi_prepare_method
+      /^-( order_by     | group_by | having    | for
+         | result_as    | post_SQL | pre_exec  | post_exec  | post_bless
+         | limit        | offset   | page_size | page_index
+         | column_types | prepare_attrs        | dbi_prepare_method
          | _left_cols
          )$/x
          and do {$args->{$k} = $v; last SWITCH};
@@ -258,9 +258,9 @@ sub sqlize {
 
   # shortcuts
   my $args         = $self->{args};
-  my $meta_source  = $self->{meta_source};
+  my $meta_source  = $self->meta_source;
   my $source_where = $meta_source->{where};
-  my $sql_abstract = $self->{schema}->sql_abstract;
+  my $sql_abstract = $self->schema->sql_abstract;
 
   # build arguments for SQL::Abstract::More
   $self->refine(-where => $source_where) if $source_where;
@@ -277,7 +277,7 @@ sub sqlize {
       $sqla_args{-for} = $args->{-for};
     }
     elsif (!exists $args->{-for}) {
-      $sqla_args{-for} = $self->{schema}->select_implicitly_for;
+      $sqla_args{-for} = $self->schema->select_implicitly_for;
     }
   }
 
@@ -321,7 +321,7 @@ sub sqlize {
 sub prepare {
   my ($self, @args) = @_;
 
-  my $meta_source = $self->{meta_source};
+  my $meta_source = $self->meta_source;
 
   $self->sqlize(@args) if @args or $self->{status} < SQLIZED;
 
@@ -332,9 +332,9 @@ sub prepare {
   $self->schema->_debug("PREPARE $self->{sql} / @{$self->{bound_params}}");
 
   # call the database
-  my $dbh          = $self->{schema}->dbh or croak "Schema has no dbh";
+  my $dbh          = $self->schema->dbh or croak "Schema has no dbh";
   my $method       = $self->{args}{-dbi_prepare_method}
-                  || $self->{schema}->dbi_prepare_method;
+                  || $self->schema->dbi_prepare_method;
   my @prepare_args = ($self->{sql});
   push @prepare_args, $self->{prepare_attrs} if $self->{prepare_attrs};
   $self->{sth}  = $dbh->$method(@prepare_args);
@@ -459,7 +459,7 @@ sub select {
 
     # CASE hashref : all data rows, put into a hashref
     /^hashref$/i   and do {
-      @key_cols or @key_cols = $self->{meta_source}->primary_key
+      @key_cols or @key_cols = $self->meta_source->primary_key
         or croak "-result_as=>'hashref' impossible: no primary key";
       my %hash;
       while (my $row = $self->next) {
@@ -516,8 +516,8 @@ sub row_count {
     $sql =~ s[\bLIMIT \? OFFSET \?][]i
       and splice @bind, -2;
 
-    my $dbh    = $self->{schema}->dbh or croak "Schema has no dbh";
-    my $method = $self->{schema}->dbi_prepare_method;
+    my $dbh    = $self->schema->dbh or croak "Schema has no dbh";
+    my $method = $self->schema->dbi_prepare_method;
     my $sth    = $dbh->$method($sql);
     $sth->execute(@bind);
     ($self->{row_count}) = $sth->fetchrow_array;
@@ -646,10 +646,10 @@ sub bless_from_DB {
   my ($self, $row) = @_;
 
   # inject ref to $schema if in multi-schema mode
-  $row->{__schema} = $self->{schema} unless $self->{schema}{is_singleton};
+  $row->{__schema} = $self->schema unless $self->schema->{is_singleton};
 
   # bless into appropriate class
-  bless $row, $self->{meta_source}->class;
+  bless $row, $self->meta_source->class;
   # apply handlers
   $self->{from_DB_handlers} or $self->_compute_from_DB_handlers;
   while (my ($column_name, $handler) 
@@ -683,8 +683,8 @@ sub _build_reuse_row {
 
 sub _compute_from_DB_handlers {
   my ($self) = @_;
-  my $meta_source    = $self->{meta_source};
-  my $meta_schema    = $self->{schema}->metadm;
+  my $meta_source    = $self->meta_source;
+  my $meta_schema    = $self->schema->metadm;
   my %handlers       = $meta_source->_consolidate_hash('column_handlers');
   my %aliased_tables = $meta_source->aliased_tables;
 
@@ -710,11 +710,10 @@ sub _compute_from_DB_handlers {
   }
 
   # handlers may be overridden from args{-column_types}
-  # TODO: TEST TEST TEST
   if (my $col_types = $self->{args}{-column_types}) {
     while (my ($type_name, $columns) = each %$col_types) {
       ref $columns or $columns = [$columns];
-      my $type = $self->{schema}->metadm->type($type_name)
+      my $type = $self->schema->metadm->type($type_name)
         or croak "no such column type: $type_name";
       $handlers{$_} = $type->{handlers} foreach @$columns;
     }
@@ -758,20 +757,16 @@ the manual (purpose, lifecycle, etc.).
 =head2 new
 
   my $statement 
-    = DBIx::DataModel::Statement->new($meta_source, $schema, %options);
+    = DBIx::DataModel::Statement->new($connected_source, %options);
 
-This is the statement constructor; C<$meta_source> is an
-instance of L<DBIx::DataModel::Meta::Source> (either
-a meta-table or a meta-join), and C<schema> is an instance
-of L<DBIx::DataModel::Schema>. If present, C<%options> are delegated
+This is the statement constructor; C<$connected_source> is an
+instance of L<DBIx::DataModel::ConnectedSource>. 
+If present, C<%options> are delegated
 to the L<refine()|DBIx::DataModel::Doc::Reference/refine()> method.
 
 Explicit calls to the statement constructor are exceptional;
-the usual way to create a statement is through a schema's 
-L<table()|DBIx::DataModel::Doc::Reference/Schema::table()>
-or
-L<join()|DBIx::DataModel::Doc::Reference/Schema::join()>
-method.
+the usual way to create a statement is through 
+L<ConnectedSource::select()|DBIx::DataModel::Doc::Reference/ConnectedSource::select()>.
 
 
 =head1 PRIVATE METHOD NAMES
