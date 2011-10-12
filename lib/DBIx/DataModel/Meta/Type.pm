@@ -8,7 +8,8 @@ use Scalar::Util         qw/weaken/;
 use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;
 use POSIX                qw//;
 use Carp;
-use namespace::autoclean;
+
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

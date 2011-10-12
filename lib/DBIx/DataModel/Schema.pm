@@ -16,7 +16,8 @@ use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF
                                  OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
 use SQL::Abstract::More;
-use namespace::autoclean;
+
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

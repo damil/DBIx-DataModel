@@ -13,7 +13,7 @@ use List::MoreUtils      qw/any lastval/;
 use Scalar::Util         qw/reftype/;
 use Module::Load         qw/load/;
 use Carp;
-use namespace::autoclean;
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

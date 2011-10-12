@@ -12,7 +12,8 @@ use Carp;
 use Storable             qw/freeze/;
 use Scalar::Util         qw/refaddr reftype/;
 use Module::Load         qw/load/;
-use namespace::autoclean;
+
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

@@ -1328,7 +1328,7 @@ C<DBIx::DataModel> depends on
 
 =item L<Params::Validate|Params::Validate>
 
-=item L<namespace::autoclean|namespace::autoclean>
+=item L<namespace::clean|namespace::clean>
 
 =item L<Module::Load|Module::Load>
 

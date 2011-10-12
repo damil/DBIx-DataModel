@@ -12,10 +12,10 @@ use Acme::Damn       qw/damn/;
 use Module::Load     qw/load/;
 use Storable         qw/freeze/;
 
-use namespace::autoclean;
-
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
+
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

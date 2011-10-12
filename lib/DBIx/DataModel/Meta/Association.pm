@@ -11,7 +11,7 @@ use List::MoreUtils  qw/pairwise/;
 use Scalar::Util     qw/weaken dualvar looks_like_number/;
 use Module::Load     qw/load/;
 use POSIX            qw//;
-use namespace::autoclean;
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

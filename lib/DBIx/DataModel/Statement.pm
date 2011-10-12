@@ -13,9 +13,11 @@ use Storable         qw/dclone freeze/;
 use Params::Validate qw/validate ARRAYREF HASHREF/;
 use POSIX            qw/INT_MAX/;
 use Acme::Damn       qw/damn/;
-use namespace::autoclean;
 
 use DBIx::DataModel;
+
+use namespace::clean;
+
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 use overload

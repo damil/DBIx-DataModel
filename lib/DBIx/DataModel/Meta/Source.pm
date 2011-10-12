@@ -9,7 +9,8 @@ use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT/;
 use Scalar::Util     qw/weaken/;
 use List::MoreUtils  qw/any/;
 use Carp;
-use namespace::autoclean;
+
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

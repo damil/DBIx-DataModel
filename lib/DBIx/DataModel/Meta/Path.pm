@@ -9,7 +9,7 @@ use Scalar::Util         qw/looks_like_number weaken/;
 use Params::Validate     qw/validate SCALAR HASHREF ARRAYREF OBJECT/;
 use POSIX                qw//;
 use Carp;
-use namespace::autoclean;
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 

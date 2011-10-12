@@ -11,7 +11,8 @@ use mro 'c3';
 use Carp;
 use List::MoreUtils qw/firstval/;
 use Module::Load    qw/load/;
-use namespace::autoclean;
+
+use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
