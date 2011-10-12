@@ -117,6 +117,11 @@ sub ColumnType {
   $self->{meta_source}->define_column_type($typeName, @args);
 }
 
+sub AutoExpand {
+  my ($self, @roles) = @_;
+  $self->{meta_source}->define_auto_expand(@roles);
+}
+
 
 #----------------------------------------------------------------------
 package DBIx::DataModel::Meta::Schema;
@@ -499,15 +504,6 @@ If you want to explicitly disable the compatibility layer, write
 =head1 SEE ALSO
 
 L<DBIx::DataModel>
-
-=head1 TODO
-
-  - modify the @INC hook so that yaml files continue to work even if they
-    contain class specs like 
-
-     - !!perl/hash:DM::AutoView::DM::Const_avocat_JOIN_avocat 
-
-  - check compat. with GEJDM::View.pm (link to Clone.pm)
 
 
 =cut

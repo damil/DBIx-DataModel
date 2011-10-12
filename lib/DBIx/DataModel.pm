@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.0';
+our $VERSION = '2.01';
 $VERSION = eval $VERSION if $VERSION =~ /_/; # numify
 
 # compatibility setting : see import(); for the moment, automatic compat 1.0

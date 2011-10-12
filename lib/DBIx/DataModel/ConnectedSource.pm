@@ -59,7 +59,7 @@ sub fetch {
 
   # if last argument is a hashref, it contains arguments to the select() call
   no warnings 'uninitialized';
-  if (reftype $_[-1] eq 'HASH') {
+  if ((reftype $_[-1] || '') eq 'HASH') {
     %select_args = %{pop @_};
   }
 
@@ -209,7 +209,7 @@ sub update {
   my $is_positional_args = ref $_[0] || $_[0] !~ /^-/;
   my %args;
   if ($is_positional_args) {
-    reftype $_[-1] eq 'HASH'
+    (reftype $_[-1] || '') eq 'HASH'
       or croak "update(): expected a hashref as last argument";
     $args{-set} = pop @_;
     $args{-where} = [-key => @_] if @_;
@@ -289,7 +289,7 @@ sub delete {
   my %args;
   my $to_delete = {};
   if ($is_positional_args) {
-    if (reftype $_[0] eq 'HASH') { # @_ contains a hashref to delete
+    if ((reftype $_[0] || '') eq 'HASH') { # @_ contains a hashref to delete
       @_ == 1 
         or croak "delete() : too many arguments";
       $to_delete = {%{$_[0]}}; # shallow copy

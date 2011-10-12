@@ -1,5 +1,12 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.01 07.10.2011
+  - missing AutoExpand in v1 compatibility mode
+  - suppress 1 warning in string comparison
+
+v2.0 12.09.2011
+   CPAN publish
+
 v1.99_06 21.08.2011
   - refactoring : new class ConnectedSource, not to confuse with Statements
 
