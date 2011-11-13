@@ -1,13 +1,22 @@
 #!perl -T
 
-use Test::More tests => 7;
+use Test::More tests => 16;
 
 BEGIN {
-	use_ok( 'DBIx::DataModel' );
+	use_ok( 'DBIx::DataModel', -compatibility => undef );
+	use_ok( 'DBIx::DataModel::ConnectedSource' );
+	use_ok( 'DBIx::DataModel::Meta' );
+	use_ok( 'DBIx::DataModel::Meta::Association' );
+	use_ok( 'DBIx::DataModel::Meta::Path' );
+	use_ok( 'DBIx::DataModel::Meta::Schema' );
+	use_ok( 'DBIx::DataModel::Meta::Source' );
+	use_ok( 'DBIx::DataModel::Meta::Type' );
+	use_ok( 'DBIx::DataModel::Meta::Utils' );
 	use_ok( 'DBIx::DataModel::Schema' );
+	use_ok( 'DBIx::DataModel::Schema::Generator' );
 	use_ok( 'DBIx::DataModel::Source' );
-	use_ok( 'DBIx::DataModel::Table' );
-	use_ok( 'DBIx::DataModel::View' );
+	use_ok( 'DBIx::DataModel::Source::Join' );
+	use_ok( 'DBIx::DataModel::Source::Table' );
 	use_ok( 'DBIx::DataModel::Statement' );
 	use_ok( 'DBIx::DataModel::Statement::JDBC' );
 }
