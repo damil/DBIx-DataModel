@@ -43,7 +43,7 @@ sub new {
   # install a navigation method into the 'from' table class
   my @navigation_args = ($self->{name},  # method name
                          $self->{name}); # path to follow
-  push @navigation_args, {-resultAs => "firstrow"}
+  push @navigation_args, {-result_as => "firstrow"}
     if $self->{multiplicity}[1] == 1;
   $self->{from}->define_navigation_method(@navigation_args);
 

@@ -1981,7 +1981,7 @@ Returns a ref to an arrayref containing C<< \["($sql)", @bind] >>.
 This is meant to be passed to a second
 query through L<SQL::Abstract|SQL::Abstract>, as in :
 
-  my $subquery = $source1->select(..., -resultAs => 'subquery');
+  my $subquery = $source1->select(..., -result_as => 'subquery');
   my $rows     = $source2->select(
       -columns => ...,
       -where   => {foo => 123, bar => {-not_in => $subquery}}

@@ -95,7 +95,7 @@ When defining the L<DBIx::DataModel> Schema :
 When using the schema:
 
   my $statement = $source->select(...,
-                                  -resultAs => 'statement');
+                                  -result_as => 'statement');
 
   my $n_rows = $statement->size; # size of result set
   my $row_1 = $statement->next;  # record N° 1;

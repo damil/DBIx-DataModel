@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.04 14.11.2011
+  - bug fix in strict V2 mode : Path.pm was still using old V1 syntax
+
 v2.03 11.11.2011
   - forgot to use Meta::Utils in Statement.pm.
 
