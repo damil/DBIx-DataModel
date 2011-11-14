@@ -113,7 +113,7 @@ sub _weed_out_subtrees {
   my $class = ref $self;
 
   # which "components" were declared through Schema->Composition(...)
-  my %is_component = map {($_ => 1)} $class->componentRoles;
+  my %is_component = map {($_ => 1)} $class->metadm->components;
 
   my %subrecords;
 
