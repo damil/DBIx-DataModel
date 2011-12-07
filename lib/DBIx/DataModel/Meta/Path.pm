@@ -55,6 +55,14 @@ DBIx::DataModel::Meta::Utils->define_readonly_accessors(
 );
 
 
+sub opposite {
+  my $self = shift;
+  my $opposite_direction = reverse $self->direction;
+  my $opposite_path      = "path_".$opposite_direction;
+  return $self->association->$opposite_path;
+}
+
+
 1;
 
 
@@ -180,6 +188,11 @@ path belongs.
 
 Direction of the path within the association; 
 a string containing either C<'AB'> or C<'BA'>.
+
+=head2 opposite
+
+Returns the path object representing the opposite direction.
+
 
 =cut
 

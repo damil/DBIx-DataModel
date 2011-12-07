@@ -1,5 +1,11 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.06 07.12.2011
+  - new method Path::opposite()
+
+v2.05 14.11.2011
+  - bug fix in strict V2 mode : Table.pm was still using old V1 syntax "componentRoles"
+
 v2.04 14.11.2011
   - bug fix in strict V2 mode : Path.pm was still using old V1 syntax
 

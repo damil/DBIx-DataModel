@@ -2809,6 +2809,9 @@ this path.
 
 Either C<"AB"> or C<"BA">.
 
+=head3 opposite()
+
+Returns the path object representing the opposite direction.
 
 =head2 Type methods
 
