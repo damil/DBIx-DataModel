@@ -1,6 +1,6 @@
 #!perl -T
 
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 BEGIN {
 	use_ok( 'DBIx::DataModel', -compatibility => undef );
@@ -19,6 +19,7 @@ BEGIN {
 	use_ok( 'DBIx::DataModel::Source::Table' );
 	use_ok( 'DBIx::DataModel::Statement' );
 	use_ok( 'DBIx::DataModel::Statement::JDBC' );
+	use_ok( 'DBIx::DataModel::Statement::Oracle' );
 }
 
 diag( "Testing DBIx::DataModel $DBIx::DataModel::VERSION, Perl $], $^X" );

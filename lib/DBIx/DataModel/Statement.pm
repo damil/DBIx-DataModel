@@ -11,7 +11,7 @@ use List::MoreUtils  qw/firstval any/;
 use Scalar::Util     qw/weaken refaddr reftype dualvar/;
 use Storable         qw/dclone freeze/;
 use Params::Validate qw/validate ARRAYREF HASHREF/;
-use POSIX            qw/INT_MAX/;
+use POSIX            qw/LONG_MAX/;
 use Acme::Damn       qw/damn/;
 
 use DBIx::DataModel;
@@ -338,7 +338,9 @@ sub prepare {
   my $method       = $self->{args}{-dbi_prepare_method}
                   || $self->schema->dbi_prepare_method;
   my @prepare_args = ($self->{sql});
-  push @prepare_args, $self->{prepare_attrs} if $self->{prepare_attrs};
+  if (my $prepare_attrs = $self->{args}{-prepare_attrs}) {
+    push @prepare_args, $prepare_attrs;
+  }
   $self->{sth}  = $dbh->$method(@prepare_args);
 
   # new status and return
@@ -583,7 +585,7 @@ sub all {
 }
 
 
-sub page_size   { shift->{args}{-page_size}  || POSIX::INT_MAX   }
+sub page_size   { shift->{args}{-page_size}  || POSIX::LONG_MAX  }
 sub page_index  { shift->{args}{-page_index} || 1                }
 sub offset      { shift->{offset}            || 0                }
 

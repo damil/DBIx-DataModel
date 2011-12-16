@@ -29,6 +29,7 @@ lib/DBIx/DataModel/Source/Join.pm
 lib/DBIx/DataModel/Source/Table.pm
 lib/DBIx/DataModel/Statement.pm
 lib/DBIx/DataModel/Statement/JDBC.pm
+lib/DBIx/DataModel/Statement/Oracle.pm
 MANIFEST			This list of files
 META.json
 META.yml

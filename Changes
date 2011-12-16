@@ -1,6 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.07 16.12.2011
   - using new SQLA::More API for insert/update/delete
+  - new class Statement::Oracle, support for scrollable cursors
 
 v2.06 07.12.2011
   - new method Path::opposite()
