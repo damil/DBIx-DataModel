@@ -1,5 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
+  - using new SQLA::More API for insert/update/delete
+
 v2.06 07.12.2011
   - new method Path::opposite()
 

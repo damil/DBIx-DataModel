@@ -261,8 +261,11 @@ sub update {
 
   # database request
   my $schema = $self->{schema};
-  my @sqla_args = ($meta_source->db_from, $to_set, $where);
-  my ($sql, @bind) = $schema->sql_abstract->update(@sqla_args);
+  my ($sql, @bind) = $schema->sql_abstract->update(
+    -table => $meta_source->db_from, 
+    -set   => $to_set,
+    -where => $where,
+   );
   $schema->_debug(do {no warnings 'uninitialized'; 
                       $sql . " / " . CORE::join(", ", @bind);});
   my $method = $schema->dbi_prepare_method;
@@ -327,8 +330,10 @@ sub delete {
 
   # database request
   my $schema = $self->{schema};
-  my @sqla_args = ($meta_source->db_from, $where);
-  my ($sql, @bind) = $schema->sql_abstract->delete(@sqla_args);
+  my ($sql, @bind) = $schema->sql_abstract->delete(
+    -from => $meta_source->db_from,
+    -where => $where,
+   );
   $schema->_debug($sql . " / " . CORE::join(", ", @bind) );
   my $method = $schema->dbi_prepare_method;
   my $sth    = $schema->dbh->$method($sql);

@@ -71,9 +71,12 @@ sub _rawInsert {
   # already cloned in Statement::insert(). But quite hard to improve :-((
 
   # perform the insertion
-  my @sqla_args   = ($metadm->db_from, \%values);
-  push @sqla_args, {returning => $options{-returning}} if $use_returning;
-  my ($sql, @bind) = $schema->sql_abstract->insert(@sqla_args);
+  my %sqla_args   = (
+    -into   => $metadm->db_from, 
+    -values => \%values,
+   );
+  $sqla_args{-returning} = $options{-returning} if $use_returning;
+  my ($sql, @bind) = $schema->sql_abstract->insert(%sqla_args);
   $self->schema->_debug($sql . " / " . join(", ", @bind) );
   my $sth = $schema->dbh->prepare($sql);
   $sth->execute(@bind);
