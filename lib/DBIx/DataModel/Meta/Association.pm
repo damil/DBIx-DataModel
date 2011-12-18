@@ -10,7 +10,7 @@ use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT UNDEF/;
 use List::MoreUtils  qw/pairwise/;
 use Scalar::Util     qw/weaken dualvar looks_like_number/;
 use Module::Load     qw/load/;
-use POSIX            qw//;
+use POSIX            qw/LONG_MAX/;
 use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
@@ -138,7 +138,7 @@ sub _parse_multiplicity {
   # multiplicity '1' is a shortcut for '1..1'.
   my $max_is_star = !looks_like_number($2);
   my $min = defined $1   ? $1             : ($max_is_star ? 0 : $2);
-  my $max = $max_is_star ? dualvar(POSIX::INT_MAX, '*') : $2;
+  my $max = $max_is_star ? dualvar(POSIX::LONG_MAX, '*') : $2;
   $assoc_end->{multiplicity} = [$min, $max];
 }
 

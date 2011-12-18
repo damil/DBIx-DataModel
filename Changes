@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.08 18.12.2011
+  - forgot to declare use POSIX qw/LONG_MAX/ -- buggy on Perl 5.8
+
 v2.07 16.12.2011
   - using new SQLA::More API for insert/update/delete
   - new class Statement::Oracle, support for scrollable cursors
