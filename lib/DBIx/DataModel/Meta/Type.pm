@@ -6,7 +6,6 @@ use DBIx::DataModel;
 
 use Scalar::Util         qw/weaken/;
 use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;
-use POSIX                qw//;
 use Carp;
 
 use namespace::clean;
