@@ -1476,7 +1476,6 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
   - declare RT bug for Params::Validate : doc is confused about
     validate_with / validation_options
 
-
   - savepoints
 
   - various policies for guessing foreign keys : e.g proc.id = attr.proc_id

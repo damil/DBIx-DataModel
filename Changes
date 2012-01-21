@@ -1,5 +1,10 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.09 21.01.2012
+  - error message when wrong call to $schema->Table(..)
+  - error message when wrong call to ->do_transaction(sub {...})
+  - update() accepts refs to refs or scalars for verbatim SQL
+
 v2.08 18.12.2011
   - forgot to declare use POSIX qw/LONG_MAX/ -- buggy on Perl 5.8
 

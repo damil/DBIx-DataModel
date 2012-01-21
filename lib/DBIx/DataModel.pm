@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.08';
+our $VERSION = '2.09';
 
 # compatibility setting : see import(); for the moment, automatic compat 1.0
 our $COMPATIBILITY = 1.0;
@@ -448,6 +448,33 @@ into an array (they must be used immediately) :
     do_something_immediately_with($row);
   }
 
+
+=head3 Update
+
+  # update on a set of fields, primary key included
+  my $table = $schema->table($table_name);
+  $table->update({pk_field => $pk, field1 => $val1, field2 => $val2, ...});
+
+  # update on a set of fields, primary key passed separately
+  $table->update(@primary_key, {field1 => $val1, field2 => $val2, ...});
+
+  # bulk update
+  $table->update(-set   => {field1 => $val1, field2 => $val2, ...}
+                 -where => \%condition);
+
+  # invoking instances instead of table classes
+  $obj->update({field1 => $val1, ...}); # updates specified fields
+  $obj->update;                         # updates all fields stored in memory
+
+
+=head3 Delete
+
+  # invoking a table class
+  my $table = $schema->table($table_name);
+  $table->delete(@primary_key);
+
+  # invoking an instance
+  $obj->delete;
 
 
 =head1 DESCRIPTION

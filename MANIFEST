@@ -42,3 +42,4 @@ t/v1_ParentClasses.t
 t/v1_Storable.t
 t/v2_multischema.t
 t/v2_paths.t
+t/v2_update.t
