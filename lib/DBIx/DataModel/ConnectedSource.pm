@@ -240,8 +240,11 @@ sub update {
     $to_set->apply_column_handler('to_DB');
 
     # remove references to foreign objects (including '__schema')
+    # leave refs to SCALAR or REF because they are used by SQLA for verbatim SQL
     delete $to_set->{__schema};
-    my @sub_refs = grep {ref $to_set->{$_}} keys %$to_set;
+    my @sub_refs = grep {my $reftype = reftype($to_set->{$_}) || '';
+                         $reftype eq 'HASH' or $reftype eq 'ARRAY'}
+                        keys %$to_set;
     if (@sub_refs) {
       carp "data passed to update() contained nested references : ",
             CORE::join ", ", @sub_refs;
