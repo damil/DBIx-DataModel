@@ -143,6 +143,9 @@ sub Table {
 
   # parse positional parameters (old syntax)
   my ($class_name, $db_name, @primary_key) = @_;
+  $db_name && @primary_key
+    or croak "not enough args to \$schema->Table(); "
+           . "did you mean \$schema->table() ?";
   $args{class}       ||= $class_name;
   $args{db_name}     ||= $db_name;
   $args{primary_key} ||= \@primary_key;

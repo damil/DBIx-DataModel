@@ -174,6 +174,9 @@ sub do_transaction {
   my ($self, $coderef, @new_dbh) = @_; 
   ref $self or $self = $self->singleton;
 
+  ref $coderef eq 'CODE'
+    or croak 'first arg to $schema->do_transaction(...) should be a coderef';
+
   my $transaction_dbhs = $self->{transaction_dbhs} ||= [];
 
   # localize the dbh and its options, if so requested. 
