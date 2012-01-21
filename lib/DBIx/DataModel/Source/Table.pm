@@ -202,31 +202,56 @@ sub insert {
 # $obj->update(), or $class->update(@args). In both cases, we then
 # delegate to the ConnectedSource class
 
-foreach my $method (qw/update delete/) {
-  no strict 'refs';
-  *$method = sub {
-    my $self = shift;
+sub delete {
+  my ($self, @args) = @_;
 
-    my $metadm      = $self->metadm;
-    my $meta_schema = $metadm->schema;
-    my $schema;
+  my $metadm      = $self->metadm;
+  my $meta_schema = $metadm->schema;
+  my $schema;
 
-    if (ref $self) { # if called as $obj->$method()
-      not @_ or croak "$method() : too many arguments";
-      @_ = ($self);
-      $schema = delete $self->{__schema};
-    }
+  if (ref $self) { # if called as $obj->$method()
+    not @args or croak "delete() : too many arguments";
+    @args = ($self);
+    $schema = delete $self->{__schema};
+  }
 
-    # otherwise, if in single-schema mode, or called as $class->$method(@args)
-    $schema ||= $meta_schema->class->singleton;
+  # if in single-schema mode, or called as $class->delete(@args)
+  $schema ||= $meta_schema->class->singleton;
 
-    # delegate to the connected_source class
-    my $cs_class    = $meta_schema->connected_source_class;
-    load $cs_class;
-    $cs_class->new($metadm, $schema)->$method(@_);
-  };
+  # delegate to the connected_source class
+  my $cs_class    = $meta_schema->connected_source_class;
+  load $cs_class;
+  $cs_class->new($metadm, $schema)->delete(@_);
 }
 
+
+sub update  {
+  my ($self, @args) = @_;
+
+  my $metadm      = $self->metadm;
+  my $meta_schema = $metadm->schema;
+  my $schema;
+
+  if (ref $self) { 
+    if (@args) { # if called as $obj->update({field => $val, ...})
+      # will call $class->update(@prim_key, {field => $val, ...}
+      unshift @args, $self->primary_key;
+    }
+    else { # if called as $obj->update()
+      # will call $class->update($self)
+      @args = ($self);
+    }
+    $schema = delete $self->{__schema};
+  }
+
+  # if in single-schema mode, or called as $class->update(@args)
+  $schema ||= $meta_schema->class->singleton;
+
+  # delegate to the connected_source class
+  my $cs_class = $meta_schema->connected_source_class;
+  load $cs_class;
+  $cs_class->new($metadm, $schema)->update(@args);
+}
 
 
 1; # End of DBIx::DataModel::Source::Table
@@ -290,7 +315,7 @@ Laurent Dami, C<< <laurent.dami AT etat.ge.ch> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2006, 2010 Laurent Dami.
+Copyright 2006..2012 Laurent Dami.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
