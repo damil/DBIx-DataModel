@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.09';
+our $VERSION = '2.10';
 
 # compatibility setting : see import(); for the moment, automatic compat 1.0
 our $COMPATIBILITY = 1.0;

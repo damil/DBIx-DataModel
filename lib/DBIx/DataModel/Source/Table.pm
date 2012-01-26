@@ -221,7 +221,7 @@ sub delete {
   # delegate to the connected_source class
   my $cs_class    = $meta_schema->connected_source_class;
   load $cs_class;
-  $cs_class->new($metadm, $schema)->delete(@_);
+  $cs_class->new($metadm, $schema)->delete(@args);
 }
 
 
