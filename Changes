@@ -1,5 +1,11 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.20 14.02.2012
+  - fixed bug on update() in multi-schema mode
+  - bulk updates now apply the 'to_DB' handler
+todo upd Reference
+  - REMOVED AUTOMATIC COMPATIBILITY v1; now needs arg Compatibility => 1.0
+
 v2.10 26.01.2012
   - fixed bug on delete() method, introduced in v2.09
 

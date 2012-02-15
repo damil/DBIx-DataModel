@@ -211,56 +211,54 @@ sub update {
   if ($is_positional_args) {
     (reftype $_[-1] || '') eq 'HASH'
       or croak "update(): expected a hashref as last argument";
-    $args{-set} = pop @_;
+    $args{-set}   = pop @_;
     $args{-where} = [-key => @_] if @_;
   }
   else {
     %args = validate(@_, $update_spec);
   }
 
-  my $to_set = {%{$args{-set}}}; # shallow copy
-  $self->_maybe_inject_primary_key($to_set, \%args);
-
+  # some shortcuts
   my $meta_source  = $self->{meta_source};
   my $source_class = $meta_source->class;
-  my $where        = $args{-where};
 
-  # if this is an update of a single record ...
+  # build a shallow copy of $args{-set}, bless it and call 'to_DB' handlers
+  my $to_set = {%{$args{-set}}, __schema => $self->schema};
+  $self->_maybe_inject_primary_key($to_set, \%args);
+  bless $to_set, $source_class;
+
+  # call column handlers : no_update, auto_update, to_DB
+  my %no_update_column = $meta_source->no_update_column;
+  delete $to_set->{$_} foreach keys %no_update_column;
+  my %auto_update_column = $meta_source->auto_update_column;
+  while (my ($col, $handler) = each %auto_update_column) {
+    $to_set->{$col} = $handler->($to_set, $source_class);
+  }
+  $to_set->apply_column_handler('to_DB');
+
+  # remove references to foreign objects
+  # leave refs to SCALAR or REF because they are used by SQLA for verbatim SQL
+  my @sub_refs = grep {my $reftype = reftype($to_set->{$_}) || '';
+                       $reftype eq 'HASH' || $reftype eq 'ARRAY'}
+                       map {$_ ne '__schema'} keys %$to_set;
+  if (@sub_refs) {
+    carp "data passed to update() contained nested references : ",
+      CORE::join ", ", @sub_refs;
+    delete @{$to_set}{@sub_refs};
+  }
+
+  # if this is a single record update (no '-where' arg), build -where from pkey
+  my $where = $args{-where};
   if (!$where) {
-    # bless it, so that we can call methods on it
-    bless $to_set, $source_class;
-
-    # apply column handlers (no_update, auto_update, 'to_DB')
-    my %no_update_column = $meta_source->no_update_column;
-    delete $to_set->{$_} foreach keys %no_update_column;
-    my %auto_update_column = $meta_source->auto_update_column;
-    while (my ($col, $handler) = each %auto_update_column) {
-      $to_set->{$col} = $handler->($to_set, $source_class);
-    }
-    $to_set->apply_column_handler('to_DB');
-
-    # remove references to foreign objects (including '__schema')
-    # leave refs to SCALAR or REF because they are used by SQLA for verbatim SQL
-    delete $to_set->{__schema};
-    my @sub_refs = grep {my $reftype = reftype($to_set->{$_}) || '';
-                         $reftype eq 'HASH' or $reftype eq 'ARRAY'}
-                        keys %$to_set;
-    if (@sub_refs) {
-      carp "data passed to update() contained nested references : ",
-            CORE::join ", ", @sub_refs;
-      delete @{$to_set}{@sub_refs};
-      # TODO : recursive update (or insert)
-    }
-
-    # now unbless and remove the primary key
-    damn $to_set;
     my @primary_key = $self->{meta_source}->primary_key;
     $where = {map {$_ => delete $to_set->{$_}} @primary_key};
   }
 
-  else {
-    # otherwise, it will be a bulk update, no handlers applied
-  }
+  # TODO : recursive update (or insert)
+
+  # remove ref to $schema and unbless (back to a raw hashref)
+  delete $to_set->{__schema};
+  damn $to_set;
 
   # database request
   my $schema = $self->{schema};

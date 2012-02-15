@@ -51,7 +51,8 @@ namely a small human resources management system.
 =head1 BASIC ASSUMPTIONS
 
 Before starting with C<DBIx::DataModel>, you should have 
-installed CPAN modules L<DBI|DBI> and L<SQL::Abstract|SQL::Abstract>.
+installed CPAN modules L<DBI|DBI> and 
+L<SQL::Abstract::More|SQL::Abstract::More>.
 You also need a database management system with a L<DBD|DBD> driver. 
 
 Use your database modeling tool to create some tables for employees,
@@ -116,14 +117,7 @@ to automatically create a skeleton of these declarations.
 
 First load C<DBIx::DataModel> :
 
-  use DBIx::DataModel -compability => 2.0;
-
-The C<-compatibility> argument tells that we don't need any compatibility 
-with versions prior to 2.0. By default, a compatibility layer for 
-version 1.0 is automatically loaded, in order not to break previous
-programs; but here, since we start a new application, that layer is not
-needed, and therefore we will avoid polluting our symbol tables with
-unnecessary code.
+  use DBIx::DataModel;
 
 Now define a I<schema> :
 

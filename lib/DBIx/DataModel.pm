@@ -8,11 +8,10 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.10';
+our $VERSION = '2.20';
 
-# compatibility setting : see import(); for the moment, automatic compat 1.0
-our $COMPATIBILITY = 1.0;
-# future : our $COMPATIBILITY = $VERSION;
+# compatibility setting : see import()
+our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
 
 # Modules considered to belong to the same family for carp/croak (see L<Carp>).
 # All inner classes import the same list.
@@ -38,7 +37,6 @@ our @CARP_NOT = qw[
   SQL::Abstract
   SQL::Abstract::More
 ];
-
 
 sub define_schema {
   my ($class, %params) = @_;
@@ -81,12 +79,13 @@ DBIx::DataModel - UML-based Object-Relational Mapping (ORM) framework
 Version 2 of C<DBIx::DataModel> is a major refactoring from versions
 1.*, with a number of incompatible changes in the API (classes
 renamed, arguments renamed or reorganized, etc. -- see
-L<DBIx::DataModel::Doc::Delta_v2>). For the moment, 
-a compatibility layer is automatically loaded, so that applications
-written for prior versions will continue to work
-(see L<DBIx::DataModel::Compatibility::V1>). Some time in the
-future, the compatibility layer will be deprecated, and will need to be
-explicitly required through
+L<DBIx::DataModel::Doc::Delta_v2>). 
+
+Initial subversions of the 2.* family included a layer of
+compatibility with version 1.*, so that old applications would
+continue to work (see L<DBIx::DataModel::Compatibility::V1>). Since
+version 2.20, this compatibility layer is no longer loaded
+automatically; however, it can still be added on demand by writing
 
   use DBIx::DataModel -compatibility => 1.0;
 
@@ -96,9 +95,9 @@ explicitly required through
 
 =head3 Schema 
 
-Load C<DBIx::DataModel>, without any backwards compatibility.
+Load C<DBIx::DataModel>.
 
-  use DBIx::DataModel -compatibility => undef;
+  use DBIx::DataModel;
 
 Declare the schema, either in shorthand notation :
 
@@ -594,7 +593,7 @@ named placeholders
 
 nested, cross-database transactions
 
-item *
+=item *
 
 choice between 'single-schema' mode (default, more economical) 
 and 'multi-schema' mode (optional, more flexible, but a little
@@ -762,7 +761,7 @@ Terrence Brannon for many fixes in the documentation.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2006-2011 by Laurent Dami.
+Copyright 2006-2012 by Laurent Dami.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 

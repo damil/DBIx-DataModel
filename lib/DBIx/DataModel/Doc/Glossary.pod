@@ -67,6 +67,11 @@ The second participant in a L</composition> relationship, i.e.
 some object which "is part of" another object. A component object
 cannot live outside of its composite object.
 
+=item compatibility layer
+
+A module, loaded on demand, that emulates the API of former versions 
+of C<DBIx::DataModel>.
+
 =item composite
 
 The first participant in a L</composition> relationship, i.e.

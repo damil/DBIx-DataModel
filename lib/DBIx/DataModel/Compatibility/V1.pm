@@ -492,14 +492,10 @@ and C<DBIx::DataModel> : that layer intercepts the calls and modifies
 the arguments and/or return values so that the API is compatible with
 prior versions C<1.*>.
 
-For the moment, this compatibility layer is automatically activated, in
-order to automatically preserve backwards compatibility. Some time in the
-future, the compatibility layer will be deprecated, and will need to be
-explicitly required, as shown above in the synopsis.
-
-If you want to explicitly disable the compatibility layer, write
-
-  use DBIx::DataModel -compatibility => undef;
+For versions prior to 2.20, this compatibility layer was automatically
+activated, in order to automatically preserve backwards
+compatibility. Now the compatibility layer is deprecated;
+however it can still be loaded on demand, as shown above in the synopsis.
 
 =head1 SEE ALSO
 

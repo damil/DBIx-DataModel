@@ -7,7 +7,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 1;
+use constant N_DBI_MOCK_TESTS => 4;
 use constant N_BASIC_TESTS    => 1;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -69,12 +69,9 @@ SKIP: {
   });
 
 
- #  my $statement = $schema->table('Employee')->join(qw/activities department/);
-  my $statement = $schema->table('Employee');
+  my $connected_source = $schema->table('Employee');
 
-  $statement = $statement->join(qw/activities department/);
-
-
+  my $statement = $connected_source->join(qw/activities department/);
   $statement->refine(-where => {gender => 'F'});
   $statement->refine(-where => {gender => {'!=' => 'M'}});
   $statement->prepare;
@@ -86,6 +83,23 @@ SKIP: {
 	  'WHERE (emp_id = ? AND gender = ? AND gender != ?)', [999, 'F', 'M'],
 	  'statement prepare/execute');
 
+
+  $emp->update;
+  sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ?, lastname = ? '
+         .'WHERE emp_id = ?',
+         ['1775-12-16', 'Joseph', 'BODIN DE BOISMORTIER', 999],
+         'update object');
+
+  $connected_source->update(987, {firstname => 'Boudin'});
+  sqlLike('UPDATE T_Employee SET firstname = ? WHERE emp_id = ?',
+         ['Boudin', 987],
+         'update from class');
+
+  $connected_source->update(-set => {firstname => 'Boudin'},
+                            -where => {emp_id => {'>' => 10}});
+  sqlLike('UPDATE T_Employee SET firstname = ? WHERE emp_id > ?',
+         ['Boudin', 10],
+         'bulk update');
 }
 
 
