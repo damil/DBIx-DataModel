@@ -7,7 +7,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 4;
+use constant N_DBI_MOCK_TESTS => 5;
 use constant N_BASIC_TESTS    => 1;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -24,7 +24,7 @@ sub die_ok(&) {
 
 
 
-use_ok("DBIx::DataModel", -compatibility=> 1.0);
+use_ok("DBIx::DataModel");
 
 DBIx::DataModel->Schema('HR') # Human Resources
 ->Table(Employee   => T_Employee   => qw/emp_id/)
@@ -100,6 +100,10 @@ SKIP: {
   sqlLike('UPDATE T_Employee SET firstname = ? WHERE emp_id > ?',
          ['Boudin', 10],
          'bulk update');
+
+  my @tables = $schema->metadm->tables;
+  my @names  = sort map {$_->name} @tables;
+  is_deeply(\@names, [qw/Activity Department Employee/], "->tables method");
 }
 
 

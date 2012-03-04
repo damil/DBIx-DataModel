@@ -115,7 +115,7 @@ foreach my $kind (qw/table association type join/) {
   # retrieve list of meta-objects
   *{$kind."s"} = sub {
     my $self = shift;
-    return values %{$_[0]->{$kind}};
+    return values %{$self->{$kind}};
   };
 
   # retrieve single named object

@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.21 29.02.2012
+   - fixed bug in $meta_source->tables(), ->associations(), etc.
+
 v2.20 14.02.2012
   - fixed bug on update() in multi-schema mode
   - bulk updates now apply the 'to_DB' handler
