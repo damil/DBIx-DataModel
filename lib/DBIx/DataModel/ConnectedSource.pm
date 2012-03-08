@@ -240,7 +240,7 @@ sub update {
   # leave refs to SCALAR or REF because they are used by SQLA for verbatim SQL
   my @sub_refs = grep {my $reftype = reftype($to_set->{$_}) || '';
                        $reftype eq 'HASH' || $reftype eq 'ARRAY'}
-                       map {$_ ne '__schema'} keys %$to_set;
+                 grep {$_ ne '__schema'} keys %$to_set;
   if (@sub_refs) {
     carp "data passed to update() contained nested references : ",
       CORE::join ", ", @sub_refs;

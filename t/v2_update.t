@@ -5,7 +5,7 @@ use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
 use DBIx::DataModel -compatibility=> undef;
 
-use constant NTESTS  => 5;
+use constant NTESTS  => 6;
 use Test::More tests => NTESTS;
 
 DBIx::DataModel->Schema('HR') # Human Resources
@@ -52,6 +52,15 @@ SKIP: {
           [$dt, $emp_id],
           "update from function");
 
+  # other subreferences should warn but be removed automatically
+  HR->table('Employee')->update(
+    $emp_id, {foo => 123, skip1 => {bar => 456}, skip2 => bless({}, "Foo")},
+  );
+  sqlLike("UPDATE T_Employee SET foo = ? WHERE ( emp_id = ? )",
+          [123, $emp_id],
+          "skip sub-references");
+
+
   # update an unblessed record
   my $record = {emp_id => $emp_id, foo => 'bar'};
   HR->table('Employee')->update($record);
@@ -79,6 +88,9 @@ SKIP: {
   sqlLike("UPDATE T_Employee SET bar = ? WHERE emp_id = ?",
           [987, $emp_id],
           "obj update with args");
+
+
+
 }
 
 
