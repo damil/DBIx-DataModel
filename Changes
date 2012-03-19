@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.23 19.03.2012
+   - added support for INSERT .. RETURNING .. INTO .. (used by Oracle)
+
 v2.22 08.03.2012
    - fixed bug in ->update() with nested refs, bug introduced in v2.20
 

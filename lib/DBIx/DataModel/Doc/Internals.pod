@@ -52,7 +52,7 @@ intend to extend the framework.
 
 =head2 _rawInsert
 
-  $obj->_rawInsert(%options);
+  my $sth = $obj->_rawInsert(%args);
 
 Internal implementation for insertions into the database :
 takes keys and values within C<%$obj>, generates SQL for 
@@ -60,10 +60,14 @@ insertion of those values into C<< $obj->db_from() >>,
 and executes it. Never called directly, but used by the protected method
 L</"_singleInsert">.
 
-The optional C<%options> argument can contain one single key : C<-returning>.
-If that option is present, and the value is either a scalar or an arrayref, 
-then it will be passed as an option to L<SQL::Abstract/insert>, and the
-returned value(s) will be fetched from the sth and returned to the caller.
+The optional C<%args> argument can pass additional options
+to L<SQL::Abstract::More/insert>; currently only one option is 
+available : C<-returning>.
+
+The method returns the statement handle just created, in case the caller
+would need to retrieve some values after the insert : for example when
+using a RETURNING clause in PostgreSQL, the values can be obtained through
+a subsequent call to C<< $sth->fetch >>.
 
 
 =head1 "PROTECTED" METHODS

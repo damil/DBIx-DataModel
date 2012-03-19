@@ -12,41 +12,83 @@ use Carp;
 use Storable             qw/freeze/;
 use Scalar::Util         qw/refaddr reftype/;
 use Module::Load         qw/load/;
+use List::MoreUtils      qw/none/;
 
 use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
-
-
 sub _singleInsert {
   my ($self, %options) = @_; 
-  # assumes that %$self only contains scalars
 
-  my $class  = ref $self or croak "_singleInsert called as class method";
+  # check that this is called as instance method
+  my $class = ref $self or croak "_singleInsert called as class method";
 
-  # call DB insert
-  my @result = $self->_rawInsert(%options);
+  # get dbh option
+  my ($dbh, %dbh_options) = $self->schema->dbh;
+  my $returning_through = $dbh_options{returning_through} || '';
 
-  # if $options{-returning} was a scalar or arrayref, return that result
-  return @result if @result; 
+  # check special case "-returning => {}", not to be handled in _rawInsert
+  my $ref_returning = ref $options{-returning} || '';
+  my $wants_consolidated_hash = $ref_returning eq 'HASH'
+                                && ! keys %{$options{-returning}};
+  delete $options{-returning} if $wants_consolidated_hash;
 
-  # otherwise: first make sure we have the primary key
+  # do we need to retrieve the primary key ourselves ?
   my @prim_key_cols = $class->primary_key;
-  if (grep {not defined $self->{$_}} @prim_key_cols) {
-    my $n_columns = @prim_key_cols;
-    not ($n_columns > 1) 
-      or croak "cannot ask for last_insert_id: primary key in $class "
-             . "has $n_columns columns";
-    my $pk_col = $prim_key_cols[0];
-    $self->{$pk_col} = $self->_get_last_insert_id($pk_col);
+  my @prim_key_vals;
+  my $should_retrieve_prim_key = none {exists $self->{$_}} @prim_key_cols
+                                 && ! exists $options{-returning};
+
+  # add a RETURNING clause if needed, to later retrieve the primary key
+  if ($should_retrieve_prim_key) {
+    if ($returning_through eq 'INOUT') { # example: Oracle
+      @prim_key_vals = (undef) x @prim_key_cols;
+      my %returning;
+      @returning{@prim_key_cols} = \(@prim_key_vals);
+      $options{-returning} = \%returning;
+    }
+    elsif ($returning_through eq 'FETCH') { # example: PostgreSQL
+      $options{-returning} = \@prim_key_cols;
+    }
+    # else : do nothing, we will use "last_insert_id"
   }
 
-  # now return the primary key, either as a hashref or as a list
-  if ($options{-returning} && ref $options{-returning} eq 'HASH') {
+  # call database insert
+  my $sth = $self->_rawInsert(%options);
+
+  # get back the "returning" values, if any
+  my @returned_vals;
+  if ($options{-returning} && (ref $options{-returning} || '') ne 'HASH') {
+    @returned_vals = $sth->fetchrow_array;
+  }
+
+  # if needed, retrieve the primary key
+  if ($should_retrieve_prim_key) {
+    if ($returning_through eq 'INOUT') { # example: Oracle
+      @{$self}{@prim_key_cols} = @prim_key_vals;
+    }
+    elsif ($returning_through eq 'FETCH') { # example: PostgreSQL
+      @{$self}{@prim_key_cols} = @returned_vals;
+    }
+    else {
+      my $n_columns = @prim_key_cols;
+      not ($n_columns > 1) 
+        or croak "cannot ask for last_insert_id: primary key in $class "
+               . "has $n_columns columns";
+      my $pk_col = $prim_key_cols[0];
+      $self->{$pk_col} = $self->_get_last_insert_id($pk_col);
+    }
+  }
+
+  # return value
+  if ($wants_consolidated_hash) {
     my %result;
     $result{$_} = $self->{$_} for @prim_key_cols;
     return \%result;
+  }
+  elsif (@returned_vals) {
+    return @returned_vals;
   }
   else {
     return @{$self}{@prim_key_cols};
@@ -54,44 +96,39 @@ sub _singleInsert {
 }
 
 
-
-
 sub _rawInsert {
   my ($self, %options) = @_; 
   my $class  = ref $self or croak "_rawInsert called as class method";
   my $metadm = $class->metadm;
 
-  my $use_returning 
-    = $options{-returning} && ref $options{-returning} ne 'HASH';
-
   # clone $self as mere unblessed hash (for SQLA) and extract ref to $schema 
   my %values = %$self;
   my $schema = delete $values{__schema};
   # THINK: this cloning %values = %$self is inefficient because data was 
-  # already cloned in Statement::insert(). But quite hard to improve :-((
+  # already cloned in Statement::insert(). But it is quite hard to improve :-((
 
   # perform the insertion
-  my %sqla_args   = (
+  my $sqla         = $schema->sql_abstract;
+  my ($sql, @bind) = $sqla->insert(
     -into   => $metadm->db_from, 
     -values => \%values,
+    %options,
    );
-  $sqla_args{-returning} = $options{-returning} if $use_returning;
-  my ($sql, @bind) = $schema->sql_abstract->insert(%sqla_args);
+
   $self->schema->_debug($sql . " / " . join(", ", @bind) );
   my $sth = $schema->dbh->prepare($sql);
-  $sth->execute(@bind);
+  $sqla->bind_params($sth, @bind);
 
-  return $sth->fetchrow_array if $use_returning;
-  return;                      # otherwise
+  $sth->execute();
+  return $sth;
 }
-
 
 
 sub _get_last_insert_id {
   my ($self, $col) = @_;
-  my $class = ref $self;
-  my ($dbh, %dbh_options) = $class->schema->dbh;
-  my $table  = $self->metadm->db_from;
+  my $class               = ref $self;
+  my ($dbh, %dbh_options) = $self->schema->dbh;
+  my $table               = $self->metadm->db_from;
 
   my $id
       # either callback given by client ...

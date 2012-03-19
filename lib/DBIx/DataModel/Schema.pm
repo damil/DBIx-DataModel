@@ -15,7 +15,7 @@ use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
-use SQL::Abstract::More 1.0;
+use SQL::Abstract::More 1.03;
 
 use namespace::clean;
 
@@ -118,6 +118,14 @@ sub dbh {
       # only accept $dbh with RaiseError set
       $dbh->{RaiseError} 
         or croak "arg to dbh(..) must have RaiseError=1";
+
+      # default values for $dbh_options{returning_through}
+      if (not exists $dbh_options{returning_through}) {
+        for ($dbh->{Driver}{Name}) {
+          /^Oracle/ and do {$dbh_options{returning_through} = 'INOUT'; last};
+          /^Pg/     and do {$dbh_options{returning_through} = 'FETCH'; last};
+        }
+      }
 
       # store the dbh
       $self->{dbh} = [$dbh, %dbh_options];
