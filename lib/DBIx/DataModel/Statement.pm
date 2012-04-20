@@ -568,20 +568,12 @@ sub next {
   }
 }
 
+
 sub all {
   my ($self) = @_;
 
-  $self->execute if $self->{status} < EXECUTED;
-
-  my $sth      = $self->{sth}          or croak "absent sth in statement";
-  my $callback = $self->{row_callback} or croak "absent callback in statement";
-
-  not $self->{reuse_row}  or croak "reusable row, cannot retrieve several";
-  my $rows = $sth->fetchall_arrayref({});
-  $callback->($_) foreach @$rows;
-  $self->{row_num} += @$rows;
-
-  return $rows;
+  # just call next() with a huge number
+  return $self->next(POSIX::LONG_MAX);
 }
 
 

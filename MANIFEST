@@ -40,6 +40,7 @@ t/v1_LocalizeState.t
 t/v1_MsAccess.t
 t/v1_ParentClasses.t
 t/v1_Storable.t
+t/v2_Oracle.t
 t/v2_delete.t
 t/v2_multischema.t
 t/v2_paths.t

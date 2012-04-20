@@ -107,6 +107,15 @@ sub _rawInsert {
   # THINK: this cloning %values = %$self is inefficient because data was 
   # already cloned in Statement::insert(). But it is quite hard to improve :-((
 
+
+  # cleanup $options
+  if ($options{-returning}) {
+    my $reftype = reftype $options{-returning} || '';
+    if ($reftype eq 'HASH' && !keys %{$options{-returning}}) {
+      delete $options{-returning};
+    }
+  }
+
   # perform the insertion
   my $sqla         = $schema->sql_abstract;
   my ($sql, @bind) = $sqla->insert(

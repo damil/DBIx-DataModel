@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.24 20.04.2012
+   - fixed a bug with Oracle cursors
+
 v2.23 19.03.2012
    - added support for INSERT .. RETURNING .. INTO .. (used by Oracle)
 
