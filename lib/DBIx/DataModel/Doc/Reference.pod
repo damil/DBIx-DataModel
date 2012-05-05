@@ -2428,7 +2428,7 @@ C<auto_expand> is recursively called on the expanded objects.
 
 
 
-=head2 apply_column_handler()
+=head3 apply_column_handler()
 
   $class ->apply_column_handler($handler_name, \@rows);
   $row   ->apply_column_handler($handler_name);
@@ -2459,7 +2459,7 @@ If C<column_name> is not present in the target object(s), then the
 corresponding result value is  C<undef>.
 
 
-=head2 has_invalid_columns
+=head3 has_invalid_columns
 
   my $invalid_columns = $row->has_invalid_columns;
   if ($invalid_columns) {
@@ -2483,6 +2483,20 @@ Your 'validate' handlers, defined through L</set_column_handlers>,
 should return 0 or an empty string whenever the column value is invalid.
 Never return C<undef>, because we would no longer be able to
 distinguish between an invalid existent column and a missing column.
+
+=head3 TO_JSON
+
+  use JSON;
+  my $json_converter = JSON->new->convert_blessed(1);
+  my $json_text      = $json_converter->encode($data_row);
+
+The C<Source> class implements a C<TO_JSON> method, so that data rows
+from any table or any join can be easily converted into JSON strings
+(including nested rows that may have been added by the L</expand> method).
+See L<JSON/convert_blessed> for more explanations.
+
+The C<TO_JSON> method merely copies the object hash into a plain hash, and
+removes the C<__schema> slot.
 
 
 =head2 Methods delegated to the ConnectedSource class

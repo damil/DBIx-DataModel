@@ -370,3 +370,18 @@ when defining the schema :
    auto_update_columns => {TS_MODIF => \&_check_time_stamp},
   );
 
+=head1 DATA CONVERSION
+
+=head2 JSON
+
+  use JSON;
+  my $json_converter = JSON->new->convert_blessed(1);
+  my $json_text      = $json_converter->encode($data_row);
+
+By default, the L<JSON> module refuses to convert any object into JSON;
+however, the L<JSON/convert_blessed> option will accept to convert objects
+provided they possess a C<TO_JSON> method. Such a method is implemented in 
+the L<DBIx::DataModel::Source/DBIx::DataModel::Source> class, so 
+any data row can be converted into JSON.
+
+

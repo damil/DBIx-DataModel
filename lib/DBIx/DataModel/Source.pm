@@ -145,7 +145,12 @@ sub join {
 }
 
 
-
+sub TO_JSON {
+  my $self = shift;
+  my $clone = {%$self};
+  delete $clone->{__schema};
+  return $clone;
+}
 
 
 1; # End of DBIx::DataModel::Source
