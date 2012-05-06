@@ -1433,9 +1433,7 @@ for serializing database connections (this would be hazardous, and also
 insecure because serialization data would contain database passwords).
 Therefore the process performing deserialization is responsible
 for opening the database connection by its own means, before
-calling the C<thaw> method.
-
-
+calling the C<thaw> method. 
 
 =head1 TO DO
 

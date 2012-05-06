@@ -9,7 +9,6 @@ use Carp;
 use List::Util       qw/min first/;
 use List::MoreUtils  qw/firstval any/;
 use Scalar::Util     qw/weaken refaddr reftype dualvar/;
-use Storable         qw/dclone freeze/;
 use Params::Validate qw/validate ARRAYREF HASHREF/;
 use POSIX            qw/LONG_MAX/;
 use Acme::Damn       qw/damn/;
@@ -81,18 +80,6 @@ DBIx::DataModel::Meta::Utils->define_readonly_accessors(
 sub meta_source {shift->{connected_source}->meta_source}
 sub schema      {shift->{connected_source}->schema}
 
-
-
-# don't remember why this "clone()" method was ever created.
-# Keep the code  around for a while ...
-
-# sub clone {
-#   my ($self) = @_;
-#   $self->{status} < PREPARED
-#     or croak "can't clone() when in status $self->{status}";
-
-#   return dclone($self); # THINK: should use Clone::clone instead?
-# }
 
 
 # THINK : not documented yet, is this method useful ?

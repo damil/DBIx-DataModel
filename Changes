@@ -1,19 +1,24 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.26 05.05.2012
+  - automatic composition of handlers when multiple under the same name
+  - added TO_JSON method so that the JSON module can happily encode 
+    DBIDM data rows
+
 v2.25 21.04.2012
-   - skip Oracle tests when DBD::Oracle is not installed
+  - skip Oracle tests when DBD::Oracle is not installed
 
 v2.24 20.04.2012
-   - fixed a bug with Oracle cursors
+  - fixed a bug with Oracle cursors
 
 v2.23 19.03.2012
-   - added support for INSERT .. RETURNING .. INTO .. (used by Oracle)
+  - added support for INSERT .. RETURNING .. INTO .. (used by Oracle)
 
 v2.22 08.03.2012
-   - fixed bug in ->update() with nested refs, bug introduced in v2.20
+  - fixed bug in ->update() with nested refs, bug introduced in v2.20
 
 v2.21 29.02.2012
-   - fixed bug in $meta_source->tables(), ->associations(), etc.
+  - fixed bug in $meta_source->tables(), ->associations(), etc.
 
 v2.20 14.02.2012
   - fixed bug on update() in multi-schema mode

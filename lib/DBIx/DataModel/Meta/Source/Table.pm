@@ -122,7 +122,15 @@ sub define_column_handlers {
   my ($self, $column_name, %handlers) = @_;
 
   while (my ($handler_name, $body) = each %handlers) {
-    $self->{column_handlers}{$column_name}{$handler_name} = $body;
+    my $handler  = $body;
+    my $previous = $self->{column_handlers}{$column_name}{$handler_name};
+    if ($previous) {
+      # compose new coderef with previous coderef
+      $handler 
+        = $handler_name eq 'from_DB' ? sub {$body->(@_); $previous->(@_)}
+                                     : sub {$previous->(@_); $body->(@_)};
+    }
+    $self->{column_handlers}{$column_name}{$handler_name} = $handler;
   }
 
   return $self;

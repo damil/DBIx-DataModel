@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.25';
+our $VERSION = '2.26';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
@@ -543,8 +543,9 @@ of its strong points :
 
 =item *
 
-UML-style declaration of relationships (instead of 'has_many', 
-'belongs_to', etc.)
+Centralized, UML-style declaration of tables and relationships 
+(instead of many files with declarations such as 'has_many', 'belongs_to', 
+etc.)
 
 =item *
 

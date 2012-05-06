@@ -882,6 +882,13 @@ is for implementing the higher-level L</define_column_type()> method;
 however it can also be called directly, without the need for defining
 a type.
 
+If another handler is already installed within C<$column_name>
+under name C<$handler_name_1>, then both subs are automatically
+composed into a new sub performing both coderefs. The execution 
+order will correspond to the handler declaration order, except
+for the special case C<from_DB>, where the last declared handler
+is executed first.
+
 
 =head3 define_auto_expand()
 
