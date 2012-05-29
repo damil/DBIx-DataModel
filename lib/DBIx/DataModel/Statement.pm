@@ -12,6 +12,7 @@ use Scalar::Util     qw/weaken refaddr reftype dualvar/;
 use Params::Validate qw/validate ARRAYREF HASHREF/;
 use POSIX            qw/LONG_MAX/;
 use Acme::Damn       qw/damn/;
+use Try::Tiny;
 
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
@@ -25,7 +26,7 @@ use overload
   # also useful to show the SQL (if in sqlized state)
   '""' => sub {
     my $self = shift;
-    my $string = eval {my ($sql, @bind) = $self->sql;
+    my $string = try {my ($sql, @bind) = $self->sql;
                        __PACKAGE__ . "($sql // " . join(", ", @bind) . ")"; }
               || overload::StrVal($self);
   }
@@ -216,10 +217,11 @@ sub refine {
 
 
       # other args are just stored, will be used later
-      /^-( order_by     | group_by | having    | for
-         | result_as    | post_SQL | pre_exec  | post_exec  | post_bless
-         | limit        | offset   | page_size | page_index
-         | column_types | prepare_attrs        | dbi_prepare_method
+      /^-( order_by       | group_by  | having    | for
+         | union(?:_all)? | intersect | except    | minus
+         | result_as      | post_SQL  | pre_exec  | post_exec  | post_bless
+         | limit          | offset    | page_size | page_index
+         | column_types   | prepare_attrs         | dbi_prepare_method
          | _left_cols
          )$/x
          and do {$args->{$k} = $v; last SWITCH};
@@ -253,7 +255,9 @@ sub sqlize {
 
   # build arguments for SQL::Abstract::More
   $self->refine(-where => $source_where) if $source_where;
-  my @args_to_copy = qw/-columns -where -order_by -group_by -having
+  my @args_to_copy = qw/-columns -where
+                        -union -union_all -intersect -except -minus
+                        -order_by -group_by -having
                         -limit -offset -page_size -page_index/;
   my %sqla_args = (-from         => $meta_source->db_from,
                    -want_details => 1);

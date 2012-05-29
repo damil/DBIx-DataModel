@@ -15,7 +15,8 @@ use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
-use SQL::Abstract::More 1.03;
+use SQL::Abstract::More 1.04;
+use Try::Tiny;
 
 use namespace::clean;
 
@@ -227,7 +228,7 @@ sub do_transaction {
     $begin_work_and_exec->();
   }
   else { # else try to execute and commit in an eval block
-    eval {
+    try {
       # check AutoCommit state
       $dbh->{AutoCommit}
         or croak "dbh was not in Autocommit mode before initial transaction";
@@ -238,18 +239,21 @@ sub do_transaction {
       # commit all dbhs and then reset the list of dbhs
       $_->commit foreach @$transaction_dbhs;
       delete $self->{transaction_dbhs};
-    };
-
-    # if any error, rollback
-    my $err = $@;
-    if ($err) {              # the transaction failed
-      my @rollback_errs = grep {$_} map {eval{$_->rollback}; $@} 
-                                        reverse @$transaction_dbhs;
-      delete $self->{transaction_dbhs};
-      DBIx::DataModel::Schema::_Exception->throw($err, @rollback_errs);
     }
+    catch {
+      # if any error, rollback
+      my $err = $_;
+      if ($err) {               # the transaction failed
+        my @rollback_errs;
+        foreach my $dbh (reverse @$transaction_dbhs) {
+          try   {$dbh->rollback}
+          catch {push @rollback_errs, $_};
+        }
+        delete $self->{transaction_dbhs};
+        DBIx::DataModel::Schema::_Exception->throw($err, @rollback_errs);
+      }
+    };
   }
-
   return $in_context->{return}->();
 }
 
@@ -317,7 +321,8 @@ sub _debug { # internal method to send debug messages
 # PRIVATE CLASS FOR LOCALIZING STATE (see L</localizeState> method
 #----------------------------------------------------------------------
 
-package DBIx::DataModel::Schema::_State;
+package
+  DBIx::DataModel::Schema::_State;
 
 sub new {
   my ($class, $schema, $state) = @_;
@@ -347,7 +352,8 @@ sub DESTROY { # called when the guard goes out of scope
 # PRIVATE CLASS FOR TRANSACTION EXCEPTIONS
 #----------------------------------------------------------------------
 
-package DBIx::DataModel::Schema::_Exception;
+package
+  DBIx::DataModel::Schema::_Exception;
 use strict;
 use warnings;
 

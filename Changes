@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.27 29.05.2012
+  - new dependency on Try::Tiny for better evals
+  - support for set operators for compound queries (UNION/INTERSECT/etc)
+
 v2.26 05.05.2012
   - automatic composition of handlers when multiple under the same name
   - added TO_JSON method so that the JSON module can happily encode 

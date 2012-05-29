@@ -12,6 +12,8 @@ use Carp;
 use List::Util   qw/max/;
 use Exporter     qw/import/;
 use DBI;
+use Try::Tiny;
+use Module::Load qw/load/;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
@@ -62,7 +64,7 @@ sub fromDBI {
 
 
     # get association info (in an eval because unimplemented by some drivers)
-    my $fkey_sth = eval {$dbh->foreign_key_info(@table_id,
+    my $fkey_sth = try {$dbh->foreign_key_info(@table_id,
                                                 undef, undef, undef)}
       or next TABLE;
 
@@ -102,7 +104,7 @@ sub fromDBIxClass {
   my $dbic_schema = shift or croak "missing arg (DBIC schema name)";
 
   # load the DBIx::Class schema
-  eval "use $dbic_schema; 1;" or croak $@;
+  load $dbic_schema or croak $@;
 
   # global hash to hold assoc. info (because we must collect info from
   # both tables to get both directions of the association)

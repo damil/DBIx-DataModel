@@ -13,18 +13,18 @@ my $builder = Module::Build->new(
         'Test::More'           => 0,
 	'Carp'                 => 0,
 	'DBI'                  => 0,
-	'SQL::Abstract::More'  => 1.03,
+	'SQL::Abstract::More'  => 1.04,
 	'Module::Build'        => 0,
         'Acme::Damn'           => 0,
         'Scalar::Util'         => 0,
 	'Storable'             => 0,
 
         # new dependencies in 2.0 
-        'namespace::autoclean' => 0,
+        'namespace::clean'     => 0,
         'MRO::Compat'          => 0,
         'Module::Load'         => 0,
         'Params::Validate'     => 0,
-
+	'Try::Tiny'            => 0,
     },
     build_requires => {
         'Task::Weaken'  => 0,
