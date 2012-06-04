@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.28 03.06.2012
+  - fix ->row_count() on UNION/INTERSECT
+
 v2.27 29.05.2012
   - new dependency on Try::Tiny for better evals
   - support for set operators for compound queries (UNION/INTERSECT/etc)

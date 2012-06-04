@@ -1,8 +1,10 @@
 use strict;
 use warnings;
+
 use DBI;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
-use constant N_DBI_MOCK_TESTS => 3;
+use SQL::Abstract::More;
+use constant N_DBI_MOCK_TESTS => 8;
 use constant N_BASIC_TESTS    => 1;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -27,24 +29,58 @@ SKIP: {
     $dbh->{mock_clear_history} = 1;
   }
 
-
+  my $stmt;
   DBIx::DataModel->Schema('D1', sqlDialect => {limitOffset => "LimitOffset"})
                  ->Table(qw/T T PK/)
                  ->dbh($dbh);
-  D1::T->select(-limit => 13);
+  $stmt = D1::T->select(-limit => 13, -result_as => 'statement');
+  $stmt->all;
   sqlLike('SELECT * FROM T LIMIT ? OFFSET ?', [13, 0], 'limitOffset');
+
+  $stmt->row_count;
+  sqlLike('SELECT COUNT(*) FROM T', [], 'count(*) limitOffset');
 
   DBIx::DataModel->Schema('D2', sqlDialect => 'MySQL')
                  ->Table(qw/T T PK/)
                  ->dbh($dbh);
-  D2::T->select(-limit => 13);
-  sqlLike('SELECT * FROM T LIMIT ?, ?', [0, 13], 'limitXY');
+  $stmt = D2::T->select(-columns => [qw/foo bar/],
+                        -limit => 13,
+                        -result_as => 'statement');
+  $stmt->all;
+  sqlLike('SELECT foo, bar FROM T LIMIT ?, ?', [0, 13], 'limitXY');
+
+  $stmt->row_count;
+  sqlLike('SELECT COUNT(*) FROM T', [], 'count(*) limitXY');
 
   DBIx::DataModel->Schema('D3', sqlDialect => {limitOffset => "LimitYX"})
                  ->Table(qw/T T PK/)
                  ->dbh($dbh);
-  D3::T->select(-limit => 13, -offset => 7);
-  sqlLike('SELECT * FROM T LIMIT ?, ?', [13, 7], 'limitYX');
+  $stmt = D3::T->select(
+    -where => {foo => 999},
+    -limit => 13,
+    -offset => 7,
+    -result_as => 'statement');
+  $stmt->all;
+  sqlLike('SELECT * FROM T WHERE foo = ? LIMIT ?, ?', [999, 13, 7], 'limitYX');
+
+  $stmt->row_count;
+  sqlLike('SELECT COUNT(*) FROM T  WHERE foo = ?', [999], 'count(*) limitYX');
+
+
+  my $sqlam = SQL::Abstract::More->new(sql_dialect =>  "Oracle");
+  D3->singleton->sql_abstract($sqlam);
+  $stmt = D3::T->select(
+    -where => {foo => 999},
+    -limit => 13,
+    -offset => 7,
+    -result_as => 'statement');
+  $stmt->sqlize;
+  my ($sql, @bind) = $stmt->sql;
+  like($sql, qr/ROWNUM/, 'limit Oracle');
+
+  $stmt->row_count;
+  sqlLike('SELECT COUNT(*) FROM T  WHERE foo = ?', [999], 'count(*) limit Oracle');
+
 }
 
 

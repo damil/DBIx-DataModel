@@ -46,4 +46,5 @@ t/v2_multischema.t
 t/v2_paths.t
 t/v2_json.t
 t/v2_type.t
+t/v2_union.t
 t/v2_update.t

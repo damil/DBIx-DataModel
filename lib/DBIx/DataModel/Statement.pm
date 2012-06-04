@@ -503,14 +503,37 @@ sub row_count {
   if (! exists $self->{row_count}) {
     $self->sqlize if $self->{status} < SQLIZED;
     my ($sql, @bind) = $self->sql;
-    $sql =~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i
-      or croak "can't count rows from sql: $sql";
 
-    # TODO : line below is NOT PORTABLE. Should accomodate for all
-    # limit-offset syntaxes !!!
-    $sql =~ s[\bLIMIT \? OFFSET \?][]i
-      and splice @bind, -2;
+    # get syntax used for LIMIT clauses ...
+    my $sqla = $self->schema->sql_abstract;
+    my ($limit_sql, undef, undef) = $sqla->limit_offset(0, 0);
+    $limit_sql =~ s/([()?*])/\\$1/g;
 
+    # ...and use it to remove the LIMIT clause and associated bind vals, if any
+    if ($limit_sql =~ /ROWNUM/) { # special case for Oracle syntax, complex ...
+                                  # see source code of SQL::Abstract::More
+      $limit_sql =~ s/%s/(.*)/;
+      if ($sql =~ s/^$limit_sql/$1/) {
+        splice @bind, -2;
+      }
+    }
+    elsif ($sql =~ s[\b$limit_sql][]i) { # regular LIMIT/OFFSET syntaxes
+      splice @bind, -2;
+    }
+
+    # select COUNT(*) instead of initial columns
+    if ($sql =~ /\b(UNION|INTERSECT|MINUS|EXCEPT)\b/) {
+      $sql = "SELECT COUNT(*) FROM ( $sql )";
+    }
+    else {
+      $sql =~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i
+        or croak "can't count rows from sql: $sql";
+    }
+
+    # log the statement and bind values
+    $self->schema->_debug("PREPARE $sql / @bind");
+
+    # call the database
     my $dbh    = $self->schema->dbh or croak "Schema has no dbh";
     my $method = $self->schema->dbi_prepare_method;
     my $sth    = $dbh->$method($sql);
