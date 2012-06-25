@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+
+
+ - fix insert() when primary key is over several columns
+
 v2.28 03.06.2012
   - fix ->row_count() on UNION/INTERSECT
 
