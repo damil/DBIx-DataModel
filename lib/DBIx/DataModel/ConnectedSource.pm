@@ -414,6 +414,8 @@ sub _maybe_inject_primary_key {
 
 __END__
 
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::ConnectedSource - metasource and schema paired together
@@ -445,6 +447,7 @@ L<DBIx::DataModel::Doc::Reference/"CONNECTED SOURCES">
 =head3 schema
 
 =head3 metadm
+
 
 =head2 Data retrieval
 

@@ -1,3 +1,5 @@
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Doc::Delta_v2 - Differences introduced in version 2.0

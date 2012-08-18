@@ -80,6 +80,8 @@ sub row_count {
 
 __END__
 
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Statement::JDBC - Statement for interacting with DBD::JDBC 

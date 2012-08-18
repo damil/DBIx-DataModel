@@ -33,7 +33,7 @@ sub define_class {
   # inject parents into @ISA
   %{$_.'::'} or load $_ foreach @{$params{isa}};
   my $class_isa = $params{name}."::ISA";
-  not defined  @{$class_isa} or croak "won't overwrite \@$class_isa";
+  not @{$class_isa} or croak "won't overwrite \@$class_isa";
   @{$class_isa} = @{$params{isa}};
 
   # use mro 'c3' in that package

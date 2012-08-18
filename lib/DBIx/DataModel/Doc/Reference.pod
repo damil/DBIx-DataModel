@@ -1,3 +1,5 @@
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Doc::Reference - General reference for DBIx::DataModel
@@ -2765,10 +2767,12 @@ Keys are column names, values are insignificant.
   my %all_path      = $meta_source->path;
   my $specific_path = $meta_source->path($path_name);
 
-Returns a flattened hash, built from C<no_update_columns> declared
-in this source, in its ancestors, or in the C<$meta_schema>.
-If a C<$path_name>, returns the corresponding entry in 
-C<%all_path>.
+Without any argument, returns a flattened hash of all paths 
+accessible from this source : keys are path names, and
+values are instances of L<DBIx::DataModel::Meta::Path>.
+
+If a C<$path_name> is supplied, returns the corresponding 
+metapath object.
 
 =head3 db_from()
 

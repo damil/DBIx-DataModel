@@ -1,3 +1,5 @@
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Doc::Design - Architecture and design principles
@@ -1513,4 +1515,8 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
      - think about STORABLE_attach
 
   - think about freeze/thaw in multi-schema mode
+  - tune croak() in Statement.pm so that SQL errors are reported 
+    from caller's line
+  - add methods $schema->meta_table($name), $schema->meta_join(qw/.../)
+  - add method "delete_..." for components of a Composition
 
