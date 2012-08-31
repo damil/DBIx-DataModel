@@ -37,7 +37,7 @@ sub _singleInsert {
   # do we need to retrieve the primary key ourselves ?
   my @prim_key_cols = $class->primary_key;
   my @prim_key_vals;
-  my $should_retrieve_prim_key =  (none {exists $self->{$_}} @prim_key_cols)
+  my $should_retrieve_prim_key =  (none {defined $self->{$_}} @prim_key_cols)
                                && ! exists $options{-returning};
 
   # add a RETURNING clause if needed, to later retrieve the primary key

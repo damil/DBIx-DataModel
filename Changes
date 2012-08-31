@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.30 31.08.2012
+  - changed check if should return pKey from "exists" to "defined" in _singleInsert
+
 v2.29 18.08.2012
   - fix insert() when primary key is over several columns
   - removed deprecated call to defined(@array)
