@@ -447,6 +447,31 @@ into an array (they must be used immediately) :
     do_something_immediately_with($row);
   }
 
+=head3 Insert
+
+  my $table = $schema->table($table_name);
+
+  #  If you provide the primary key (called my_code in this example):
+  $table->insert({my_code => $pk_val, field1 => $val1, field2 => $val2, ...});
+
+  #  If your database provides the primary key:
+  my $id = $table->insert({field1 => $val1, field2 => $val2, ...});
+  #  This assumes your DBD driver implements last_insert_id. 
+  #  If not, you can provide one as an option to the schema.
+
+  #  Insert multiple records using a list of arrayrefs. 
+  #  First list defines column names
+  $table->insert(
+                  [qw/  field1  field2  /],
+                  [qw/  val11   val12   /],
+                  [qw/  val22   val22   /],
+                );
+
+  #  Or just insert a list of hashes
+  $table->insert(
+      {field1 => val11, field2 => val12},
+      {field2 => val21, field2 => val22},
+  );
 
 =head3 Update
 
