@@ -77,7 +77,7 @@ sub expand {
   $self->{$path} = $self->$path(@options);
 }
 
-sub auto_expand {} # default; overridden in subclasses through set_auto_expand()
+sub auto_expand {} # overridden in subclasses through define_auto_expand()
 
 
 sub apply_column_handler {

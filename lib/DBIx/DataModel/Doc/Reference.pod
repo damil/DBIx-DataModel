@@ -2400,7 +2400,7 @@ returns that column (so you can call C<< my $k = $obj->primary_key >>).
 
   $row->expand($path, %options);
 
-Executes the method C<< $role >> to follow an Association,
+Executes the method C<< $path >> to follow an Association,
 stores the result in the object itself under C<< $row->{$path} >>,
 and returns that result.
 This is typically used to expand an object into a tree datastructure.
@@ -2431,7 +2431,7 @@ with arguments, like C<< $row->some_path(-columns => '*') >>.
 Asks the object to expand itself with some objects in foreign tables.
 Does nothing by default. Should be redefined in subclasses,
 most probably through the 
-L</set_auto_expand> method.
+L</define_auto_expand> method.
 If the optional argument C<$with_recursion> is true, then 
 C<auto_expand> is recursively called on the expanded objects.
 
