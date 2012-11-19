@@ -460,7 +460,7 @@ into an array (they must be used immediately) :
   #  If not, you can provide one as an option to the schema.
 
   #  Insert multiple records using a list of arrayrefs. 
-  #  First arrayref defines column names
+  #  First arrayref defines column names.
   $table->insert(
                   [qw/  field1  field2  /],
                   [qw/  val11   val12   /],
