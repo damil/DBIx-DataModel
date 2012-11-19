@@ -288,7 +288,7 @@ just add a new method into the table class :
 
 Declare how to automatically expand objects into data trees
 
-  My::Schema::Activity->metadm->set_auto_expand(qw/employee department/);
+  My::Schema::Activity->metadm->define_auto_expand(qw/employee department/);
 
 =head3 Automatic schema generation
 
