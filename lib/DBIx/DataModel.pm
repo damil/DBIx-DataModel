@@ -456,10 +456,10 @@ into an array (they must be used immediately) :
 
   #  If your database provides the primary key:
   my $id = $table->insert({field1 => $val1, field2 => $val2, ...});
-  #  This assumes your DBD driver implements last_insert_id. 
+  #  This assumes your DBD driver implements last_insert_id.
   #  If not, you can provide one as an option to the schema.
 
-  #  Insert multiple records using a list of arrayrefs. 
+  #  Insert multiple records using a list of arrayrefs.
   #  First arrayref defines column names
   $table->insert(
                   [qw/  field1  field2  /],
@@ -783,7 +783,8 @@ Laurent Dami, E<lt>laurent.dami AT etat  ge  chE<gt>
 =head1 ACKNOWLEDGEMENTS
 
 Thanks to Cedric Bouvier for some bug fixes and improvements, and to
-Terrence Brannon for many fixes in the documentation.
+Terrence Brannon and Ross Attril for fixes and additions in the
+documentation.
 
 =head1 COPYRIGHT AND LICENSE
 
