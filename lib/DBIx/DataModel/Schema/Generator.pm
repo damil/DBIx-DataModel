@@ -83,7 +83,7 @@ sub fromDBI {
         },
         { table    => _table2class($fk_row->{FK_TABLE_NAME}),
           col      => $fk_row->{FK_COLUMN_NAME},
-          role     => _table2role($fk_row->{FK_TABLE_NAME}, "s"),
+          role     => _table2role($fk_row->{FK_TABLE_NAME}, "s"),           # Should that "s" be 0?
           mult_min => 0,
           mult_max => '*',
         }
@@ -326,7 +326,7 @@ sub produce {
     my @foreign_keys 
       = grep {$_->type eq 'FOREIGN KEY'} ($table->get_constraints);
 
-    my $role      = _table2role($tablename, "s");
+    my $role      = _table2role($tablename, "s");       # Is that supposed to be _table2role($tablename, 0);
     foreach my $fk (@foreign_keys) {
       my $ref_table  = $fk->reference_table;
       my @ref_fields = $fk->reference_fields;
@@ -381,8 +381,13 @@ sub _table2role{
   my ($tablename, $plural) = @_;
 
   my $inflect         = $plural ? $to_PL : $to_S;
-  my ($first, @other) = map {$inflect->($_)} split /[\W_]+/, lc $tablename;
-  my $role            = join '', $first, map ucfirst, @other;
+
+  my @parts = split /[\W_]+/, lc $tablename;
+
+  my $last = pop @parts;
+  my $first = shift @parts;
+  my $role = join '', $first, map ucfirst, @parts,  ucfirst $inflect->($last);
+
   return $role;
 }
 
