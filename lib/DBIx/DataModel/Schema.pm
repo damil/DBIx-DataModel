@@ -23,14 +23,14 @@ use namespace::clean;
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 my $spec = {
-  dbh                          => {type => OBJECT|ARRAYREF, optional => 1},
-  debug                        => {type => OBJECT|SCALAR,   optional => 1},
-  sql_abstract                 => {type => OBJECT,
-                                   isa  => 'SQL::Abstract::More',
-                                   optional => 1},
-  dbi_prepare_method           => {type => SCALAR, default => 'prepare'},
-  placeholder_prefix           => {type => SCALAR, default => '?:'},
-  select_implicitly_for        => {type => SCALAR, default => ''},
+  dbh                   => {type => OBJECT|ARRAYREF, optional => 1},
+  debug                 => {type => OBJECT|SCALAR,   optional => 1},
+  sql_abstract          => {type => OBJECT,
+                            isa  => 'SQL::Abstract::More',
+                            optional => 1},
+  dbi_prepare_method    => {type => SCALAR, default => 'prepare'},
+  placeholder_prefix    => {type => SCALAR, default => '?:'},
+  select_implicitly_for => {type => SCALAR, default => ''},
 };
 
 
@@ -387,6 +387,8 @@ sub rollback_errors {
 
 __END__
 
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Schema - Factory for DBIx::DataModel Schemas
@@ -399,17 +401,19 @@ This is the parent class for all schema classes created through
 
 =head1 CONSTRUCTOR
 
-[TODO]
+See L<DBIx::DataModel::Doc::Reference/Schema>
+
 
 =head1 METHODS
 
 Methods are documented in 
 L<DBIx::DataModel::Doc::Reference|DBIx::DataModel::Doc::Reference>.
-This module implements
+
+=head2 Delegated methods
+
+Methods delegated to L<DBIx::DataModel::Meta::Schema> :
 
 =over
-
-=item L<Schema|DBIx::DataModel::Doc::Reference/Schema>
 
 =item L<Table|DBIx::DataModel::Doc::Reference/Table>
 
@@ -417,37 +421,43 @@ This module implements
 
 =item L<Association|DBIx::DataModel::Doc::Reference/Association>
 
+=item L<Composition|DBIx::DataModel::Doc::Reference/Composition>
+
+=item L<Type|DBIx::DataModel::Doc::Reference/Type>
+
+=item L<table|DBIx::DataModel::Doc::Reference/table>
+
 =item L<join|DBIx::DataModel::Doc::Reference/join>
 
-=item L<ColumnType|DBIx::DataModel::Doc::Reference/ColumnType>
+=back
+
+
+
+=head2 Implemented methods
+
+Methods implemented in this module :
+
+=over
+
+=item L<singleton|DBIx::DataModel::Doc::Reference/singleton>
 
 =item L<dbh|DBIx::DataModel::Doc::Reference/dbh>
 
 =item L<debug|DBIx::DataModel::Doc::Reference/debug>
 
-=item L<noUpdateColumns|DBIx::DataModel::Doc::Reference/noUpdateColumns>
+=item L<select_implicitly_for|DBIx::DataModel::Doc::Reference/select_implicitly_for>
 
-=item L<autoUpdateColumns|DBIx::DataModel::Doc::Reference/autoUpdateColumns>
+=item L<dbi_prepare_method|DBIx::DataModel::Doc::Reference/dbi_prepare_method>
 
-=item L<selectImplicitlyFor|DBIx::DataModel::Doc::Reference/selectImplicitlyFor>
+=item L<sql_abstract|DBIx::DataModel::Doc::Reference/sql_abstract>
 
-=item L<dbiPrepareMethod|DBIx::DataModel::Doc::Reference/dbiPrepareMethod>
+=item L<placeholder_prefix|DBIx::DataModel::Doc::Reference/placeholder_prefix>
 
-=item L<tables|DBIx::DataModel::Doc::Reference/tables>
+=item L<localize_state|DBIx::DataModel::Doc::Reference/localize_state>
 
-=item L<table|DBIx::DataModel::Doc::Reference/table>
-
-=item L<localizeState|DBIx::DataModel::Doc::Reference/localizeState>
-
-=item L<statementClass|DBIx::DataModel::Doc::Reference/statementClass>
-
-=item L<doTransaction|DBIx::DataModel::Doc::Reference/doTransaction>
+=item L<do_transaction|DBIx::DataModel::Doc::Reference/do_transaction>
 
 =item L<unbless|DBIx::DataModel::Doc::Reference/unbless>
-
-=item L<_createPackage|DBIx::DataModel::Doc::Reference/_createPackage>
-
-=item L<_defineMethod|DBIx::DataModel::Doc::Reference/_defineMethod>
 
 =back
 
@@ -462,9 +472,7 @@ A private class for localizing state (using a DESTROY method).
 =head2 _Exception
 
 A private class for exceptions during transactions
-(see  L<doTransaction|DBIx::DataModel::Doc::Reference/doTransaction>).
-
-
+(see  L<do_transaction|DBIx::DataModel::Doc::Reference/do_transaction>).
 
 =head1 AUTHOR
 
@@ -472,11 +480,8 @@ Laurent Dami, E<lt>laurent.dami AT etat  ge  chE<gt>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2006, 2008 Laurent Dami.
+Copyright 2006-2012 Laurent Dami.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
-
-
-
 

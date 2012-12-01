@@ -4,6 +4,8 @@ package DBIx::DataModel::Meta;
 
 __END__
 
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Meta - meta-information for DBIx::DataModel

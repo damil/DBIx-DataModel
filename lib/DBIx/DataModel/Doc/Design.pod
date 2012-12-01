@@ -1,3 +1,5 @@
+=encoding ISO8859-1
+
 =head1 NAME
 
 DBIx::DataModel::Doc::Design - Architecture and design principles
@@ -1169,7 +1171,7 @@ The reverse is also true : the composite class is able
 to automatically call its own methods to gather data from associated
 classes and build a complete data tree in memory. This is declared through
 the
-L<set_auto_expand()|DBIx::DataModel::Doc::Reference/"set_auto_expand()">
+L<define_auto_expand()|DBIx::DataModel::Doc::Reference/"define_auto_expand()">
 method and is useful for passing structured data
 to external modules, like for example XML or JSON exports.
 
@@ -1513,4 +1515,10 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
      - think about STORABLE_attach
 
   - think about freeze/thaw in multi-schema mode
-
+  - tune croak() in Statement.pm so that SQL errors are reported 
+    from caller's line
+  - add methods $schema->meta_table($name), $schema->meta_join(qw/.../)
+  - add method "delete_..." for components of a Composition
+  - -result_as => 'count'
+      .. or should it be select(-columns => [-count => '*'],
+                                -result_as => 'scalar') ??
