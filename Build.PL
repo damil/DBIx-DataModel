@@ -31,7 +31,7 @@ my $builder = Module::Build->new(
     },
     recommends => {
         'DBD::Mock'                   => 0,
-        'Lingua::EN::Inflect::Number' => 0,
+        'Lingua::EN::Inflect::Phrase' => 0,
     },
     add_to_cleanup      => [ 'DBIx-DataModel-*' ],
 );

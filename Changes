@@ -1,7 +1,11 @@
 Revision history for Perl extension DBIx::DataModel.
 
+  - Schema::Generator uses Lingua::EN::Inflect::Phrase; test implemented
+    using DBD::SQLite v1.38_01
+
 v2.30 31.08.2012
-  - changed check if should return pKey from "exists" to "defined" in _singleInsert
+  - changed check if should return pKey from "exists" to "defined" 
+    in _singleInsert
 
 v2.29 18.08.2012
   - fix insert() when primary key is over several columns
