@@ -451,7 +451,7 @@ into an array (they must be used immediately) :
 
   my $table = $schema->table($table_name);
 
-  #  If you provide the primary key (called my_code in this example):
+  #  If you provide the primary key (called 'my_code' in this example):
   $table->insert({my_code => $pk_val, field1 => $val1, field2 => $val2, ...});
 
   #  If your database provides the primary key:
@@ -473,6 +473,10 @@ into an array (they must be used immediately) :
       {field2 => val21, field2 => val22},
   );
 
+  # insertion through the association Employee - Activity
+  $an_employee->insert_into_activities({d_begin => $today,
+                                        dpt_id  => $dpt});
+
 =head3 Update
 
   # update on a set of fields, primary key included
@@ -483,7 +487,7 @@ into an array (they must be used immediately) :
   $table->update(@primary_key, {field1 => $val1, field2 => $val2, ...});
 
   # bulk update
-  $table->update(-set   => {field1 => $val1, field2 => $val2, ...}
+  $table->update(-set   => {field1 => $val1, field2 => $val2, ...},
                  -where => \%condition);
 
   # invoking instances instead of table classes

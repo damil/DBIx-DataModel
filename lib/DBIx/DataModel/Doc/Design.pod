@@ -1468,8 +1468,6 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
   - Storable
      - hooks for YAML ?
      - think about STORABLE_attach
-
-
      # ADD TESTS for table inheritance
 
   - readonly tables
@@ -1498,11 +1496,6 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
     compatibility
 
   - various policies for guessing foreign keys : e.g proc.id = attr.proc_id
-
-  - Statement::refine() should be more intelligent
-      - combine (-where, -orderBy, callbacks)
-      - reject overrides when not possible
-      - should add something like a 'reset' method ??
 
   - declare RT bug for Params::Validate : doc is confused about
     validate_with / validation_options

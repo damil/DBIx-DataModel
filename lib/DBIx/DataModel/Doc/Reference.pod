@@ -522,6 +522,19 @@ method returns a single object, otherwise it returns an arrayref)
 
 =back
 
+When the multiplicity is '*', a method named C<insert_into_...> is
+installed in the class of the other association end. This method
+create new objects of the associated class, taking care of the linking
+automatically. For example :
+
+  $an_employee->insert_into_activities({d_begin => $today,
+                                        dpt_id  => $dpt});
+
+This is equivalent to
+
+  $schema->table('Activity')->insert({d_begin => $today,
+                                      dpt_id  => $dpt,
+                                      emp_id  => $an_employee->{emp_id}});
 
 =item join_cols
 
@@ -598,6 +611,10 @@ directional paths between those sources.
 Only binary associations can be declared; however, it is possible
 to define methods joining three or more tables : see
 L</define_navigation_method()>.
+
+
+
+
 
 
 =head4 Special semantics for compositions
