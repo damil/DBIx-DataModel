@@ -149,13 +149,13 @@ sub define_auto_expand {
 
   # closure to iterate on the components
   my $body = sub {
-    my ($self, $recurse) = @_;
+    my ($self, $want_recurse) = @_;
     foreach my $component_name (@component_names) {
       my $r = $self->expand($component_name); # result can be an object ref 
                                               # or an array ref
-      if ($r and $recurse) {
+      if ($r and $want_recurse) {
 	$r = [$r] unless ref($r) eq 'ARRAY';
-	$_->auto_expand($recurse) foreach @$r;
+	$_->auto_expand($want_recurse) foreach @$r;
       }
     }
   };
