@@ -34,6 +34,11 @@ my $builder = Module::Build->new(
         'Lingua::EN::Inflect::Phrase' => 0,
     },
     add_to_cleanup      => [ 'DBIx-DataModel-*' ],
+    meta_merge => {
+      resources => {
+        repository => 'https://github.com/damil/DBIx-DataModel',
+       }
+     },
 );
 
 $builder->create_build_script();
