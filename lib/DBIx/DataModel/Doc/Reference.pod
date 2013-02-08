@@ -1220,6 +1220,13 @@ the top-level transaction is finished.
 There is no support (yet!) for nested transactions with
 intermediate savepoints.
 
+If the dbh is an instance of L<DBIx::RetryOverDisconnects>, 
+C<do_transaction()> behaves like L<DBIx::RetryOverDisconnects/txn_do>, 
+i.e. it will inspect if the failure was due to a disconnection, and 
+in that case will try again, as many times as required in 
+the C<TxnRetries> attribute.
+
+
 =head2 Schema utility methods
 
 =head3 Schema::metadm()

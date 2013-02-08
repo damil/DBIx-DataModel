@@ -1,5 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.31 08.02.2013
+  - Support for DBIx::RetryOverDisconnects in transactions
   - Schema::Generator uses Lingua::EN::Inflect::Phrase; test implemented
     using DBD::SQLite v1.38_01
 

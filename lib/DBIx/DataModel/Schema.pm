@@ -228,31 +228,52 @@ sub do_transaction {
     $begin_work_and_exec->();
   }
   else { # else try to execute and commit in an eval block
-    try {
-      # check AutoCommit state
-      $dbh->{AutoCommit}
-        or croak "dbh was not in Autocommit mode before initial transaction";
 
-      # execute the transaction
-      $begin_work_and_exec->();
-
-      # commit all dbhs and then reset the list of dbhs
-      $_->commit foreach @$transaction_dbhs;
-      delete $self->{transaction_dbhs};
+    # support for DBIx::RetryOverDisconnects: decide how many retries
+    my $n_retries = 1;
+    if ($dbh->isa('DBIx::RetryOverDisconnects::db')) {
+      $n_retries = $dbh->{DBIx::RetryOverDisconnects::PRIV()}{txn_retries};
     }
-    catch {
-      # if any error, rollback
-      my $err = $_;
-      if ($err) {               # the transaction failed
+
+    # try to do the transaction, maybe several times in cas of disconnection
+  RETRY:
+    for my $retry (1 .. $n_retries) {
+      no warnings 'exiting'; # because "last/next" are in Try::Tiny subroutines
+      try {
+        # check AutoCommit state
+        $dbh->{AutoCommit}
+          or croak "dbh was not in Autocommit mode before initial transaction";
+
+        # execute the transaction
+        $begin_work_and_exec->();
+
+        # commit all dbhs and then reset the list of dbhs
+        $_->commit foreach @$transaction_dbhs;
+        delete $self->{transaction_dbhs};
+        last RETRY; # transaction successful, get out of the loop
+      }
+      catch {
+        my $err = $_;
+
+        # if this was a disconnection ..
+        if ($dbh->isa('DBIx::RetryOverDisconnects::db') 
+              # $dbh->can() is broken on DBI handles, so use ->isa() instead
+              && $dbh->is_trans_disconnect) {
+          $transaction_dbhs = [];
+          next RETRY if $retry < $n_retries;   # .. try again
+          $self->exc_conn_trans_fatal->throw;  # .. or no hope (and no rollback)
+        }
+
+        # otherwise, for regular SQL errors, try to rollback and then throw
         my @rollback_errs;
         foreach my $dbh (reverse @$transaction_dbhs) {
           try   {$dbh->rollback}
-          catch {push @rollback_errs, $_};
+            catch {push @rollback_errs, $_};
         }
         delete $self->{transaction_dbhs};
         DBIx::DataModel::Schema::_Exception->throw($err, @rollback_errs);
-      }
-    };
+      };
+    }
   }
   return $in_context->{return}->();
 }
