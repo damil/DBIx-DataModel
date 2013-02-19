@@ -166,14 +166,24 @@ sub _weed_out_subtrees {
 
   my %subrecords;
 
+  my $use_array_datatypes = $self->schema->sql_abstract->{array_datatypes};
+
   # extract references that correspond to component names
   foreach my $k (keys %$self) {
     next if $k eq '__schema';
     my $v = $self->{$k};
-    if (ref $v) {
-      $is_component{$k} ? $subrecords{$k} = $v 
-                        : carp "unexpected reference $k in record, deleted";
-      delete $self->{$k};
+    if (my $ref = ref $v) {
+      if ($is_component{$k}) {
+        $subrecords{$k} = $v;
+        delete $self->{$k};
+      }
+      elsif ($ref eq 'ARRAY' && $use_array_datatypes) {
+        # do nothing (pass the arrayref to SQL::Abstract)
+      }
+      else {
+        carp "unexpected reference $k in record, deleted";
+        delete $self->{$k};
+      }
     }
   }
 

@@ -203,6 +203,8 @@ my $update_spec = {
 
 sub update {
   my $self = shift;
+  my $schema = $self->{schema};
+  my $sqla   = $schema->sql_abstract;
 
   # parse arguments
   @_ or croak "update() : not enough arguments";
@@ -238,8 +240,11 @@ sub update {
 
   # remove references to foreign objects
   # leave refs to SCALAR or REF because they are used by SQLA for verbatim SQL
+  # leave refs to ARRAY if SQL::Abstract option 'array_datatypes' is on
+  my $nested_refs = $sqla->{array_datatypes} ? qr/^HASH$/
+                                             : qr/^(?:HASH|ARRAY)$/;
   my @sub_refs = grep {my $reftype = reftype($to_set->{$_}) || '';
-                       $reftype eq 'HASH' || $reftype eq 'ARRAY'}
+                       $reftype =~ $nested_refs}
                  grep {$_ ne '__schema'} keys %$to_set;
   if (@sub_refs) {
     carp "data passed to update() contained nested references : ",
@@ -261,9 +266,8 @@ sub update {
   damn $to_set;
 
   # database request
-  my $schema = $self->{schema};
-  my ($sql, @bind) = $schema->sql_abstract->update(
-    -table => $meta_source->db_from, 
+  my ($sql, @bind) = $sqla->update(
+    -table => $meta_source->db_from,
     -set   => $to_set,
     -where => $where,
    );
