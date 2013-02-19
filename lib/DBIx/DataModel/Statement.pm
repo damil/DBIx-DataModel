@@ -252,6 +252,8 @@ sub sqlize {
   my $meta_source  = $self->meta_source;
   my $source_where = $meta_source->{where};
   my $sql_abstract = $self->schema->sql_abstract;
+  my $result_as    = $args->{-result_as} || "";
+
 
   # build arguments for SQL::Abstract::More
   $self->refine(-where => $source_where) if $source_where;
@@ -263,9 +265,11 @@ sub sqlize {
                    -want_details => 1);
   $args->{$_} and $sqla_args{$_} = $args->{$_} for @args_to_copy;
   $sqla_args{-columns} ||= $meta_source->default_columns;
+  $sqla_args{-limit}   ||= 1
+    if $result_as eq 'firstrow' && $self->schema->autolimit_firstrow;
 
   # "-for" (e.g. "update", "read only")
-  if (($args->{-result_as}||"") ne 'subquery') {
+  if ($result_as ne 'subquery') {
     if ($args->{-for}) {
       $sqla_args{-for} = $args->{-for};
     }

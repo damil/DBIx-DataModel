@@ -1072,6 +1072,15 @@ Sets or retrieves the prefix string to recognize "named placeholders"
 within a statement. That prefix should never match any regular data
 encountered in your application; the default is C<'?:'>.
 
+=head3 autolimit_firstrow()
+
+  $schema->autolimit_firstrow($bolean);                      # set
+  my $has_autolimit_firstrow = $schema->autolimit_firstrow;  # get
+
+If this flag is true, calls to C<< select(..., -result_as => 'firstrow') >>
+will automatically add C<< -limit => 1 >>.
+
+
 =head3 select_implicitly_for()
 
   $schema->select_implicitly_for($string);      # set

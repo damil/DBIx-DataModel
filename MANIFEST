@@ -41,6 +41,8 @@ t/v1_MsAccess.t
 t/v1_ParentClasses.t
 t/v1_Storable.t
 t/v2_Oracle.t
+t/v2_autolimit_firstrow.t
+t/v2_array_datatypes.t
 t/v2_delete.t
 t/v2_generator.t
 t/v2_multischema.t

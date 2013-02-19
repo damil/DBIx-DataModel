@@ -28,9 +28,10 @@ my $spec = {
   sql_abstract          => {type => OBJECT,
                             isa  => 'SQL::Abstract::More',
                             optional => 1},
-  dbi_prepare_method    => {type => SCALAR, default => 'prepare'},
-  placeholder_prefix    => {type => SCALAR, default => '?:'},
-  select_implicitly_for => {type => SCALAR, default => ''},
+  dbi_prepare_method    => {type => SCALAR,  default  => 'prepare'},
+  placeholder_prefix    => {type => SCALAR,  default  => '?:'},
+  select_implicitly_for => {type => SCALAR,  default  => ''},
+  autolimit_firstrow    => {type => BOOLEAN, optional => 1},
 };
 
 
@@ -145,7 +146,7 @@ sub dbh {
 
 # some rw setters/getters
 my @accessors = qw/debug select_implicitly_for dbi_prepare_method 
-                   sql_abstract placeholder_prefix/;
+                   sql_abstract placeholder_prefix autolimit_firstrow/;
 foreach my $accessor (@accessors) {
   no strict 'refs';
   *$accessor = sub {
@@ -473,6 +474,8 @@ Methods implemented in this module :
 =item L<sql_abstract|DBIx::DataModel::Doc::Reference/sql_abstract>
 
 =item L<placeholder_prefix|DBIx::DataModel::Doc::Reference/placeholder_prefix>
+
+=item L<autolimit_firstrow|DBIx::DataModel::Doc::Reference/autolimit_firstrow>
 
 =item L<localize_state|DBIx::DataModel::Doc::Reference/localize_state>
 
