@@ -1521,6 +1521,20 @@ issued.
 
 =back
 
+=head4 Reftype checking
+
+If a record contains columns that are arrayrefs or hashrefs, and 
+these are not known as "component parts" (see
+L</"Cascaded insert"> above), then a warning is generated
+and these columns are automatically removed from the record.
+
+An exception to this rule is when the L<SQL::Abstract|SQL::Abstract>
+instance associated with the schema has the option
+C<< array_datatypes => 1 >> : in that case, columns with arrayrefs
+are passed as-is to the SQL::Abstract and DBI layers, under the 
+assumption that the DBD driver will take appropriate action on
+those datatypes.
+
 =head3 update()
 
   $connected_source->update(-set   => {col1 => $val1, ...},
@@ -1586,6 +1600,14 @@ doing
 the final state of record C<$id> in the database is guaranteed to
 reflect changes from both clients, because the sets C<('c1', 'c2')>
 and C<('c3', 'c4', 'c5')> of updated columns are disjoint.
+
+=head4 Reftype checking
+
+Like for inserts, columns with arrayrefs or hashrefs
+are automatically removed from the update list (with a warning),
+unless the L<SQL::Abstract|SQL::Abstract>
+instance associated with the schema has the option
+C<< array_datatypes => 1 >>.
 
 =head3 delete()
 
