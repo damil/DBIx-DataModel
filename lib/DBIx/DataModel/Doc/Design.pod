@@ -1515,3 +1515,9 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
   - -result_as => 'count'
       .. or should it be select(-columns => [-count => '*'],
                                 -result_as => 'scalar') ??
+
+
+  - $obj->join(path1 ...)->select(...) should automatically add
+    -result_as => 'firstrow' when all multiplicities are 1. See TODO
+    in ConnnectedSources::join
+    

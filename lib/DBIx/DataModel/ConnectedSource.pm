@@ -384,6 +384,8 @@ sub join {
   # keep a reference to @left_cols so that Source::join can bind them
   push @stmt_args, -_left_cols => \@left_cols;
 
+  # TODO: should add -select_as => 'firstrow' if all multiplicities are 1
+
   # build and return the new statement
   my $statement = $meta_schema->statement_class->new(@stmt_args);
   return $statement;
