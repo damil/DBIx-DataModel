@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.31';
+our $VERSION = '2.33';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
@@ -786,9 +786,13 @@ Laurent Dami, E<lt>laurent.dami AT etat  ge  chE<gt>
 
 =head1 ACKNOWLEDGEMENTS
 
-Thanks to Cedric Bouvier for some bug fixes and improvements, and to
-Terrence Brannon and Ross Attril for fixes and additions in the
-documentation.
+The following people have contributed with ideas, bug fixes and/or
+improvements :
+
+  Ross Attril
+  Cedric Bouvier
+  Terrence Brannon
+  Sergiy Zuban
 
 =head1 COPYRIGHT AND LICENSE
 
