@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+
+  - new arg for select() : "-where_on" (still experimental)
+
 v2.33 24.03.2013
   - removed old workaround for DBD::Oracle bug 
        https://rt.cpan.org/Ticket/Display.html?id=76410

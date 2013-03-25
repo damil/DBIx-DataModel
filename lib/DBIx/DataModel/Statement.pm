@@ -222,7 +222,7 @@ sub refine {
          | result_as      | post_SQL  | pre_exec  | post_exec  | post_bless
          | limit          | offset    | page_size | page_index
          | column_types   | prepare_attrs         | dbi_prepare_method
-         | _left_cols
+         | _left_cols     | where_on
          )$/x
          and do {$args->{$k} = $v; last SWITCH};
 
@@ -276,6 +276,28 @@ sub sqlize {
     elsif (!exists $args->{-for}) {
       $sqla_args{-for} = $self->schema->select_implicitly_for;
     }
+  }
+
+  # EXPERIMENTAL: "where_on"
+  if (my $where_on = $args->{-where_on}) {
+    # retrieve components of the join
+    my ($join_op, $first_table, @other_join_args) = @{$sqla_args{-from}};
+    $join_op eq '-join'
+      or croak "datasource for '-where_on' was not a join";
+    my %by_dest_table = reverse @other_join_args;
+
+    # insert additional conditions into appropriate places
+    while (my ($table, $additional_cond) = each %$where_on) {
+      my $join_cond = $by_dest_table{$table}
+        or croak "-where_on => {'$table' => ..}: this table is not in the join";
+      $join_cond->{condition}
+        = $sql_abstract->merge_conditions($join_cond->{condition},
+                                          $additional_cond);
+    }
+
+    # TODO: should be able to use paths and aliases as keys, instead of 
+    # database table names.
+    # TOCHECK: is this stuff still compatible with the bind() method ?
   }
 
   # generate SQL
