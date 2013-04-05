@@ -633,7 +633,7 @@ The UML intended meaning of a composition is that objects of the
 component classes cannot exist outside of their composite class. Within
 C<DBIx::DataModel>, the additional semantics for compositions is to
 support cascaded insertions and deletions, and auto-expansion; so the
-special semantis attached to kind C<Composition> is :
+special semantics attached to kind C<Composition> is :
 
 =over
 
