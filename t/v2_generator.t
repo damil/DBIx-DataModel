@@ -3,12 +3,12 @@ use warnings;
 
 use DBIx::DataModel::Schema::Generator;
 
-use constant NTESTS  => 3;
+use constant NTESTS  => 4;
 use Test::More tests => NTESTS;
 
 
 SKIP: {
-  # v1.38_01 of DBD::SQLite required because it has support for foreign_key_info
+  # v1.38_* of DBD::SQLite required because it has support for foreign_key_info
   eval "use DBD::SQLite 1.38; 1"
     or skip "DBD::SQLite 1.38 does not seem to be installed", NTESTS;
 
@@ -35,7 +35,8 @@ SKIP: {
     );
     CREATE TABLE activity_event (
       act_event_id  INTEGER PRIMARY KEY,
-      act_id        INTEGER NOT NULL REFERENCES activity(act_id),
+      act_id        INTEGER NOT NULL REFERENCES activity(act_id)
+                                     ON DELETE CASCADE,
       event_text    TEXT
     );
     CREATE TABLE employee_status (
@@ -54,9 +55,12 @@ SKIP: {
     open STDOUT, ">", \$output;
     $generator->fromDBI($dbh); }
 
-  like($output, qr{Table\(qw/Activity},      "Table Activity");
-  like($output, qr{Table\(qw/ActivityEvent}, "Table ActivityEvent");
-  like($output, qr{activity_events},         "Association activity_events");
+  like($output, qr{Table\(qw/Activity},             "Table Activity");
+  like($output, qr{Table\(qw/ActivityEvent},        "Table ActivityEvent");
+  like($output, qr{Composition.*?activity_events}s, "Composition");
+  like($output, qr{Association.*?activities}s,      "Association");
+
+#  diag($output);
 }
 
 
