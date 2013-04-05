@@ -445,16 +445,19 @@ installed, you can use C<DBIx::DataModel::Schema::Generator>
 as a producer, translating from any available
 C<SQL::Translator> parser.
 
-The generated code is a skeleton that most probably will need
-some manual additions or modifications to get a fully functional 
-datamodel, because part of the information cannot be inferred 
-automatically. In particular, you should inspect the names 
-and multiplicities of the generated associations, and decide
-which of these associations should rather be 
-L<compositions|DBIx::DataModel::Doc::Reference/Composition>;
-and you should declare the 
-L<column types|DBIx::DataModel::Doc::Reference/ColumnType>
-for columns that need automatic inflation/deflation.
+Associations are derived from foreign key constraints declared in
+the database. If clause C<ON DELETE CASCADE> is present, this is
+interpreted as a composition; otherwise as an association.
+
+The generated code is a skeleton that most probably will need some
+manual additions or modifications to get a fully functional datamodel,
+because part of the information cannot be inferred automatically. In
+particular, you should inspect the names and multiplicities of the
+generated associations, and decide which of these associations should
+rather be L<compositions|DBIx::DataModel::Doc::Reference/Composition>;
+and you should declare the L<column
+types|DBIx::DataModel::Doc::Reference/ColumnType> for columns that
+need automatic inflation/deflation.
 
 
 =head1 METHODS
