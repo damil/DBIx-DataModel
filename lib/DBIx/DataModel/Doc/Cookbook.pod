@@ -386,4 +386,23 @@ provided they possess a C<TO_JSON> method. Such a method is implemented in
 the L<DBIx::DataModel::Source/DBIx::DataModel::Source> class, so 
 any data row can be converted into JSON.
 
+=head2 DBD Datatypes
+
+DBD drivers sometimes need additional information about the datatypes
+of values in SQL statements. At the L<DBI> level, this is done with 
+explicit calls to the L<DBI/bind_param> method. Within C<DBIx::DataModel>,
+datatype specifications can be passed directly as arrayrefs of shape
+C<< [$orig_value, \%datatype] >>, everywhere an ordinary value would
+be used. Here are some examples :
+
+   my $rows = $source->select(
+    -where => {col => [$val, {sql_type => 'some_type'}]}
+  );
+  $source->insert(
+    {key => $pk, some_col => [$val, {sql_type => 'some_type'}]}
+  );
+  $record->update(
+    {some_col => [$val, {sql_type => 'some_type'}]}
+  );
+
 

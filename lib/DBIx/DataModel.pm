@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.33';
+our $VERSION = '2.34';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
@@ -167,9 +167,9 @@ examples of column types :
 
 Declare the tables, either in shorthand notation :
 
-  MySchema->Table(qw/Employee   T_Employee   emp_id/)
-          ->Table(qw/Department T_Department dpt_id/)
-          ->Table(qw/Activity   T_Activity   act_id/);
+  My::Schema->Table(qw/Employee   T_Employee   emp_id/)
+            ->Table(qw/Department T_Department dpt_id/)
+            ->Table(qw/Activity   T_Activity   act_id/);
 
 or in verbose form :
 
@@ -585,7 +585,7 @@ efficiency through fine control of collaboration with the DBI layer
 
 uses L<SQL::Abstract::More> for an improved API
 over L<SQL::Abstract> (named parameters, additional clauses,
-simplified 'order_by', etc.)
+simplified 'order_by', support for values with associated datatypes, etc.)
 
 =item *
 
@@ -796,7 +796,7 @@ improvements :
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2006-2012 by Laurent Dami.
+Copyright 2006-2013 by Laurent Dami.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 
