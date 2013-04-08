@@ -1531,9 +1531,14 @@ and these columns are automatically removed from the record.
 An exception to this rule is when the L<SQL::Abstract|SQL::Abstract>
 instance associated with the schema has the option
 C<< array_datatypes => 1 >> : in that case, columns with arrayrefs
-are passed as-is to the SQL::Abstract and DBI layers, under the 
+are passed as-is to the SQL::Abstract::More and DBI layers, under the 
 assumption that the DBD driver will take appropriate action on
 those datatypes.
+
+Another exception is when the value is of shape
+C<< [$orig_value, \%datataype] >>, which is interpreted as a 
+value together with an SQL datatype; again this is 
+passed to the SQL::Abstract::More layer.
 
 =head3 update()
 
@@ -1605,9 +1610,7 @@ and C<('c3', 'c4', 'c5')> of updated columns are disjoint.
 
 Like for inserts, columns with arrayrefs or hashrefs
 are automatically removed from the update list (with a warning),
-unless the L<SQL::Abstract|SQL::Abstract>
-instance associated with the schema has the option
-C<< array_datatypes => 1 >>.
+except some special cases as described above for C<insert()>.
 
 =head3 delete()
 

@@ -167,9 +167,7 @@ sub _weed_out_subtrees {
   my %is_component = map {($_ => 1)} $class->metadm->components;
 
   my %subrecords;
-
-  my $sqla                = $self->schema->sql_abstract;
-  my $use_array_datatypes = $sqla->{array_datatypes};
+  my $sqla = $self->schema->sql_abstract;
 
   # extract references that correspond to component names
   foreach my $k (keys %$self) {

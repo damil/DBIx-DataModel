@@ -124,14 +124,9 @@ sub bind {
       croak "unexpected arg type to bind()";
     }
   }
-  elsif (@args == 3) { # name => value, \%args (see L<DBI/bind_param>)
-    my $indices = $self->{param_indices}{$args[0]};
-    my $bind_param_args = pop @args;
-    defined $indices or croak "no such named placeholder : $args[0]";
-    $self->{bind_param_args}[$_] = $bind_param_args foreach @$indices;
-
-    # NOTE TODO: the code above does not work if status < SQLIZED because
-    # {param_indices} is not defined yet.
+  elsif (@args == 3) { # name => value, \%datatype (see L<DBI/bind_param>)
+    # transform into ->bind($name => [$value, \%datatype])
+    @args = ($args[0], [$args[1], $args[2]]);
   }
   elsif (@args % 2 == 1) {
     croak "odd number of args to bind()";
@@ -403,19 +398,9 @@ sub execute {
             . CORE::join(", ", @unbound);
 
   # bind parameters and execute
-  if ($self->{bind_param_args}) { # need to bind one by one because of DBI args
-    my $n_bound_params = @{$self->{bound_params}};
-    for my $i (0 .. $n_bound_params-1) {
-      my @bind = ($i+1, $self->{bound_params}[$i]);
-      my $bind_args = $self->{bind_param_args}[$i];
-      push @bind, $bind_args   if $bind_args;
-      $sth->bind_param(@bind);
-    }
-    $sth->execute;
-  }
-  else {                          # otherwise just call DBI::execute(...)
-    $sth->execute(@{$self->{bound_params}});
-  }
+  my $sqla = $self->schema->sql_abstract;
+  $sqla->bind_params($sth, @{$self->{bound_params}});
+  $sth->execute;
 
   # post_exec callback
   $args->{-post_exec}->($sth)  if $args->{-post_exec};
