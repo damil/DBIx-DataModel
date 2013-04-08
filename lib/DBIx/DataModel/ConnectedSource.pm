@@ -238,17 +238,24 @@ sub update {
   }
   $to_set->apply_column_handler('to_DB');
 
+  # detect references to foreign objects
+  my @sub_refs;
+  foreach my $key (grep {$_ ne '__schema'} keys %$to_set) {
+    my $val     = $to_set->{$key};
+    my $reftype = reftype($val)
+      or next;
+    push @sub_refs, $key
+      if $reftype eq 'HASH'
+        ||( $reftype eq 'ARRAY' 
+              && !$sqla->{array_datatypes}
+              && !$sqla->looks_like_ternary_bind_param($val) );
+    # reftypes SCALAR or REF are OK; they are used by SQLA for verbatim SQL
+  }
+
   # remove references to foreign objects
-  # leave refs to SCALAR or REF because they are used by SQLA for verbatim SQL
-  # leave refs to ARRAY if SQL::Abstract option 'array_datatypes' is on
-  my $nested_refs = $sqla->{array_datatypes} ? qr/^HASH$/
-                                             : qr/^(?:HASH|ARRAY)$/;
-  my @sub_refs = grep {my $reftype = reftype($to_set->{$_}) || '';
-                       $reftype =~ $nested_refs}
-                 grep {$_ ne '__schema'} keys %$to_set;
   if (@sub_refs) {
     carp "data passed to update() contained nested references : ",
-      CORE::join ", ", @sub_refs;
+      CORE::join ", ", sort @sub_refs;
     delete @{$to_set}{@sub_refs};
   }
 
@@ -275,7 +282,8 @@ sub update {
                       $sql . " / " . CORE::join(", ", @bind);});
   my $method = $schema->dbi_prepare_method;
   my $sth    = $schema->dbh->$method($sql);
-  $sth->execute(@bind);
+  $sqla->bind_params($sth, @bind);
+  $sth->execute();
 }
 
 

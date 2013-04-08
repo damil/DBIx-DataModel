@@ -2527,8 +2527,8 @@ C<auto_expand> is recursively called on the expanded objects.
 Inspects the target object or list of objects; for every
 column that exists in the object, checks whether
 a handler named C<< $handler_name >> was declared for
-that column (see method L</set_column_handlers>), and if so, 
-calls the handler. By this definition, if a column
+that column (see methods L</define_type> and L</define_column_type>), 
+and if so, calls the handler. By this definition, if a column
 is I<absent> in an object, then the handler for that column
 is not called, even though it was declared in the class.
 
@@ -2570,7 +2570,7 @@ level. As a result, your validation handlers can check if an existent
 column is empty, but cannot check if a column is missing (because in
 that case the handler would not be called).
 
-Your 'validate' handlers, defined through L</set_column_handlers>,
+Your 'validate' handlers, defined through L</define_type>,
 should return 0 or an empty string whenever the column value is invalid.
 Never return C<undef>, because we would no longer be able to
 distinguish between an invalid existent column and a missing column.

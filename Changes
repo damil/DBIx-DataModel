@@ -2,6 +2,10 @@ Revision history for Perl extension DBIx::DataModel.
 
 
   - new arg for select() : "-where_on" (still experimental)
+  - Schema::Generator automatically infers compositions from ON DELETE CASCADE
+  - support for for values of shape [$orig_value, \%datatype] that will be
+     passed to the 3-args form of DBI::bind_param()
+
 
 v2.33 24.03.2013
   - removed old workaround for DBD::Oracle bug 

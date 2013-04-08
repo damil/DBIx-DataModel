@@ -15,7 +15,7 @@ use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
-use SQL::Abstract::More 1.04;
+use SQL::Abstract::More 1.12;
 use Try::Tiny;
 
 use namespace::clean;

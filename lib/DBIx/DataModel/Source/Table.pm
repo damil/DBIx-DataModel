@@ -124,11 +124,13 @@ sub _rawInsert {
     %options,
    );
 
-  $self->schema->_debug($sql . " / " . join(", ", @bind) );
-  my $sth = $schema->dbh->prepare($sql);
+  $schema->_debug(do {no warnings 'uninitialized'; 
+                      $sql . " / " . CORE::join(", ", @bind);});
+  my $method = $schema->dbi_prepare_method;
+  my $sth    = $schema->dbh->$method($sql);
   $sqla->bind_params($sth, @bind);
-
   $sth->execute();
+
   return $sth;
 }
 
@@ -166,7 +168,8 @@ sub _weed_out_subtrees {
 
   my %subrecords;
 
-  my $use_array_datatypes = $self->schema->sql_abstract->{array_datatypes};
+  my $sqla                = $self->schema->sql_abstract;
+  my $use_array_datatypes = $sqla->{array_datatypes};
 
   # extract references that correspond to component names
   foreach my $k (keys %$self) {
@@ -177,8 +180,10 @@ sub _weed_out_subtrees {
         $subrecords{$k} = $v;
         delete $self->{$k};
       }
-      elsif ($ref eq 'ARRAY' && $use_array_datatypes) {
-        # do nothing (pass the arrayref to SQL::Abstract)
+      elsif ($ref eq 'ARRAY' && 
+               ($sqla->{array_datatypes} ||
+                $sqla->looks_like_ternary_bind_param($v))) {
+        # do nothing (pass the arrayref to SQL::Abstract::More)
       }
       else {
         carp "unexpected reference $k in record, deleted";
