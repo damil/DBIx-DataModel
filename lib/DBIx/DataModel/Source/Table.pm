@@ -180,7 +180,7 @@ sub _weed_out_subtrees {
       }
       elsif ($ref eq 'ARRAY' && 
                ($sqla->{array_datatypes} ||
-                $sqla->looks_like_ternary_bind_param($v))) {
+                $sqla->is_bind_value_with_type($v))) {
         # do nothing (pass the arrayref to SQL::Abstract::More)
       }
       else {

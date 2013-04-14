@@ -248,7 +248,7 @@ sub update {
       if $reftype eq 'HASH'
         ||( $reftype eq 'ARRAY' 
               && !$sqla->{array_datatypes}
-              && !$sqla->looks_like_ternary_bind_param($val) );
+              && !$sqla->is_bind_value_with_type($val) );
     # reftypes SCALAR or REF are OK; they are used by SQLA for verbatim SQL
   }
 

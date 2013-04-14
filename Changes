@@ -1,5 +1,10 @@
 Revision history for Perl extension DBIx::DataModel.
 
+
+v2.35 14.04.2013
+  - reintroduced tmp workaround for DBD::Oracle bug (will only be fixed in v1.61)
+  - adapt for SQLAM 1.14
+
 v2.34 08.04.2013
   - new arg for select() : "-where_on" (still experimental)
   - Schema::Generator automatically infers compositions from ON DELETE CASCADE
