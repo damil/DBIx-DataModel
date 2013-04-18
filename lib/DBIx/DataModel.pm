@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 
-our $VERSION = '2.35';
+our $VERSION = '2.36';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
@@ -161,6 +161,14 @@ examples of column types :
     handlers => {
      from_DB  => sub {$_[0] = [split /;/, $_[0] || ""]     },
      to_DB    => sub {$_[0] = join ";", @$_[0] if ref $_[0]},
+    });
+  
+  # adding SQL type information for the DBD handler
+  My::Schema->metadm->define_type(
+    name     => 'XML',
+    handlers => {
+     to_DB    => sub {$_[0] = [{dbd_attrs => {ora_type => ORA_XMLTYPE}}, $_[0]]
+                        if $_[0]},
     });
 
 =head3 Tables

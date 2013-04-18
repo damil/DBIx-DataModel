@@ -730,7 +730,7 @@ Handler name B<validate> is used by the method
 L</"has_invalid_columns()">.
 
 The L<DBIx::DataModel/SYNOPSIS> shows some examples for types 
-"Date", "Percent" and "Multivalue".
+"Date", "Percent", "Multivalue" or "XML".
 
 A C<Type> does I<not> create a Perl class.
 

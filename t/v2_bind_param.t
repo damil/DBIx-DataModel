@@ -15,7 +15,7 @@ DBIx::DataModel->Schema('HR') # Human Resources
 
 use constant ORA_XMLTYPE => 108;
 HR->Type(ORA_XML => 
-  to_DB   => sub {$_[0] = [$_[0], { ora_type => ORA_XMLTYPE }];},
+  to_DB   => sub {$_[0] = [{dbd_attrs => { ora_type => ORA_XMLTYPE }}, $_[0]]},
 );
 
 HR->table('Employee')->metadm->define_column_type(ORA_XML => qw/xml1 xml2/);
@@ -27,6 +27,7 @@ SKIP: {
   {
     # DIRTY HACK: remote surgery into DBD::Mock::st to compensate for the
     # missing support for ternary form of bind_param().
+    # (see L<https://rt.cpan.org/Public/Bug/Display.html?id=84495>).
     require DBD::Mock::st;
     no warnings 'redefine';
     my $orig = \&DBD::Mock::st::bind_param;
@@ -60,7 +61,6 @@ SKIP: {
     -where     => {foo => '?:p1'},
     -result_as => 'statement',
    );
-  $stmt->sqlize; # hack; this SHOULD NOT be necessary here
   $stmt->bind(p1 => 123, {ora_type => 999});
   $stmt->execute;
   sqlLike("SELECT * FROM T_Employee WHERE foo = ?",
@@ -70,7 +70,7 @@ SKIP: {
 
   # passing the SQL type directly in the call
   my $rows = HR->table('Employee')->select(
-    -where     => {foo => [123, {ora_type => 999}]},
+    -where     => {foo => [{dbd_attrs => {ora_type => 999}}, 123]},
    );
   sqlLike("SELECT * FROM T_Employee WHERE foo = ?",
           [[123, {ora_type => 999}]],
@@ -78,7 +78,7 @@ SKIP: {
 
   # insert with manual SQL type
   HR->table('Employee')->insert(
-    {foo => [123, {ora_type => 999}]}
+    {foo => [{dbd_attrs => {ora_type => 999}}, 123]}
    );
   sqlLike("INSERT INTO T_Employee(foo) VALUES (?)",
           [[123, {ora_type => 999}]],
@@ -86,11 +86,10 @@ SKIP: {
 
   # update with manual SQL type
   HR->table('Employee')->update(
-    {emp_id => 111, foo => [123, {ora_type => 999}]}
+    {emp_id => 111, foo => [{dbd_attrs => {ora_type => 999}}, 123]}
    );
   sqlLike("UPDATE T_Employee SET foo = ? WHERE emp_id = ?",
-          [[123, {ora_type => 999}],
-           111],
+          [[123, {ora_type => 999}], 111],
           "update with type info");
 
 

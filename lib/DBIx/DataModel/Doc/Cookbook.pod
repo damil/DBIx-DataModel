@@ -118,7 +118,7 @@ would not work :
 
   use Date::Simple qw/today/;
   my $rows = $schema->table($name)->select(
-    -where => {d_end => {'<' => today()}},
+    -where => {d_end => {'<' => today()}},  # BOGUS
   );
 
 because C<today()> returns a C<Date::Simple> object that will
@@ -131,6 +131,17 @@ which column types to apply, so you have to do it yourself :
   my $rows = $schema->table($name)->select(
     -where => {d_end => {'<' => $today}},
   );
+
+
+=head2 SQL Types
+
+At places where a plain value is expected, you can put an arrayref of
+2 elements, where the first element is a type specification, and the
+second element is the value. This is convenient when the DBD driver
+needs additional information about the values used in the statement.
+See L<SQL::Abstract::More/"BIND VALUES WITH TYPES"> for explanations
+and examples. This can also be automated within a C<to_DB> handler,
+as shown above for object inflation.
 
 
 =head2 Schema versioning
