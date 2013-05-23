@@ -7,7 +7,7 @@ no strict 'refs';
 
 use parent      qw/DBIx::DataModel::Statement/;
 use mro         qw/c3/;
-use DBD::Oracle 1.45 qw/:ora_fetch_orient :ora_exe_modes/;
+use DBD::Oracle 1.62 qw/:ora_fetch_orient :ora_exe_modes/;
 use Carp;
 
 sub sqlize {
@@ -53,59 +53,9 @@ sub next {
   # if needed, ajust $n_rows according to requested limit
   $n_rows = $self->{_ora_limit} if defined $self->{_ora_limit};
 
-  # TEMPORARY HACK : because of bug https://rt.cpan.org/Ticket/Display.html?id=84170,
-  # we cannot rely on $sth->fetch() to identify the last data row.
-  return $self->_hacked_next_method($n_rows);
-
-  # THIS WILL BE THE CODE ONCE THE BUG IS FIXED
   # now regular handling can do the rest of the job;
   return $self->next::method($n_rows);
 }
-
-
-sub _hacked_next_method {
-  my ($self, $n_rows) = @_;
-
-  my $sth      = $self->{sth}          or croak "absent sth in statement";
-  my $callback = $self->{row_callback} or croak "absent callback in statement";
-
-  my ($pos_before, $pos_after);
-  $pos_before = $sth->ora_scroll_position if $self->{offset};
-
-  if (not defined $n_rows) {  # if user wants a single row
-    # fetch a single record, either into the reusable row, or into a fresh hash
-    my $row = $self->{reuse_row} ? ($sth->fetch ? $self->{reuse_row} : undef)
-                                 : $sth->fetchrow_hashref;
-    if (defined $pos_before && $self->{offset}) {
-      $pos_after = $sth->ora_scroll_position;
-      undef $row if $pos_after == $pos_before;
-    }
-    if ($row) {
-      $callback->($row);
-      $self->{row_num} +=1;
-    }
-    return $row;
-  }
-  else {                      # if user wants an arrayref of size $n_rows
-    $n_rows > 0            or croak "->next() : invalid argument, $n_rows";
-    not $self->{reuse_row} or croak "reusable row, cannot retrieve several";
-    my @rows;
-  ROW:
-    while ($n_rows--) {
-      my $row = $sth->fetchrow_hashref or last ROW;
-      if (defined $pos_before && $self->{offset}) {
-        $pos_after = $sth->ora_scroll_position;
-        last ROW if $pos_after == $pos_before;
-        $pos_before = $pos_after;
-      }
-      push @rows, $row;
-    }
-    $callback->($_) foreach @rows;
-    $self->{row_num} += @rows;
-    return \@rows;
-  }
-}
-
 
 
 1;

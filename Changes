@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.37 21.05.2013
+  - removed workaround for DBD::Oracle bug (fixed in v1.62)
+
 v2.36 18.04.2013
   - adapt for SQLAM 1.15 : bind values with types must be of shape
     [{dbd_attrs => \%datatype}, $orig_value] (like in DBIx::Class)
