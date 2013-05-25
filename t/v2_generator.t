@@ -58,7 +58,7 @@ SKIP: {
   like($output, qr{Table\(qw/Activity},             "Table Activity");
   like($output, qr{Table\(qw/ActivityEvent},        "Table ActivityEvent");
   like($output, qr{Composition.*?activity_events}s, "Composition");
-  like($output, qr{Association.*?activities}s,      "Association");
+  like($output, qr{Association.*?activit(ie|y)s}s,  "Association");
 
 #  diag($output);
 }

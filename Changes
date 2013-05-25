@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.38 25.05.2013
+  - fixed test in v2_generator.t when Lingua::Inflect::EN is not installed
+
 v2.37 21.05.2013
   - removed workaround for DBD::Oracle bug (fixed in v1.62)
 
