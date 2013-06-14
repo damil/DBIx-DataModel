@@ -464,7 +464,11 @@ sub select {
     /^(rows|arrayref)$/i  and return $self->all;
 
     # CASE firstrow : just the first row
-    /^firstrow$/i   and return $self->next;
+    /^firstrow$/i   and do {
+      my $row = $self->next;
+      $self->{sth}->finish;
+      return $row;
+    };
 
     # CASE hashref : all data rows, put into a hashref
     /^hashref$/i   and do {
