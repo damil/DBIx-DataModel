@@ -61,6 +61,7 @@ sub _singleInsert {
   my @returned_vals;
   if ($options{-returning} && (ref $options{-returning} || '') ne 'HASH') {
     @returned_vals = $sth->fetchrow_array;
+    $sth->finish;
   }
 
   # if needed, retrieve the primary key
