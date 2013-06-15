@@ -794,13 +794,17 @@ Laurent Dami, E<lt>laurent.dami AT etat  ge  chE<gt>
 
 =head1 ACKNOWLEDGEMENTS
 
-The following people have contributed with ideas, bug fixes and/or
-improvements :
+Thanks to
 
   Ross Attril
   Cedric Bouvier
   Terrence Brannon
+  Alex Solovey
   Sergiy Zuban
+
+who contributed with ideas, bug fixes and/or
+improvements.
+
 
 =head1 COPYRIGHT AND LICENSE
 
