@@ -27,6 +27,7 @@ our @CARP_NOT = qw[
   DBIx::DataModel::Meta::Source::Join
   DBIx::DataModel::Meta::Source::Table
   DBIx::DataModel::Meta::Type
+  DBIx::DataModel::Meta::Utils
   DBIx::DataModel::Schema
   DBIx::DataModel::Schema::Generator
   DBIx::DataModel::Source
@@ -34,6 +35,7 @@ our @CARP_NOT = qw[
   DBIx::DataModel::Source::Join
   DBIx::DataModel::Statement
   DBIx::DataModel::Statement::JDBC
+  DBIx::DataModel::Statement::Oracle
   SQL::Abstract
   SQL::Abstract::More
 ];
