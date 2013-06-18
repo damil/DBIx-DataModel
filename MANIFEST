@@ -52,3 +52,4 @@ t/v2_json.t
 t/v2_type.t
 t/v2_union.t
 t/v2_update.t
+t/v2_where_on.t
