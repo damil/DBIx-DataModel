@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.39 17.06.2013
+  - fix https://rt.cpan.org/Ticket/Display.html?id=86219 (-where_on side effect)
+
 v2.38 25.05.2013
   - fixed test in v2_generator.t when Lingua::Inflect::EN is not installed
 
