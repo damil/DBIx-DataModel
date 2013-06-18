@@ -4,7 +4,7 @@ use warnings;
 use DBIx::DataModel -compatibility=> undef;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
-use constant NTESTS => 1;
+use constant NTESTS => 2;
 use Test::More tests => NTESTS;
 
 DBIx::DataModel->Schema('HR') # Human Resources
@@ -44,6 +44,18 @@ SKIP: {
        WHERE dpt_name = ? AND firstname = ?
    };
   my @expected_bind = qw/01.01.2001 999 Music Hector/;
+  is_same_sql_bind($sql, \@bind, $expected_sql, \@expected_bind);
+
+  # same test again, to check for possible side-effects in metadata
+  ($sql, @bind) = HR->join(qw/Employee activities => department/)->select(
+    -where => {firstname => 'Hector',
+               dpt_name  => 'Music'},
+    -where_on => {
+       T_Activity   => {d_end => {"<" => '01.01.2001'}},
+       T_Department => {dpt_head => 999},
+     },
+    -result_as => 'sql',
+   );
   is_same_sql_bind($sql, \@bind, $expected_sql, \@expected_bind);
 }
 
