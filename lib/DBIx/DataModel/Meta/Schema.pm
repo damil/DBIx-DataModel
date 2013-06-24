@@ -9,7 +9,7 @@ use DBIx::DataModel::Meta::Source::Join;
 
 use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
                                      OBJECT HASHREF/;
-use List::MoreUtils      qw/any lastval/;
+use List::MoreUtils      qw/any lastval uniq/;
 use Scalar::Util         qw/reftype/;
 use Module::Load         qw/load/;
 use Carp;
@@ -274,7 +274,7 @@ sub define_join {
   my %args = (
     schema         => $self,
     class          => $class_name,
-    parents        => [map {$_->{table}} @$joins],
+    parents        => [uniq map {$_->{table}} @$joins],
     sqla_join_args => \@sqla_join_args,
     aliased_tables => $aliased_tables,
   );

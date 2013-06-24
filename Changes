@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.40 24.06.2013
+  - fix multiple inheritance bug in joins with the same table twice
+
 v2.39 17.06.2013
   - fix https://rt.cpan.org/Ticket/Display.html?id=86219 (-where_on side effect)
 

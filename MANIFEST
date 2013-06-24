@@ -46,6 +46,7 @@ t/v2_array_datatypes.t
 t/v2_bind_param.t
 t/v2_delete.t
 t/v2_generator.t
+t/v2_join_same_table.t
 t/v2_multischema.t
 t/v2_paths.t
 t/v2_json.t
