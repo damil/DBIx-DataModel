@@ -1,5 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
+  - fix bug in define_class() when DBIDM was artificially pre-populated
+
 v2.40 24.06.2013
   - fix multiple inheritance bug in joins with the same table twice
 

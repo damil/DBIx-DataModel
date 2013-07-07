@@ -44,6 +44,7 @@ t/v2_Oracle.t
 t/v2_autolimit_firstrow.t
 t/v2_array_datatypes.t
 t/v2_bind_param.t
+t/v2_define_class.t
 t/v2_delete.t
 t/v2_generator.t
 t/v2_join_same_table.t

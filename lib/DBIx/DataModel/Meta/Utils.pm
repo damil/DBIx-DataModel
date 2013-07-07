@@ -9,6 +9,7 @@ use Carp;
 use Module::Load         qw/load/;
 use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
                                      OBJECT HASHREF/;
+use List::MoreUtils      qw/any/;
 use mro 'c3';
 
 use namespace::clean;
@@ -30,8 +31,20 @@ sub define_class {
   # deactivate strict refs because we'll be playing with symbol tables
   no strict 'refs';
 
+  # make sure that all parents are defined
+  foreach my $parent (@{$params{isa}}) {
+
+    # heuristics to decide if a class is loaded (can't rely on %INC)
+    my $is_class_defined = any {! /::$/} keys %{$parent.'::'};
+      # NOTE : we need to exclude symbols ending with '::' because
+      # "require Foo::Bar::Buz" will define ${Foo::Bar::}{'Buz::'} at
+      # compilation time, even if this statement is never executed.
+
+    # try to load parent if needed
+    load $parent unless $is_class_defined;
+  };
+
   # inject parents into @ISA
-  %{$_.'::'} or load $_ foreach @{$params{isa}};
   my $class_isa = $params{name}."::ISA";
   not @{$class_isa} or croak "won't overwrite \@$class_isa";
   @{$class_isa} = @{$params{isa}};
