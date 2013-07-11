@@ -3,7 +3,7 @@ use warnings;
 
 use DBIx::DataModel::Schema::Generator;
 
-use constant NTESTS  => 4;
+use constant NTESTS  => 5;
 use Test::More tests => NTESTS;
 
 
@@ -31,7 +31,8 @@ SKIP: {
     CREATE TABLE activity (
       act_id        INTEGER PRIMARY KEY,
       emp_id        INTEGER NOT NULL REFERENCES employee(emp_id),
-      dpt_id        INTEGER NOT NULL REFERENCES department(dpt_id)
+      dpt_id        INTEGER NOT NULL REFERENCES department(dpt_id),
+      supervisor    INTEGER          REFERENCES employee(emp_id)
     );
     CREATE TABLE activity_event (
       act_event_id  INTEGER PRIMARY KEY,
@@ -59,6 +60,7 @@ SKIP: {
   like($output, qr{Table\(qw/ActivityEvent},        "Table ActivityEvent");
   like($output, qr{Composition.*?activity_events}s, "Composition");
   like($output, qr{Association.*?activit(ie|y)s}s,  "Association");
+  like($output, qr{employee_2}s,                    "avoid duplicate associations");
 
 #  diag($output);
 }

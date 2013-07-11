@@ -195,6 +195,16 @@ sub fromDBIxClass {
 sub generate {
   my ($self) = @_;
 
+  # make sure there is no duplicate role on the same table
+  my %seen_role;
+  foreach my $assoc (@{$self->{assoc}}) {
+    my $count;
+    $count = ++$seen_role{$assoc->[0]{table}}{$assoc->[1]{role}};
+    $assoc->[1]{role} .= "_$count" if $count > 1;
+    $count = ++$seen_role{$assoc->[1]{table}}{$assoc->[0]{role}};
+    $assoc->[0]{role} .= "_$count" if $count > 1;
+  }
+
   # compute max length of various fields (for prettier source alignment)
   my %l;
   foreach my $field (qw/classname tablename pkey/) {
