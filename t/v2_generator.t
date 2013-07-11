@@ -51,18 +51,16 @@ SKIP: {
     -schema => 'Test::DBIDM::Schema::Generator'
    );
 
-  my $output;
-  { local *STDOUT;
-    open STDOUT, ">", \$output;
-    $generator->fromDBI($dbh); }
+  $generator->parse_DBI($dbh);
+  my $perl_code = $generator->perl_code;
 
-  like($output, qr{Table\(qw/Activity},             "Table Activity");
-  like($output, qr{Table\(qw/ActivityEvent},        "Table ActivityEvent");
-  like($output, qr{Composition.*?activity_events}s, "Composition");
-  like($output, qr{Association.*?activit(ie|y)s}s,  "Association");
-  like($output, qr{employee_2}s,                    "avoid duplicate associations");
+  like($perl_code, qr{Table\(qw/Activity},             "Table Activity");
+  like($perl_code, qr{Table\(qw/ActivityEvent},        "Table ActivityEvent");
+  like($perl_code, qr{Composition.*?activity_events}s, "Composition");
+  like($perl_code, qr{Association.*?activit(ie|y)s}s,  "Association");
+  like($perl_code, qr{employee_2}s,                    "avoid duplicate associations");
 
-#  diag($output);
+#  diag($perl_code);
 }
 
 

@@ -13,7 +13,7 @@ use List::Util   qw/max/;
 use Exporter     qw/import/;
 use DBI;
 use Try::Tiny;
-use Module::Load qw/load/;
+use Module::Load ();
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
@@ -21,6 +21,10 @@ our @EXPORT = qw/fromDBIxClass fromDBI/;
 
 
 use constant CASCADE => 0; # see L<DBI/foreign_key_info>
+
+#----------------------------------------------------------------------
+# front methods
+#----------------------------------------------------------------------
 
 sub new {
   my ($class, @args) = @_;
@@ -33,6 +37,47 @@ sub new {
 sub fromDBI {
   # may be called as ordinary sub or as method
   my $self = ref $_[0] eq __PACKAGE__ ? shift : __PACKAGE__->new(@ARGV);
+
+  $self->parse_DBI(@_);
+  print $self->perl_code;
+}
+
+
+sub fromDBIxClass {
+  # may be called as ordinary sub or as method
+  my $self = ref $_[0] eq __PACKAGE__ ? shift : __PACKAGE__->new(@ARGV);
+
+  $self->parse_DBIx_Class(@_);
+  print $self->perl_code;
+}
+
+# other name for this method
+*fromDBIC = \&fromDBIxClass;
+
+
+
+# support for SQL::Translator::Producer
+sub produce {
+  my $tr = shift;
+
+  my $self = __PACKAGE__->new(%{$tr->{producer_args} || {}});
+  $self->parse_SQL_Translator($tr);
+  return $self->perl_code;
+}
+
+
+sub load {
+  my $self = shift;
+  eval $self->perl_code;
+}
+
+
+#----------------------------------------------------------------------
+# build internal data from external sources
+#----------------------------------------------------------------------
+
+sub parse_DBI {
+  my $self = shift;
 
   my $arg1    = shift or croak "missing arg (dsn for DBI->connect(..))";
   my $dbh = (ref $arg1 && $arg1->isa('DBI::db')) ? $arg1 : do {
@@ -98,20 +143,16 @@ sub fromDBI {
       push @{$self->{assoc}}, \@assoc;
     }
   }
-
-  $self->generate;
 }
 
 
-sub fromDBIxClass {
-
-  # may be called as ordinary sub or as method
-  my $self = ref $_[0] eq __PACKAGE__ ? shift : __PACKAGE__->new(@ARGV);
+sub parse_DBIx_Class {
+  my $self = shift;
 
   my $dbic_schema = shift or croak "missing arg (DBIC schema name)";
 
   # load the DBIx::Class schema
-  load $dbic_schema or croak $@;
+  Module::Load::load $dbic_schema or croak $@;
 
   # global hash to hold assoc. info (because we must collect info from
   # both tables to get both directions of the association)
@@ -184,149 +225,11 @@ sub fromDBIxClass {
   }
 
   $self->{assoc} = [values %associations];
-
-  $self->generate;
-}
-
-# other name for this method
-*fromDBIC = \&fromDBIxClass;
-
-
-sub generate {
-  my ($self) = @_;
-
-  # make sure there is no duplicate role on the same table
-  my %seen_role;
-  foreach my $assoc (@{$self->{assoc}}) {
-    my $count;
-    $count = ++$seen_role{$assoc->[0]{table}}{$assoc->[1]{role}};
-    $assoc->[1]{role} .= "_$count" if $count > 1;
-    $count = ++$seen_role{$assoc->[1]{table}}{$assoc->[0]{role}};
-    $assoc->[0]{role} .= "_$count" if $count > 1;
-  }
-
-  # compute max length of various fields (for prettier source alignment)
-  my %l;
-  foreach my $field (qw/classname tablename pkey/) {
-    $l{$field} = max map {length $_->{$field}} @{$self->{tables}};
-  }
-  foreach my $field (qw/col role mult/) {
-    $l{$field} = max map {length $_->{$field}} map {(@$_)} @{$self->{assoc}};
-  }
-  $l{mult} = max ($l{mult}, 4);
-
-  # start emitting code
-  print <<__END_OF_CODE__;
-use strict;
-use warnings;
-use DBIx::DataModel;
-
-DBIx::DataModel  # no semicolon (intentional)
-
-#---------------------------------------------------------------------#
-#                         SCHEMA DECLARATION                          #
-#---------------------------------------------------------------------#
-->Schema('$self->{-schema}')
-
-#---------------------------------------------------------------------#
-#                         TABLE DECLARATIONS                          #
-#---------------------------------------------------------------------#
-__END_OF_CODE__
-
-  my $colsizes = "%-$l{classname}s %-$l{tablename}s %-$l{pkey}s";
-  my $format   = "->Table(qw/$colsizes/)\n";
-
-  printf         "#          $colsizes\n", qw/Class Table PK/;
-  printf         "#          $colsizes\n", qw/===== ===== ==/;
-
-  foreach my $table (@{$self->{tables}}) {
-    if ($table->{remarks}) {
-      $table->{remarks} =~ s/^/# /gm;
-      print "\n$table->{remarks}\n";
-    }
-    printf $format, $table->{classname}, $table->{tablename}, $table->{pkey};
-  }
-
-
-  $colsizes = "%-$l{classname}s %-$l{role}s  %-$l{mult}s %-$l{col}s";
-  $format   = "  [qw/$colsizes/]";
-
-  print <<__END_OF_CODE__;
-
-#---------------------------------------------------------------------#
-#                      ASSOCIATION DECLARATIONS                       #
-#---------------------------------------------------------------------#
-__END_OF_CODE__
-
-  printf         "#     $colsizes\n", qw/Class Role Mult Join/;
-  printf         "#     $colsizes",   qw/===== ==== ==== ====/;
-
-
-  foreach my $a (@{$self->{assoc}}) {
-
-    # for prettier output, make sure that multiplicity "1" is first
-    @$a = reverse @$a if $a->[1]{mult_max} eq "1"
-                      && $a->[0]{mult_max} eq "*";
-
-    # complete association info
-    for my $i (0, 1) {
-      $a->[$i]{role} ||= "---";
-      my $mult       = "$a->[$i]{mult_min}..$a->[$i]{mult_max}";
-      $a->[$i]{mult} = {"0..*" => "*", "1..1" => "1"}->{$mult} || $mult;
-    }
-
-    # association or composition
-    my $relationship = $a->[1]{is_cascade} ? 'Composition' : 'Association';
-
-    print "\n->$relationship(\n";
-    printf $format, @{$a->[0]}{qw/table role mult col/};
-    print ",\n";
-    printf $format, @{$a->[1]}{qw/table role mult col/};
-    print ")\n";
-  }
-  print "\n;\n";
-
-  # column types
-  print <<__END_OF_CODE__;
-
-#---------------------------------------------------------------------#
-#                             COLUMN TYPES                            #
-#---------------------------------------------------------------------#
-# $self->{-schema}->ColumnType(ColType_Example =>
-#   fromDB => sub {...},
-#   toDB   => sub {...});
-
-# $self->{-schema}::SomeTable->ColumnType(ColType_Example =>
-#   qw/column1 column2 .../);
-
-__END_OF_CODE__
-
-  while (my ($type, $targets) = each %{$self->{column_types} || {}}) {
-    print <<__END_OF_CODE__;
-# $type
-$self->{-schema}->ColumnType($type =>
-  fromDB => sub {},   # SKELETON .. PLEASE FILL IN
-  toDB   => sub {});
-__END_OF_CODE__
-
-    while (my ($table, $cols) = each %$targets) {
-      printf "%s::%s->ColumnType($type => qw/%s/);\n",
-        $self->{-schema}, $table, join(" ", @$cols);
-    }
-    print "\n";
-  }
-
-  # end of module
-  print "\n\n1;\n";
 }
 
 
-# support for SQL::Translator::Producer
-
-sub produce {
-  my $tr = shift;
-
-  my $self = __PACKAGE__->new(%{$tr->{producer_args} || {}});
+sub parse_SQL_Translator {
+  my ($self, $tr) = @_;
 
   my $schema = $tr->schema;
   foreach my $table ($schema->get_tables) {
@@ -368,18 +271,149 @@ sub produce {
       push @{$self->{assoc}}, \@assoc;
     }
   }
-
-  local *STDOUT;
-  my $out = "";
-  open STDOUT, ">",  \$out;
-  $self->generate;
-  return $out;
 }
 
 
+#----------------------------------------------------------------------
+# emit perl code
+#----------------------------------------------------------------------
+
+sub perl_code {
+  my ($self) = @_;
+
+  # check that we have some data
+  $self->{assoc} && $self->{tables}
+    or croak "can't generate schema: no data. "
+           . "Call parse_DBI() or parse_DBIx_Class() before";
+
+  # make sure there is no duplicate role on the same table
+  my %seen_role;
+  foreach my $assoc (@{$self->{assoc}}) {
+    my $count;
+    $count = ++$seen_role{$assoc->[0]{table}}{$assoc->[1]{role}};
+    $assoc->[1]{role} .= "_$count" if $count > 1;
+    $count = ++$seen_role{$assoc->[1]{table}}{$assoc->[0]{role}};
+    $assoc->[0]{role} .= "_$count" if $count > 1;
+  }
+
+  # compute max length of various fields (for prettier source alignment)
+  my %l;
+  foreach my $field (qw/classname tablename pkey/) {
+    $l{$field} = max map {length $_->{$field}} @{$self->{tables}};
+  }
+  foreach my $field (qw/col role mult/) {
+    $l{$field} = max map {length $_->{$field}} map {(@$_)} @{$self->{assoc}};
+  }
+  $l{mult} = max ($l{mult}, 4);
+
+  # start emitting code
+  my $code = <<__END_OF_CODE__;
+use strict;
+use warnings;
+use DBIx::DataModel;
+
+DBIx::DataModel  # no semicolon (intentional)
+
+#---------------------------------------------------------------------#
+#                         SCHEMA DECLARATION                          #
+#---------------------------------------------------------------------#
+->Schema('$self->{-schema}')
+
+#---------------------------------------------------------------------#
+#                         TABLE DECLARATIONS                          #
+#---------------------------------------------------------------------#
+__END_OF_CODE__
+
+  my $colsizes = "%-$l{classname}s %-$l{tablename}s %-$l{pkey}s";
+  my $format   = "->Table(qw/$colsizes/)\n";
+
+  $code .= sprintf("#          $colsizes\n", qw/Class Table PK/)
+        .  sprintf("#          $colsizes\n", qw/===== ===== ==/);
+
+  foreach my $table (@{$self->{tables}}) {
+    if ($table->{remarks}) {
+      $table->{remarks} =~ s/^/# /gm;
+      $code .= "\n$table->{remarks}\n";
+    }
+    $code .= sprintf $format, @{$table}{qw/classname tablename pkey/};
+  }
+
+
+  $colsizes = "%-$l{classname}s %-$l{role}s  %-$l{mult}s %-$l{col}s";
+  $format   = "  [qw/$colsizes/]";
+
+  $code .= <<__END_OF_CODE__;
+
+#---------------------------------------------------------------------#
+#                      ASSOCIATION DECLARATIONS                       #
+#---------------------------------------------------------------------#
+__END_OF_CODE__
+
+  $code .= sprintf("#     $colsizes\n", qw/Class Role Mult Join/)
+        .  sprintf("#     $colsizes",   qw/===== ==== ==== ====/);
+
+  foreach my $a (@{$self->{assoc}}) {
+
+    # for prettier output, make sure that multiplicity "1" is first
+    @$a = reverse @$a if $a->[1]{mult_max} eq "1"
+                      && $a->[0]{mult_max} eq "*";
+
+    # complete association info
+    for my $i (0, 1) {
+      $a->[$i]{role} ||= "---";
+      my $mult       = "$a->[$i]{mult_min}..$a->[$i]{mult_max}";
+      $a->[$i]{mult} = {"0..*" => "*", "1..1" => "1"}->{$mult} || $mult;
+    }
+
+    # association or composition
+    my $relationship = $a->[1]{is_cascade} ? 'Composition' : 'Association';
+
+    $code .= "\n->$relationship(\n"
+          .  sprintf($format, @{$a->[0]}{qw/table role mult col/})
+          .  ",\n"
+          .  sprintf($format, @{$a->[1]}{qw/table role mult col/})
+          .  ")\n";
+  }
+  $code .= "\n;\n";
+
+  # column types
+  $code .= <<__END_OF_CODE__;
+
+#---------------------------------------------------------------------#
+#                             COLUMN TYPES                            #
+#---------------------------------------------------------------------#
+# $self->{-schema}->ColumnType(ColType_Example =>
+#   fromDB => sub {...},
+#   toDB   => sub {...});
+
+# $self->{-schema}::SomeTable->ColumnType(ColType_Example =>
+#   qw/column1 column2 .../);
+
+__END_OF_CODE__
+
+  while (my ($type, $targets) = each %{$self->{column_types} || {}}) {
+    $code .= <<__END_OF_CODE__;
+# $type
+$self->{-schema}->ColumnType($type =>
+  fromDB => sub {},   # SKELETON .. PLEASE FILL IN
+  toDB   => sub {});
+__END_OF_CODE__
+
+    while (my ($table, $cols) = each %$targets) {
+      $code .= sprintf("%s::%s->ColumnType($type => qw/%s/);\n",
+                       $self->{-schema}, $table, join(" ", @$cols));
+    }
+    $code .= "\n";
+  }
+
+  # end of module
+  $code .= "\n\n1;\n";
+
+  return $code;
+}
 
 #----------------------------------------------------------------------
-# UTILITY METHODS/FUNCTIONS
+# utility methods/functions
 #----------------------------------------------------------------------
 
 # generate a Perl classname from a database table name
@@ -411,9 +445,6 @@ sub _table2role{
 }
 
 
-
-
-
 1; 
 
 __END__
@@ -423,6 +454,8 @@ __END__
 DBIx::DataModel::Schema::Generator - automatically generate a schema for DBIx::DataModel
 
 =head1 SYNOPSIS
+
+=head2 Command-line API
 
   perl -MDBIx::DataModel::Schema::Generator      \
        -e "fromDBI('dbi:connection:string')" --  \
@@ -436,6 +469,22 @@ If L<SQL::Translator|SQL::Translator> is installed
 
   sqlt -f <parser> -t DBIx::DataModel::Schema::Generator <parser_input>
 
+=head2 Object-oriented API
+
+  use DBIx::DataModel::Schema::Generator;
+  my $generator 
+    = DBIx::DataModel::Schema::Generator(schema => "My::New::Schema");
+
+  $generator->parse_DBI($connection_string, $user, $passwd, \%options);
+  $generator->parse_DBI($dbh);
+
+  $generator->parse_DBIx_Class($class_name);
+
+  $generator->parse_SQL_Translator($translator);
+
+  my $perl_code = $generator->perl_code;
+
+  $generator->load();
 
 
 =head1 DESCRIPTION
@@ -529,6 +578,30 @@ created by calling L<new> with arguments C<@ARGV>.
 =head2 produce
 
 Implementation of L<SQL::Translator::Producer|SQL::Translator::Producer>.
+
+
+=head2 parse_DBI
+
+First step of L</FromDBI> : gather data from a L<DBI> connection and
+populate internal datastructures.
+
+=head2 parse_DBIx_Class
+
+First step of L</FromDBIxClass> : gather data from a L<DBIx::Class> schema and
+populate internal datastructures.
+
+=head2 parse_SQL_Translator
+
+First step of L</produce> : gather data from a L<SQL::Translator> instance and
+populate internal datastructures.
+
+=head2 perl_code
+
+Emits perl code from the internal datastructures parsed by one of the methods above.
+
+=head2 load();
+
+Immediately evals the generated perl code.
 
 
 =head1 AUTHOR
