@@ -7,7 +7,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 5;
+use constant N_DBI_MOCK_TESTS => 7;
 use constant N_BASIC_TESTS    => 1;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -100,6 +100,12 @@ SKIP: {
   sqlLike('UPDATE T_Employee SET firstname = ? WHERE emp_id > ?',
          ['Boudin', 10],
          'bulk update');
+
+  is ($connected_source->metadm, $schema->db_table('T_Employee')->metadm,
+      "db_table() - correct name");
+  ok (!$schema->db_table('foobar'),
+      "db_table() - incorrect name");
+
 
   my @tables = $schema->metadm->tables;
   my @names  = sort map {$_->name} @tables;

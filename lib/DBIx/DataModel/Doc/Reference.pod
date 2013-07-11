@@ -2718,6 +2718,14 @@ declared in this C<$meta_schema>.
 Returns the single instance of L<DBIx::DataModel::Meta::Source::Table> 
 with name C<$table_name>, or C<undef>.
 
+=head3 Meta::Schema::db_table()
+
+  my $meta_table   = $meta_schema->db_table($db_table_name);
+
+Returns the single instance of L<DBIx::DataModel::Meta::Source::Table> 
+with I<database> name C<$db_table_name>, or C<undef>.
+
+
 =head3 associations()
 
   my @associations = $meta_schema->associations;
@@ -2932,7 +2940,9 @@ path ends.
 
 =head3 on()
 
-Hashref for generating the join condition (keys are colums for the left-hand
+  my %join_cond = $path->on();
+
+Hash for generating the join condition (keys are colums for the left-hand
 side, values are columns for the right-hand side).
 
 =head3 multiplicity()

@@ -9,7 +9,7 @@ use DBIx::DataModel::Meta::Source::Join;
 
 use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
                                      OBJECT HASHREF/;
-use List::MoreUtils      qw/any lastval uniq/;
+use List::MoreUtils      qw/any firstval lastval uniq/;
 use Scalar::Util         qw/reftype/;
 use Module::Load         qw/load/;
 use Carp;
@@ -127,6 +127,11 @@ foreach my $kind (qw/table association type join/) {
   };
 }
 
+
+sub db_table {
+  my ($self, $db_name) = @_;
+  return firstval {$_->db_from eq $db_name} $self->tables;
+}
 
 
 #----------------------------------------------------------------------

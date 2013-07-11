@@ -294,7 +294,8 @@ sub unbless {
 #                   local method     metadm method
 #                   ============     =============
 my %accessor_map = (table         => 'table',
-                    join          => 'define_join');
+                    join          => 'define_join',
+                    db_table      => 'db_table');
 while (my ($local, $remote) = each %accessor_map) {
   no strict 'refs';
   *$local = sub {
