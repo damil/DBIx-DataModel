@@ -16,6 +16,19 @@ sub sqlize {
   # merge new args into $self->{args}
   $self->refine(@args) if @args;
 
+  # reorganize pagination (code copied from SQL::Abstract::More), in order
+  # to capture all cases of limit/offset
+  my $page_index = delete $self->{args}{-page_index};
+  my $page_size  = delete $self->{args}{-page_size};
+  if ($page_index || $page_size) {
+    not exists $self->{args}{$_} or croak "-page_size conflicts with $_"
+      for qw/-limit -offset/;
+    $self->{args}{-limit} = $page_size;
+    if ($page_index) {
+      $self->{args}{-offset} = ($page_index - 1) * $page_size;
+    }
+  }
+
   # remove -limit and -offset from args; they will be handled later in
   # prepare() and execute(), see below
   $self->{_ora_limit}  = delete $self->{args}{-limit};

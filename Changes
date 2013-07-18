@@ -4,6 +4,7 @@ Revision history for Perl extension DBIx::DataModel.
   - added method $schema->db_table($db_name)
   - don't generate duplicate associations with same names between same tables
   - better API for Generator.pm
+  - Statement::Oracle, correct handling of -page_size / -page_index
 
 v2.40 24.06.2013
   - fix multiple inheritance bug in joins with the same table twice

@@ -5,7 +5,7 @@ use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
 use DBIx::DataModel -compatibility=> undef;
 
-use constant NTESTS  => 11;
+use constant NTESTS  => 12;
 use Test::More tests => NTESTS;
 
 
@@ -57,6 +57,11 @@ SKIP: {
   is_deeply($slice, [@{$tables}[2..4]], "-limit with offset 2");
 
 
+  $slice = $source->select(-columns   => 'TABLE_NAME',
+                           -order_by  => 'TABLE_NAME',
+                           -page_index => 3,
+                           -page_size  => 3);
+  is_deeply($slice, [@{$tables}[6..8]], "-page_size/page_index");
 
   $slice = $source->select(-columns   => 'TABLE_NAME',
                            -order_by  => 'TABLE_NAME',
