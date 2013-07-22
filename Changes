@@ -1,5 +1,6 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.41 22.07.2013
   - fix bug in define_class() when DBIDM was artificially pre-populated
   - added method $schema->db_table($db_name)
   - don't generate duplicate associations with same names between same tables
