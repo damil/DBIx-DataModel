@@ -43,6 +43,13 @@ sub sqlize {
 }
 
 
+# recompute page size/index from limit/offset
+sub page_size   { my $self = shift;
+                  $self->{_ora_limit}  || POSIX::LONG_MAX            }
+sub page_index  { my $self = shift;
+                  int(($self->{offset} || 0) / $self->page_size) + 1 }
+
+
 
 sub execute {
   my ($self, @args) = @_;
@@ -56,7 +63,6 @@ sub execute {
   return $self;
 }
 
-
 sub next {
   my ($self, $n_rows) = @_;
 
@@ -69,7 +75,6 @@ sub next {
   # now regular handling can do the rest of the job;
   return $self->next::method($n_rows);
 }
-
 
 1;
 
