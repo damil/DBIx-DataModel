@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+
+  - case-insensitivity for method $schema->db_table($db_name)
+  - Schema::Generator::fromDBI takes new arguments $catalog, $schema, $type
+
 v2.41 22.07.2013
   - fix bug in define_class() when DBIDM was artificially pre-populated
   - added method $schema->db_table($db_name)

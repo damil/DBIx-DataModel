@@ -79,6 +79,7 @@ sub load {
 sub parse_DBI {
   my $self = shift;
 
+  # dbh connection
   my $arg1    = shift or croak "missing arg (dsn for DBI->connect(..))";
   my $dbh = (ref $arg1 && $arg1->isa('DBI::db')) ? $arg1 : do {
     my $user    = shift || "";
@@ -88,8 +89,11 @@ sub parse_DBI {
       or croak "DBI->connect failed ($DBI::errstr)";
   };
 
-  my %args 
-    = (catalog => undef, schema => undef, table => undef, type => "TABLE");
+  # get list of tables
+  my %args;
+  $args{catalog} = shift;
+  $args{schema}  = shift;
+  $args{type}    = shift || "TABLE";
   my $tables_sth = $dbh->table_info(@args{qw/catalog schema table type/});
   my $tables     = $tables_sth->fetchall_arrayref({});
 
@@ -542,9 +546,9 @@ subclass that will be generated (default is C<My::Schema>).
 
 =head2 fromDBI
 
-  $generator->fromDBI(@dbi_connection_args);
+  $generator->fromDBI(@dbi_connection_args, $catalog, $schema, $type);
   # or
-  fromDBI(@dbi_connection_args);
+  fromDBI(@dbi_connection_args, $catalog, $schema);
 
 Connects to a L<DBI|DBI> data source, gathers information from the
 database about tables, primary and foreign keys, and generates
@@ -557,7 +561,11 @@ created by calling L<new> with arguments C<@ARGV>.
 
 The DBI connection arguments are as in  L<DBI/connect>.
 Alternatively, an already connected C<$dbh> can also be
-passed as argument to C<fromDBI()>.
+passed as first argument to C<fromDBI()>.
+
+The remaining arguments C<$catalog>, C<$schema> and C<$type> are optional;
+they will be passed as arguments to L<DBI/table_info>.
+The default values are C<undef>, C<undef> and C<'TABLE'>.
 
 
 =head2 fromDBIxClass

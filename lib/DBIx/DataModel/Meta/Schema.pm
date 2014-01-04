@@ -130,7 +130,7 @@ foreach my $kind (qw/table association type join/) {
 
 sub db_table {
   my ($self, $db_name) = @_;
-  return firstval {$_->db_from eq $db_name} $self->tables;
+  return firstval {uc($_->db_from) eq uc($db_name)} $self->tables;
 }
 
 
