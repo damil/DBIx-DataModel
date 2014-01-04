@@ -1,6 +1,6 @@
 Revision history for Perl extension DBIx::DataModel.
 
-
+v2.42 04.01.2014 : adding support for Plack::App::AutoCRUD
   - case-insensitivity for method $schema->db_table($db_name)
   - Schema::Generator::fromDBI takes new arguments $catalog, $schema, $type
 
