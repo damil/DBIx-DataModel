@@ -143,6 +143,33 @@ See L<SQL::Abstract::More/"BIND VALUES WITH TYPES"> for explanations
 and examples. This can also be automated within a C<to_DB> handler,
 as shown above for object inflation.
 
+=head2 Quoting table and column names
+
+By default, table or column names are inserted "as is" in the generated SQL;
+but sometimes this could cause conflicts with SQL reserved words.
+The solution is to quote table and column names, by activating the
+C<quote_char> option of L<SQL::Abstract>. Here is an example (assuming
+single-schema mode) :
+
+  # define the schema
+  DBIx::DataModel->Schema('FOO');
+
+  # feed the schema with a custom instance of SQL::Abstract::More
+  my $sqlam = SQL::Abstract::More->new(quote_char => "`");
+  FOO->singleton->sql_abstract($sqlam);
+
+  # define a table
+  FOO->Table(qw/Config CONFIG KEY/);
+
+  # produce SQL with quoted table and column names
+  my ($sql, @bind) = FOO::Config->select(
+    -columns   => [qw/KEY VALUE/],
+    -where     => {KEY => 123},
+    -result_as => 'sql',
+   );
+
+  print $sql; # SELECT `KEY`, `VALUE` FROM `CONFIG` WHERE ( `KEY` = ? )
+
 
 =head2 Schema versioning
 
