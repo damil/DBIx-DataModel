@@ -97,7 +97,7 @@ sub insert {
   my $got_records_as_arrayrefs = ref $records[0] eq 'ARRAY';
 
   # if data is received as arrayrefs, transform it into a list of hashrefs.
-  # NOTE : this is kind of dumb; a more efficient implementation
+  # NOTE : this is a bit stupid; a more efficient implementation
   # would be to prepare one single DB statement and then execute it on
   # each data row, or even SQL like INSERT ... VALUES(...), VALUES(..), ...
   # (supported by some DBMS), but that would require some refactoring 

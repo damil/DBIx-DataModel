@@ -548,7 +548,7 @@ subclass that will be generated (default is C<My::Schema>).
 
   $generator->fromDBI(@dbi_connection_args, $catalog, $schema, $type);
   # or
-  fromDBI(@dbi_connection_args, $catalog, $schema);
+  fromDBI(@dbi_connection_args, $catalog, $schema, $type);
 
 Connects to a L<DBI|DBI> data source, gathers information from the
 database about tables, primary and foreign keys, and generates

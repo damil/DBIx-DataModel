@@ -120,12 +120,12 @@ sub _rawInsert {
   # perform the insertion
   my $sqla         = $schema->sql_abstract;
   my ($sql, @bind) = $sqla->insert(
-    -into   => $metadm->db_from, 
+    -into   => $metadm->db_from,
     -values => \%values,
     %options,
    );
 
-  $schema->_debug(do {no warnings 'uninitialized'; 
+  $schema->_debug(do {no warnings 'uninitialized';
                       $sql . " / " . CORE::join(", ", @bind);});
   my $method = $schema->dbi_prepare_method;
   my $sth    = $schema->dbh->$method($sql);
