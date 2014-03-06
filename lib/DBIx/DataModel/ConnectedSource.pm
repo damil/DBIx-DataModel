@@ -10,6 +10,7 @@ use Params::Validate qw/validate ARRAYREF HASHREF/;
 use Scalar::Util     qw/reftype refaddr/;
 use Acme::Damn       qw/damn/;
 use Module::Load     qw/load/;
+use Scalar::Does     qw/does/;
 use Storable         qw/freeze/;
 
 use DBIx::DataModel;
@@ -88,16 +89,16 @@ sub insert {
 
   # end of list may contain options, recognized because option name is a scalar
   my $options      = $self->_parse_ending_options(\@_, qr/^-returning$/);
-  my $want_subhash = ref $options->{-returning} eq 'HASH';
+  my $want_subhash = does($options->{-returning}, 'HASH');
 
   # records to insert
   my @records = @_;
   @records or croak "insert(): no record to insert";
 
-  my $got_records_as_arrayrefs = ref $records[0] eq 'ARRAY';
+  my $got_records_as_arrayrefs = does($records[0], 'ARRAY');
 
   # if data is received as arrayrefs, transform it into a list of hashrefs.
-  # NOTE : this is kind of dumb; a more efficient implementation
+  # NOTE : this is a bit stupid; a more efficient implementation
   # would be to prepare one single DB statement and then execute it on
   # each data row, or even SQL like INSERT ... VALUES(...), VALUES(..), ...
   # (supported by some DBMS), but that would require some refactoring 
@@ -105,7 +106,7 @@ sub insert {
   if ($got_records_as_arrayrefs) {
     my $header_row = shift @records;
     foreach my $data_row (@records) {
-      ref $data_row eq 'ARRAY' 
+      does ($data_row, 'ARRAY')
         or croak "data row after a header row should be an arrayref";
       @$data_row == @$header_row
         or croak "number of items in data row not same as header row";
@@ -156,7 +157,7 @@ sub insert {
     if ($subrecords) {
       my $subresults = $record->_insert_subtrees($subrecords, %$options);
       if ($want_subhash) {
-        ref $single_result[0] eq 'HASH'
+        does($single_result[0], 'HASH')
           or die "_single_insert(..., -returning => {}) "
                . "did not return a hashref";
         $single_result[0]{$_} = $subresults->{$_} for keys %$subresults;
@@ -329,7 +330,7 @@ sub delete {
     # cascaded delete
     foreach my $component_name ($meta_source->components) {
       my $components = $to_delete->{$component_name} or next;
-      ref $components eq 'ARRAY'
+      does($components, 'ARRAY')
         or croak "delete() : component $component_name is not an arrayref";
       $_->delete foreach @$components;
     }
@@ -410,7 +411,7 @@ sub _maybe_inject_primary_key {
 
   # if primary key was supplied separately, inject it into the record
   my $where = $args->{-where};
-  if (ref $where eq 'ARRAY' && $where->[0] eq '-key') {
+  if (does($where, 'ARRAY') && $where->[0] eq '-key') {
     # got the primary key in the form -where => [-key => @pk_vals]
     my @pk_cols = $self->{meta_source}->primary_key;
     my @pk_vals = @{$where}[1 .. $#$where];

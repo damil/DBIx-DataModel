@@ -8,6 +8,7 @@ use DBIx::DataModel::Meta::Utils;
 use Carp;
 use Params::Validate qw/HASHREF ARRAYREF SCALAR/;
 use List::MoreUtils  qw/any/;
+use Scalar::Does     qw/does/;
 
 use namespace::clean;
 
@@ -154,7 +155,7 @@ sub define_auto_expand {
       my $r = $self->expand($component_name); # result can be an object ref 
                                               # or an array ref
       if ($r and $want_recurse) {
-	$r = [$r] unless ref($r) eq 'ARRAY';
+	$r = [$r] unless does($r, 'ARRAY');
 	$_->auto_expand($want_recurse) foreach @$r;
       }
     }

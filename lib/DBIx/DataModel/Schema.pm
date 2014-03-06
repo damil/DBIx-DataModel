@@ -11,6 +11,7 @@ use Carp;
 use DBIx::DataModel::Source::Table;
 
 use Scalar::Util     qw/blessed reftype/;
+use Scalar::Does     qw/does/;
 use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;
@@ -106,7 +107,7 @@ sub dbh {
 
     # also support syntax ->dbh([$dbh, %dbh_options])
     ($dbh, %dbh_options) = @$dbh 
-      if $dbh && ref $dbh eq 'ARRAY' && ! keys %dbh_options;
+      if does($dbh, 'ARRAY') && ! keys %dbh_options;
 
     # forbid change of dbh while doing a transaction
     not $self->{dbh} or $self->{dbh}[0]{AutoCommit}
@@ -184,7 +185,7 @@ sub do_transaction {
   my ($self, $coderef, @new_dbh) = @_; 
   ref $self or $self = $self->singleton;
 
-  ref $coderef eq 'CODE'
+  does($coderef, 'CODE')
     or croak 'first arg to $schema->do_transaction(...) should be a coderef';
 
   my $transaction_dbhs = $self->{transaction_dbhs} ||= [];

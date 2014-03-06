@@ -5,6 +5,7 @@ use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
 
 use Scalar::Util         qw/weaken/;
+use Scalar::Does         qw/does/;
 use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;
 use Carp;
 
@@ -23,7 +24,7 @@ sub new {
   });
 
   while (my ($name, $body) = each %{$self->{handlers}}) {
-    ref $body eq 'CODE' 
+    does($body, 'CODE')
       or croak "handler body for $name is not a code reference";
   }
 

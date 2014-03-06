@@ -11,6 +11,7 @@ use parent 'DBIx::DataModel::Source';
 use Carp;
 use Storable             qw/freeze/;
 use Scalar::Util         qw/refaddr reftype/;
+use Scalar::Does         qw/does/;
 use Module::Load         qw/load/;
 use List::MoreUtils      qw/none/;
 
@@ -59,7 +60,7 @@ sub _singleInsert {
 
   # get back the "returning" values, if any
   my @returned_vals;
-  if ($options{-returning} && (ref $options{-returning} || '') ne 'HASH') {
+  if ($options{-returning} && !does($options{-returning}, 'HASH')) {
     @returned_vals = $sth->fetchrow_array;
     $sth->finish;
   }
@@ -120,12 +121,12 @@ sub _rawInsert {
   # perform the insertion
   my $sqla         = $schema->sql_abstract;
   my ($sql, @bind) = $sqla->insert(
-    -into   => $metadm->db_from, 
+    -into   => $metadm->db_from,
     -values => \%values,
     %options,
    );
 
-  $schema->_debug(do {no warnings 'uninitialized'; 
+  $schema->_debug(do {no warnings 'uninitialized';
                       $sql . " / " . CORE::join(", ", @bind);});
   my $method = $schema->dbi_prepare_method;
   my $sth    = $schema->dbh->$method($sql);
@@ -174,12 +175,12 @@ sub _weed_out_subtrees {
   foreach my $k (keys %$self) {
     next if $k eq '__schema';
     my $v = $self->{$k};
-    if (my $ref = ref $v) {
+    if (ref $v) {
       if ($is_component{$k}) {
         $subrecords{$k} = $v;
         delete $self->{$k};
       }
-      elsif ($ref eq 'ARRAY' && 
+      elsif (does($v, 'ARRAY') && 
                ($sqla->{array_datatypes} ||
                 $sqla->is_bind_value_with_type($v))) {
         # do nothing (pass the arrayref to SQL::Abstract::More)
