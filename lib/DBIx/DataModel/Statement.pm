@@ -722,7 +722,9 @@ sub _compute_from_DB_handlers {
     my $table_name;
     $column =~ s/^(.+)\.// and $table_name = $1;
     if (!$table_name) {
-      $handlers{$alias} = $handlers{$column};
+      # try to find handler by expression only if
+      # there is no handler found by alias
+      $handlers{$alias} ||= $handlers{$column};
     }
     else {
       $table_name = $aliased_tables{$table_name} || $table_name;
