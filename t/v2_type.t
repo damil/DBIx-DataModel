@@ -5,7 +5,7 @@ use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
 use DBIx::DataModel -compatibility=> undef;
 
-use constant NTESTS  => 1;
+use constant NTESTS  => 2;
 use Test::More tests => NTESTS;
 
 DBIx::DataModel->Schema('HR') # Human Resources
@@ -64,6 +64,22 @@ SKIP: {
           . "VALUES ( ?, ?, ? )",
           [qw/Foo MUSIC;COMPUTERS;SEX Abel;Barbara;Cain;Deborah;Emily/],
           "insert with to_DB handlers");
+
+
+  # test applying a type handler at the statement level
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [[qw/computed_col/],
+                                [qw/foo;bar/],
+                                [qw/1;2;3/]];
+  my $computed_col = HR->table('Employee')->select(
+    -columns => ['CASE WHEN foo is NULL THEN bar ELSE buz END|computed_col'],
+    -column_types => {
+      Multival => ['computed_col'],
+     },
+    -result_as => 'flat_arrayref',
+   );
+  is_deeply($computed_col, [[qw/foo bar/], [qw/1 2 3/]], 
+            'aliased computed col');
 }
 
 
