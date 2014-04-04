@@ -465,11 +465,7 @@ sub select {
     /^(rows|arrayref)$/i  and return $self->all;
 
     # CASE firstrow : just the first row
-    /^firstrow$/i   and do {
-      my $row = $self->next;
-      $self->{sth}->finish;
-      return $row;
-    };
+    /^firstrow$/i   and return $self->_next_and_finish;
 
     # CASE hashref : all data rows, put into a hashref
     /^hashref$/i   and do {
@@ -558,6 +554,7 @@ sub row_count {
     my $sth    = $dbh->$method($sql);
     $sth->execute(@bind);
     ($self->{row_count}) = $sth->fetchrow_array;
+    $sth->finish;
   }
 
   return $self->{row_count};
@@ -606,7 +603,7 @@ sub all {
   my ($self) = @_;
 
   # just call next() with a huge number
-  return $self->next(POSIX::LONG_MAX);
+  return $self->_next_and_finish(POSIX::LONG_MAX);
 }
 
 
@@ -667,7 +664,7 @@ sub page_boundaries {
 
 sub page_rows {
   my ($self) = @_;
-  return $self->next($self->page_size);
+  return $self->_next_and_finish($self->page_size);
 }
 
 
@@ -709,6 +706,12 @@ sub _build_reuse_row {
 }
 
 
+sub _next_and_finish {
+  my $self = shift;
+  my $row = $self->next( @_ ); # pass original parameters
+  $self->{sth}->finish;
+  return $row;
+}
 
 sub _compute_from_DB_handlers {
   my ($self) = @_;
