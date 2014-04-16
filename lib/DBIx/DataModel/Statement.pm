@@ -708,9 +708,9 @@ sub _build_reuse_row {
 
 sub _next_and_finish {
   my $self = shift;
-  my $row = $self->next( @_ ); # pass original parameters
+  my $row_or_rows = $self->next( @_ ); # pass original parameters
   $self->{sth}->finish;
-  return $row;
+  return $row_or_rows;
 }
 
 sub _compute_from_DB_handlers {
