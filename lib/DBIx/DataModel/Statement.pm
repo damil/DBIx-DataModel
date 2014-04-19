@@ -262,7 +262,7 @@ sub sqlize {
                         -limit -offset -page_size -page_index/;
   my %sqla_args = (-from         => clone($meta_source->db_from),
                    -want_details => 1);
-  $args->{$_} and $sqla_args{$_} = $args->{$_} for @args_to_copy;
+  defined $args->{$_} and $sqla_args{$_} = $args->{$_} for @args_to_copy;
   $sqla_args{-columns} ||= $meta_source->default_columns;
   $sqla_args{-limit}   ||= 1
     if $result_as eq 'firstrow' && $self->schema->autolimit_firstrow;
@@ -484,6 +484,7 @@ sub select {
         $node = $node->{$_} ||= {} foreach @key;
         $node->{$last_key_item} = $row;
       }
+      $self->{sth}->finish;
       return \%hash;
     };
 
@@ -502,6 +503,7 @@ sub select {
       while (my $row = $self->next) {
         push @vals, @{$row}{@$cols};
       }
+      $self->{sth}->finish;
       return \@vals;
     };
 
