@@ -34,6 +34,7 @@ MANIFEST			This list of files
 META.json
 META.yml
 README
+t/paging.t
 t/v1_DBIx-DataModel.t
 t/v1_Limit.t
 t/v1_LocalizeState.t

@@ -1933,12 +1933,12 @@ to L<DBI/prepare>.
 specifies how many rows will be retrieved per "page" of data.
 Default is unlimited (or more precisely the maximum 
 value of a short integer on your system).
-When specified, automatically implies C<< -limit >>.
+When specified, this automatically implies C<< -limit >>.
 
 =item C<< -page_index => $page_index >>
 
 specifies the page number (starting at 1). Default is 1.
-When specified, automatically implies C<< -offset >>.
+When specified, this automatically implies C<< -offset >>.
 
 =item C<< -limit => $limit >>
 
@@ -2176,29 +2176,6 @@ L</next> method.
 Calls L</row_count()> to get the total number of rows
 for the current statement, and then computes the
 total number of pages.
-
-=head3 goto_page()
-
-  $statement->goto_page($page_index);
-
-Goes to the beginning of the specified page; usually this
-involves a new call to L</execute>, unless the current
-statement has methods to scroll through the result set
-(see for example L<DBIx::DataModel::Statement::JDBC>).
-
-Like for Perl arrays, a negative index is interpreted
-as going backwards from the last page.
-
-=head3 shift_pages()
-
-  $statement->shift_pages($delta);
-
-Goes to the beginning of the page corresponding to
-the current page index + C<$delta>.
-
-=head3 next_page()
-
-A shortcut for C<< $statement->shift_pages(1) >>.
 
 =head3 page_boundaries()
 

@@ -598,6 +598,8 @@ sub next {
     $self->{row_num} += @rows;
     return \@rows;
   }
+
+  # NOTE: ->next() returns a $row, while ->next(1) returns an arrayref of 1 row
 }
 
 
@@ -621,37 +623,6 @@ sub page_count {
   my $page_size = $self->page_size || 1;
 
   return int(($row_count - 1) / $page_size) + 1;
-}
-
-sub goto_page {
-  my ($self, $page_index) = @_;
-
-  # if negative index, count down from last page
-  $page_index += $self->page_count + 1    if $page_index < 0;
-
-  $page_index >= 1 or croak "illegal page_index: $page_index";
-
-  $self->{page_index} = $page_index;
-  $self->{offset}     = ($page_index - 1) * $self->page_size;
-  $self->execute     unless $self->{row_num} == $self->{offset};
-
-  return $self;
-}
-
-
-sub shift_pages {
-  my ($self, $delta) = @_;
-
-  my $page_index = $self->page_index + $delta;
-  $page_index >= 1 or croak "illegal page index: $page_index";
-
-  $self->goto_page($page_index);
-}
-
-sub next_page {
-  my ($self) = @_;
-
-  $self->shift_pages(1);
 }
 
 

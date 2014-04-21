@@ -4,7 +4,7 @@ use warnings;
 use DBIx::DataModel;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
-use constant NTESTS  => 1;
+use constant NTESTS  => 2;
 use Test::More tests => NTESTS;
 
 DBIx::DataModel->Schema('HR') # Human Resources
@@ -38,17 +38,23 @@ SKIP: {
     $dbh->{mock_clear_history} = 1;
   }
 
-
-  my $statement = HR->table('Employee')->select(
-    -result_as => 'statement',
+  # paging directly from initial request
+  my $rows = HR->table('Employee')->select(
     -page_size => 10,
+    -page_index => 3,
+   );
+  sqlLike('SELECT * FROM T_Employee LIMIT ? OFFSET ?', [10, 20], 'page 3 from initial request');
+
+
+
+  $rows = HR->table('Employee')->select(
+    -columns => [qw/foo bar/],
+    -limit   => 0,
    );
 
-  $statement->goto_page( 3 );
+  sqlLike('SELECT foo, bar FROM T_Employee LIMIT ? OFFSET ?', [0, 0], 'limit 0');
 
-  my $rows = $statement->all;
 
-  sqlLike('SELECT * FROM T_Employee LIMIT ? OFFSET ?', [10, 20], 'page 3');
 
 }
 
