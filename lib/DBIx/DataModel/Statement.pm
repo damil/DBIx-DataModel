@@ -285,9 +285,16 @@ sub sqlize {
       or croak "datasource for '-where_on' was not a join";
     my %by_dest_table = reverse @other_join_args;
 
+    my %by_alias;
+    while (my ($table, $meta) = each %by_dest_table) {
+        $table =~ /\|(.+?)$/;
+        my $alias = $1 or next; # croak "alias for '$table' is required to use -where_on";
+        $by_alias{$alias} = $meta;
+    }
+
     # insert additional conditions into appropriate places
     while (my ($table, $additional_cond) = each %$where_on) {
-      my $join_cond = $by_dest_table{$table}
+      my $join_cond = $by_alias{$table} || $by_dest_table{$table}
         or croak "-where_on => {'$table' => ..}: this table is not in the join";
       $join_cond->{condition}
         = $sql_abstract->merge_conditions($join_cond->{condition},
