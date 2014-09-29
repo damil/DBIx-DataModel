@@ -198,7 +198,7 @@ sub do_transaction {
     if @new_dbh; # postfix "if" because $local_state must not be in a block
 
   # check that we have a dbh
-  my $dbh = $self->{dbh}[0]
+  my $dbh = $self->dbh
     or croak "no database handle for transaction";
 
   # how to call and how to return will depend on context
