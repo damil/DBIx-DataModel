@@ -1,11 +1,14 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.44 19.12.2014
+  - RT100996, allow literal SQL in inserts
+  - RT099205, transactions & changing dbh
+
 v2.43 21.04.2014
   - drop statement methods ->goto_page(), ->shift_page(), ->next_page()
   - new recipe in Cookbook : how to quote table and column names (RT#93529)
   - check reftypes through Scalar::Does
   - call ->finish() on sth (Sergiy Zuban++)
-
 
 v2.42 04.01.2014 : adding support for Plack::App::AutoCRUD
   - case-insensitivity for method $schema->db_table($db_name)
