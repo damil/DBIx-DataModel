@@ -7,7 +7,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 103;
+use constant N_DBI_MOCK_TESTS => 104;
 use constant N_BASIC_TESTS    =>  15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -484,6 +484,16 @@ die_ok {$emp->emp_id};
                    activities => [{act_id => 11}, {act_id => 12}]};
   is_deeply($result, $expected,  "results from -returning => {}");
 
+  # insert with literal SQL
+  $emp_id = HR::Employee->insert({
+    birthdate  => \["TO_DATE(?, 'DD.MM.YYYY')", "10.09.1659"],
+    firstname  => "Henry",
+    lastname   => "Purcell",
+   });
+  sqlLike( q[INSERT INTO T_Employee (birthdate, firstname, lastname) ]
+          .q[VALUES (TO_DATE(?, 'DD.MM.YYYY'), ?, ?)],
+          ["10.09.1659", "Henry", "Purcell"],
+          "insert with SQL function");
 
   HR::MyView->select({c3 => 22});
 

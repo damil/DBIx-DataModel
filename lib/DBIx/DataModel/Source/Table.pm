@@ -171,20 +171,32 @@ sub _weed_out_subtrees {
   my %subrecords;
   my $sqla = $self->schema->sql_abstract;
 
-  # extract references that correspond to component names
+  # deal with references
   foreach my $k (keys %$self) {
     next if $k eq '__schema';
     my $v = $self->{$k};
     if (ref $v) {
+
+      # if the reference is a component name, do a nested insert
       if ($is_component{$k}) {
         $subrecords{$k} = $v;
         delete $self->{$k};
       }
-      elsif (does($v, 'ARRAY') && 
-               ($sqla->{array_datatypes} ||
-                $sqla->is_bind_value_with_type($v))) {
-        # do nothing (pass the arrayref to SQL::Abstract::More)
+
+      # various cases where the ref will be handled by SQL::Abstract::More
+      elsif (
+        # an arrayref which is an array of values or a "bind value with type"
+        # -- see L<DBIx::Class::ResultSet/"DBIC BIND VALUES">
+        (does($v, 'ARRAY') && ($sqla->{array_datatypes} ||
+                                 $sqla->is_bind_value_with_type($v)))
+        ||
+        # literal SQL in the form $k => \ ["FUNC(?)", $v]
+        (does($v, 'REF') && does($$v, 'ARRAY'))
+       ){
+        # do nothing (pass the ref to SQL::Abstract::More)
       }
+
+      # otherwise it is probably wrong data
       else {
         carp "unexpected reference $k in record, deleted";
         delete $self->{$k};
