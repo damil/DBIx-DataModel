@@ -696,7 +696,7 @@ sub _compute_from_DB_handlers {
   # iterate over aliased_columns
   while (my ($alias, $column) = each %{$self->{aliased_columns} || {}}) {
     my $table_name;
-    $column =~ s/^(.+)\.// and $table_name = $1;
+    $column =~ s/^([^()]+)\.// and $table_name = $1;
     if (!$table_name) {
       $handlers{$alias} = $handlers{$column};
     }
@@ -704,10 +704,10 @@ sub _compute_from_DB_handlers {
       $table_name = $aliased_tables{$table_name} || $table_name;
 
       my $table   = $meta_schema->table($table_name)
-                 || firstval {($_->{db_name} || '') eq $table_name}
-                             ($meta_source, $meta_source->ancestors)
-                 # THINK: might perform a case-insensitive search 
-                 # (as second pass)
+                 || (firstval {($_->{db_name} || '') eq $table_name}
+                              ($meta_source, $meta_source->ancestors))
+                 || (firstval {uc($_->{db_name} || '') eq uc($table_name)}
+                              ($meta_source, $meta_source->ancestors))
         or croak "unknown table name: $table_name";
 
       $handlers{$alias} = $table->{column_handlers}->{$column};

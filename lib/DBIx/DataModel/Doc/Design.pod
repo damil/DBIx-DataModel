@@ -1521,3 +1521,5 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
     -result_as => 'firstrow' when all multiplicities are 1. See TODO
     in ConnnectedSources::join
     
+  - unify constitent use of Scalar::Does instead of reftype in 
+    Source/Table.pm and ConnnectedSource.pm (and possibly others)

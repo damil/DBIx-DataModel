@@ -7,7 +7,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 104;
+use constant N_DBI_MOCK_TESTS => 108;
 use constant N_BASIC_TESTS    =>  15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -659,6 +659,29 @@ die_ok {$emp->emp_id};
      "fromDB handler on column alias, without table alias");
 
 
+  # aliases on computed columns
+  $dbh->{mock_clear_history} = 1;
+  $dbh->{mock_add_resultset} = [ [qw/fmt1       fmt2       sub/],
+                                 [qw/2001-01-01 2001-01-01 1234/] ];
+  $lst = HR->join(qw/Department|dpt dpt.activities|act act.employee|emp/)
+           ->select(-columns => [
+    "to_char(d_birth,'format')|fmt1",
+    "to_char(emp.d_birth,'format')|fmt2",
+    "(select count(*) from subt where subt.emp_id=emp.emp_id)|sub",
+                                ]);
+  sqlLike("SELECT to_char(d_birth,'format') AS fmt1, "
+         ."to_char(emp.d_birth,'format') AS fmt2, "
+         ."(select count(*) from subt where subt.emp_id=emp.emp_id) AS sub "
+         ."FROM T_Department AS dpt "
+         ."LEFT OUTER JOIN T_Activity AS act ON ( dpt.dpt_id = act.dpt_id ) "
+         ."LEFT OUTER JOIN T_Employee AS emp ON ( act.emp_id = emp.emp_id )",
+          [],
+          'aliases on computed columns');
+  is($lst->[0]{fmt1}, "2001-01-01", "fmt1, no col handler applied");
+  is($lst->[0]{fmt2}, "2001-01-01", "fmt2, no col handler applied");
+  is($lst->[0]{sub},  1234,         "sub,  no col handler applied");
+
+
   # stepwise statement prepare/execute
   $statement = HR::Employee->join(qw/activities department/);
   $statement->refine(-where => {gender => 'F'});
@@ -671,7 +694,6 @@ die_ok {$emp->emp_id};
 	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
 	  'WHERE (emp_id = ? AND gender = ? AND gender != ?)', [999, 'F', 'M'],
 	  'statement prepare/execute');
-
 
 
   # many-to-many association

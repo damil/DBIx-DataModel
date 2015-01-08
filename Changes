@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.45 08.01.2015
+  - fix incorrect handling of column aliases in nested subqueries
+
 v2.44 19.12.2014
   - RT100996, allow literal SQL in inserts
   - RT099205, transactions & changing dbh
