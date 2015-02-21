@@ -390,7 +390,8 @@ sub _parse_join_path {
       my $right_table = $alias || $path->{to}->db_from;
       my %condition;
       while (my ($left_col, $right_col) = each %{$path->{on}}) {
-        $condition{"$left_table.$left_col"} = \"= $right_table.$right_col";
+        # FIXME: honor SQL::Abstract's "name_sep" setting
+        $condition{"$left_table.$left_col"} = { -ident => "$right_table.$right_col" };
       }
       my $db_table = $path->{to}->db_from;
       $db_table .= "|$alias" if $alias;
