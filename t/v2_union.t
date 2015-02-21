@@ -60,7 +60,7 @@ __EOSQL__
       SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_birth = ? )
       UNION 
       SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_spouse = ? )
-    )
+    ) AS count_wrapper
 __EOSQL__
 
 }

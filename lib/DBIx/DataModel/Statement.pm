@@ -538,14 +538,19 @@ sub row_count {
       splice @bind, -2;
     }
 
-    # select COUNT(*) instead of initial columns
-    if ($sql =~ /\b(UNION|INTERSECT|MINUS|EXCEPT)\b/) {
-      $sql = "SELECT COUNT(*) FROM ( $sql )";
+    my $wrap;
+    if (
+        # these clauses change number or rows in result set and need to be always wrapped
+        $sql =~ /\b(UNION|INTERSECT|MINUS|EXCEPT|DISTINCT)\b/ ||
+        # select COUNT(*) instead of initial columns
+        $sql !~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i
+    ) {
+        # wrap by default, because query may not have FROM, be postprocessed by -post_SQL
+        # or start with clause other than SELECT
+        $wrap = 1;
     }
-    else {
-      $sql =~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i
-        or croak "can't count rows from sql: $sql";
-    }
+    # always add subquery alias, because it's required for some DBMS (like PostgreSQL)
+    $sql = "SELECT COUNT(*) FROM ( $sql ) AS count_wrapper" if $wrap;
 
     # log the statement and bind values
     $self->schema->_debug("PREPARE $sql / @bind");
