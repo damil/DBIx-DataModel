@@ -3,7 +3,7 @@ use warnings;
 
 use DBIx::DataModel::Schema::Generator;
 
-use constant NTESTS  => 5;
+use constant NTESTS  => 7;
 use Test::More tests => NTESTS;
 
 
@@ -61,6 +61,25 @@ SKIP: {
   like($perl_code, qr{employee_2}s,                    "avoid duplicate associations");
 
 #  diag($perl_code);
+
+
+  # Generate proper schema even if there is no association
+  $dbh = DBI->connect('dbi:SQLite:dbname=:memory:', '', '', {
+    RaiseError => 1,
+    AutoCommit => 1,
+    sqlite_allow_multiple_statements => 1,
+  });
+  $dbh->do(q{
+    CREATE TABLE foo (foo1, foo2);
+    CREATE TABLE bar (bar1, bar2, bar3);
+  });
+  $generator = DBIx::DataModel::Schema::Generator->new(
+    -schema => 'Test::DBIDM::Schema::Generator2'
+   );
+  $generator->parse_DBI($dbh);
+  $perl_code = $generator->perl_code;
+  like($perl_code, qr{Table\(qw/Foo},             "Table foo");
+  like($perl_code, qr{Table\(qw/Bar},             "Table bar");
 }
 
 

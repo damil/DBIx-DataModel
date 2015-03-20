@@ -32,6 +32,8 @@ sub new {
   my ($class, @args) = @_;
   my $self =  bless {@args}, $class;
   $self->{-schema} ||= "My::Schema";
+  $self->{tables}  ||= [];
+  $self->{assoc}   ||= [];
   return $self;
 }
 
@@ -288,7 +290,7 @@ sub perl_code {
   my ($self) = @_;
 
   # check that we have some data
-  $self->{assoc} && $self->{tables}
+  @{$self->{tables}}
     or croak "can't generate schema: no data. "
            . "Call parse_DBI() or parse_DBIx_Class() before";
 
