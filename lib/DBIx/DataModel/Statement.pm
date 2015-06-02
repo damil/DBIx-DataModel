@@ -701,7 +701,11 @@ sub _compute_from_DB_handlers {
   # iterate over aliased_columns
   while (my ($alias, $column) = each %{$self->{aliased_columns} || {}}) {
     my $table_name;
-    $column =~ s/^([^()]+)\.// and $table_name = $1;
+    $column =~ s{^([^()]+)     # supposed table name (without parens)
+                  \.           # followed by a dot
+                  (?=[^()]+$)  # followed by supposed col name (without parens)
+                }{}x
+      and $table_name = $1;
     if (!$table_name) {
       $handlers{$alias} = $handlers{$column};
     }
