@@ -1,5 +1,11 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v2.46 02.06.2015
+  - let SQL::Abstract quote identifiers in ON conditions (Sergiy Zuban++)
+  - fix some edge cases for $statement->row_count() (Sergiy Zuban++)
+  - RT#102908, schema generator accepts databases without any foreign key assoc
+  - RT#104856, allow dots in DBMS function names (like Oracle DBMS_LOB.SUBSTR)
+
 v2.45 08.01.2015
   - fix incorrect handling of column aliases in nested subqueries
 
