@@ -538,19 +538,18 @@ sub row_count {
       splice @bind, -2;
     }
 
-    my $wrap;
-    if (
-        # these clauses change number or rows in result set and need to be always wrapped
-        $sql =~ /\b(UNION|INTERSECT|MINUS|EXCEPT|DISTINCT)\b/ ||
-        # select COUNT(*) instead of initial columns
-        $sql !~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i
-    ) {
-        # wrap by default, because query may not have FROM, be postprocessed by -post_SQL
-        # or start with clause other than SELECT
-        $wrap = 1;
-    }
-    # always add subquery alias, because it's required for some DBMS (like PostgreSQL)
-    $sql = "SELECT COUNT(*) FROM ( $sql ) AS count_wrapper" if $wrap;
+    # decide if the SELECT COUNT should wrap the original SQL in a subquery;
+    # this is needed with clauses like below that change the number of rows
+    my $should_wrap = $sql =~ /\b(UNION|INTERSECT|MINUS|EXCEPT|DISTINCT)\b/i;
+
+    # if no wrap required, attempt to directly substitute COUNT(*) for the 
+    # column names ...but if it fails, wrap anyway
+    $should_wrap ||= ! ($sql =~ s[^SELECT\b.*?\bFROM\b][SELECT COUNT(*) FROM]i);
+
+    # wrap SQL if needed, using  a subquery alias because it's required for 
+    # some DBMS (like PostgreSQL)
+    $should_wrap and  $sql = "SELECT COUNT(*) FROM "
+                           . $sqla->table_alias("( $sql )", "count_wrapper");
 
     # log the statement and bind values
     $self->schema->_debug("PREPARE $sql / @bind");

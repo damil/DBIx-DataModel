@@ -4,7 +4,7 @@ use warnings;
 use DBI;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use SQL::Abstract::More;
-use constant N_DBI_MOCK_TESTS => 8;
+use constant N_DBI_MOCK_TESTS => 9;
 use constant N_BASIC_TESTS    => 1;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -81,6 +81,15 @@ SKIP: {
   $stmt->row_count;
   sqlLike('SELECT COUNT(*) FROM T  WHERE foo = ?', [999], 'count(*) limit Oracle');
 
+  $stmt = D3::T->select(
+    -columns   => [-distinct => qw/foo bar/],
+    -result_as => 'statement',
+   );
+
+  $stmt->row_count;
+  sqlLike('SELECT COUNT(*) FROM (SELECT DISTINCT foo, bar FROM T) count_wrapper',
+          [],
+          'count DISTINCT');
 }
 
 
