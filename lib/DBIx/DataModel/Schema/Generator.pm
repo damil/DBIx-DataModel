@@ -481,7 +481,7 @@ If L<SQL::Translator|SQL::Translator> is installed
 
   use DBIx::DataModel::Schema::Generator;
   my $generator 
-    = DBIx::DataModel::Schema::Generator(schema => "My::New::Schema");
+    = DBIx::DataModel::Schema::Generator->new(schema => "My::New::Schema");
 
   $generator->parse_DBI($connection_string, $user, $passwd, \%options);
   $generator->parse_DBI($dbh);
