@@ -263,7 +263,7 @@ See L</define_table()>. The call above is equivalent to
 
 =head3 View()
 
-  $schema->View($class_name, $default_columns, $sql, 
+  $schema->View($class_name, $default_columns, $db_tables, 
                      \%where, @parent_tables);
 
 This is another front-end method for 
@@ -271,27 +271,30 @@ L</"define_table()">,
 for creating a new Perl class of name C<$class_name> that represents a
 SQL SELECT request of shape 
 
-  SELECT $columns FROM $db_tables [ WHERE %where ]
+  SELECT $default_columns FROM $db_tables [ WHERE %where ]
 
 The call above is equivalent to 
 
   my @parents = map {$meta_schema->table($_)} @parent_tables;
   $schema->metadm->define_table(class           => $class_name,
-                                db_name         => $sql,
+                                db_name         => $db_tables,
                                 where           => \%where,
                                 default_columns => $default_columns,
-                                parents         => \@parents);
+                                parents         => \@parent_tables);
 
+The C<< $db_tables >> can be a single table name, or a join
+between several tables, expressed directly in SQL, like
+C<< 'Foo INNER JOIN Bar ON Foo.fk=Bar.pk' >>.
 The C<< @parent_tables >> list contains names of Perl 
-table classes from which the view will also inherit.
-If the SQL code in C<$sql> is a join between
-several tables, then it is a good idea to mention these 
-tables in C<< @parent_tables >>, so that their
-path methods become available to instances
+table classes from which the view will also inherit; 
+it is a good idea to inherit from all tables mentioned in the join,
+so that their path methods become available to instances
 of this view. Be careful about table names : 
-the SQL code in C<$sql> should contain I<database> table names,
+the SQL code in C<$db_tables> should contain I<database> table names,
 whereas the members of C<< @parent_tables >> should be 
-I<Perl> table classes.
+I<Perl> table classes. 
+See also L<DBIx::DataModel::Doc::Design/"Views within the ORM">.
+
 
 Perl views as defined here have nothing to do with views declared in
 the database itself. Perl views are totally unknown to the database,
