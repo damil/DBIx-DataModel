@@ -2,10 +2,11 @@ use strict;
 use warnings;
 
 use DBIx::DataModel::Schema::Generator;
+use FindBin;
+use lib "$FindBin::Bin/lib/DBIC_example";
 
-use constant NTESTS  => 7;
+use constant NTESTS  => 9;
 use Test::More tests => NTESTS;
-
 
 SKIP: {
   # v1.38_* of DBD::SQLite required because it has support for foreign_key_info
@@ -60,10 +61,7 @@ SKIP: {
   like($perl_code, qr{Association.*?activit(ie|y)s}s,  "Association");
   like($perl_code, qr{employee_2}s,                    "avoid duplicate associations");
 
-#  diag($perl_code);
-
-
-  # Generate proper schema even if there is no association
+  note "Generate proper schema even if there is no association";
   $dbh = DBI->connect('dbi:SQLite:dbname=:memory:', '', '', {
     RaiseError => 1,
     AutoCommit => 1,
@@ -80,6 +78,16 @@ SKIP: {
   $perl_code = $generator->perl_code;
   like($perl_code, qr{Table\(qw/Foo},             "Table foo");
   like($perl_code, qr{Table\(qw/Bar},             "Table bar");
+
+
+  note "schema generation from DBIx::Class";
+  $generator = DBIx::DataModel::Schema::Generator->new(
+    -schema => 'Test::DBIDM::Schema::Generator3'
+   );
+  $generator->parse_DBIx_Class("MyApp::Schema");
+  $perl_code = $generator->perl_code;
+  like($perl_code, qr{Table\(qw/Cd.*?cdid},            "Table Cd with PK cdid");
+  like($perl_code, qr{Association\([^)]*Cd[^)]*Track}, "Assoc Cd-Track"); 
 }
 
 

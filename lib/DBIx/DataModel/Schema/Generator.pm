@@ -160,7 +160,7 @@ sub parse_DBIx_Class {
   my $dbic_schema = shift or croak "missing arg (DBIC schema name)";
 
   # load the DBIx::Class schema
-  Module::Load::load $dbic_schema or croak $@;
+  eval {Module::Load::load $dbic_schema; 1} or croak $@;
 
   # global hash to hold assoc. info (because we must collect info from
   # both tables to get both directions of the association)
