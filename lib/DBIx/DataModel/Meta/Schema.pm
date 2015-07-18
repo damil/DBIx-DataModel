@@ -242,7 +242,12 @@ foreach my $kind (qw/table association type/) {
 
     # store into our registry (except paths because they are accessed through
     # tables or through associations)
-    $self->{$kind}{$meta_obj->{name}} = $meta_obj
+
+    my $name = $meta_obj->{name};
+    # remove schema prefix, if any
+    $name =~ s/^$self->{class}:://;
+
+    $self->{$kind}{$name} = $meta_obj
       unless $kind eq 'path';
 
     return $self;
