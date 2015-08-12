@@ -260,17 +260,20 @@ sub parse_SQL_Translator {
     my $role      = _table2role($tablename, "s");
     foreach my $fk (@foreign_keys) {
       my $ref_table  = $fk->reference_table;
-      my @ref_fields = $fk->reference_fields;
+
+      # only one key allowed for foreign keys
+      my ($field) = $fk->fields;
+      my ($ref_field) = $fk->reference_fields;
 
       my @assoc = (
         { table    => _table2class($ref_table),
-          col      => $table_info->{pkey},
+          col      => $ref_field,
           role     => _table2role($ref_table),
           mult_min => 1, #0/1 (TODO: depend on is_nullable on other side)
           mult_max => 1,
         },
         { table    => $classname,
-          col      => join(" ", $fk->fields),
+          col      => $field,
           role     => $role,
           mult_min => 0,
           mult_max => '*',
