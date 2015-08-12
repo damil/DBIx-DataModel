@@ -295,14 +295,26 @@ sub perl_code {
            . "Call parse_DBI() or parse_DBIx_Class() before";
 
   # make sure there is no duplicate role on the same table
+
+  # if a table has multiple cascaded foreign keys make it part of an
+  # Association, not a Composition, as a table can't be part of
+  # multiple Compositions.
+
   my %seen_role;
+  my %relationship;
   foreach my $assoc (@{$self->{assoc}}) {
     my $count;
     $count = ++$seen_role{$assoc->[0]{table}}{$assoc->[1]{role}};
     $assoc->[1]{role} .= "_$count" if $count > 1;
     $count = ++$seen_role{$assoc->[1]{table}}{$assoc->[0]{role}};
     $assoc->[0]{role} .= "_$count" if $count > 1;
+
+    $relationship{ $assoc->[1]{table} }{ $assoc->[1]{is_cascade} ? 'Composition' : 'Association' }++;
   }
+
+  # an association which has more than one Composition reverts to an Association.
+  $_ = $_->{Association} || $_->{Composition} != 1  ? 'Association' : 'Composition'
+      for values %relationship;
 
   # compute max length of various fields (for prettier source alignment)
   my %l;
@@ -373,8 +385,7 @@ __END_OF_CODE__
       $a->[$i]{mult} = {"0..*" => "*", "1..1" => "1"}->{$mult} || $mult;
     }
 
-    # association or composition
-    my $relationship = $a->[1]{is_cascade} ? 'Composition' : 'Association';
+    my $relationship = $relationship{$a->[1]{table}};
 
     $code .= "\n->$relationship(\n"
           .  sprintf($format, @{$a->[0]}{qw/table role mult col/})
