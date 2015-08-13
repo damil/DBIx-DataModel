@@ -294,27 +294,86 @@ sub perl_code {
     or croak "can't generate schema: no data. "
            . "Call parse_DBI() or parse_DBIx_Class() before";
 
-  # make sure there is no duplicate role on the same table
 
-  # if a table has multiple cascaded foreign keys make it part of an
-  # Association, not a Composition, as a table can't be part of
-  # multiple Compositions.
+  # [1] a table which has fk cascades to more than one table must be an
+  #     Association
 
-  my %seen_role;
-  my %relationship;
+  # [2] a table which has multiple fk cascades to a single table (even
+  #     if it has fk non-cascades) is a Composition.
+
+  # [3] a table with multiple fk cascades to a single ref table combines
+  #     those cascades into a single Composition
+
+  # [4] a table with fk cascades  and non-cascades to a single ref table
+  #     splits the cascades into a Composition and the non-cascades to an Association
+
+
+  my %tblassoc;
   foreach my $assoc (@{$self->{assoc}}) {
-    my $count;
-    $count = ++$seen_role{$assoc->[0]{table}}{$assoc->[1]{role}};
-    $assoc->[1]{role} .= "_$count" if $count > 1;
-    $count = ++$seen_role{$assoc->[1]{table}}{$assoc->[0]{role}};
-    $assoc->[0]{role} .= "_$count" if $count > 1;
+    my ( $t0, $t1 ) = @{ $assoc };
 
-    $relationship{ $assoc->[1]{table} }{ $assoc->[1]{is_cascade} ? 'Composition' : 'Association' }++;
+    # separate cascades from non cascades, group by tables
+    # $tblassoc{t1}[is_cascade ? 0 : 1 ]{t0}[ @assocs ];
+    my $tassoc =
+      (
+       (
+	$tblassoc{ $t1->{table} } ||= [ ]
+       )->[ !!$t1->{is_cascade} || 0 ] ||= {}
+      )->{ $t0->{table} } ||= [];
+
+    push @{ $tassoc }, $assoc;
   }
 
-  # an association which has more than one Composition reverts to an Association.
-  $_ = $_->{Association} || $_->{Composition} != 1  ? 'Association' : 'Composition'
-      for values %relationship;
+
+  my @relationship = ( 'Association', 'Composition' );
+
+  my @associations;   # final list of associations;
+  my %seen_role;      # ensure role names are unique;
+
+  for my $t1 ( values %tblassoc ) {
+
+      # [1]
+      my $cascades = $t1->[1];
+
+      if ( keys %$cascades > 1 ) {
+
+	  # make them all Associations
+	  while( my ( $t0, $assocs ) = each %{$cascades } ) {
+
+	      push @{ $t1->[0]{$t0} }, @$assocs;
+
+	  }
+
+	  $t1->[1] = {};
+      }
+
+      # Merge multiple associations between two tables. Assumes that
+      # multiplicities are the same for the associations.
+
+      for my $ridx ( 0..1 ) {
+
+	  my $rel = $t1->[$ridx];
+
+	  while( my ( $t0, $assocs ) = each %{ $rel } ) {
+
+	      # use the first association as a template
+	      my $assoc = $assocs->[0];
+
+	      for my $tidx ( 0..1 )  {
+
+		  # combine columns
+		  $assoc->[$tidx]->{col} = join( ' ', map { $_->[$tidx]{col} } @$assocs );
+
+		  my $count = ++$seen_role{$assoc->[$tidx]->{table}}{$assoc->[1-$tidx]->{role}};
+		  $assoc->[1-$tidx]->{role} .= "_$count" if $count > 1;
+	      }
+
+	      # add it to the final list of associations
+	      push @associations, [ $relationship[$ridx], $assoc ];
+
+	  }
+      }
+  }
 
   # compute max length of various fields (for prettier source alignment)
   my %l;
@@ -372,7 +431,10 @@ __END_OF_CODE__
   $code .= sprintf("#     $colsizes\n", qw/Class Role Mult Join/)
         .  sprintf("#     $colsizes",   qw/===== ==== ==== ====/);
 
-  foreach my $a (@{$self->{assoc}}) {
+  foreach my $assoc (@associations) {
+
+    my ( $relationship, $a ) = @$assoc;
+
 
     # for prettier output, make sure that multiplicity "1" is first
     @$a = reverse @$a if $a->[1]{mult_max} eq "1"
@@ -384,8 +446,6 @@ __END_OF_CODE__
       my $mult       = "$a->[$i]{mult_min}..$a->[$i]{mult_max}";
       $a->[$i]{mult} = {"0..*" => "*", "1..1" => "1"}->{$mult} || $mult;
     }
-
-    my $relationship = $relationship{$a->[1]{table}};
 
     $code .= "\n->$relationship(\n"
           .  sprintf($format, @{$a->[0]}{qw/table role mult col/})
