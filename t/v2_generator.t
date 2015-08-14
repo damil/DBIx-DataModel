@@ -3,7 +3,7 @@ use warnings;
 
 use DBIx::DataModel::Schema::Generator;
 
-use constant NTESTS  => 17;
+use constant NTESTS  => 19;
 
 use Test::More tests => NTESTS;
 
@@ -107,7 +107,7 @@ SKIP: {
 
   # ensure Tables are created
   match_entry( 'Table', [ $_, undef ], "created Table $_" )
-    foreach qw[ Activity ActivityEvent Department Employee EmployeeStatus FkReftable1 ];
+    foreach qw[ Activity ActivityEvent Department Employee EmployeeStatus FkReftable1 FkReftable2 FkReftable3 ];
 
   match_entry( 'Association',
 	       [ qw( Employee           employee            1    emp_id emp_id ) ],
