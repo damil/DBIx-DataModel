@@ -274,6 +274,7 @@ sub parse_SQL_Translator {
           role     => $role,
           mult_min => 0,
           mult_max => '*',
+	  is_cascade => lc($fk->on_delete) eq 'cascade',  # use fc on perl > 5.16.
         }
        );
       push @{$self->{assoc}}, \@assoc;
