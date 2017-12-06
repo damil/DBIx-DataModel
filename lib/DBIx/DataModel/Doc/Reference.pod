@@ -161,10 +161,10 @@ A hashref specifying columns to be automatically updated in every
 table. Keys of the hashref are column names, values are handlers
 (coderefs). This specification can also be done separately for each
 table (see the C<auto_update_columns> parameter to
-L</define_table()>).  Such handlers are called at each update B<and>
-each insert; if you use both C<auto_insert_columns> and
-C<auto_update_columns>, make sure that the column names are not the
-same.
+L</define_table()>).  Handlers are called at each update B<and>
+each insert, receiving the whole record and the table class as arguments
+just like for auto_insert handlers described above. To avoid conflicts, a given
+column cannot have both an auto_insert and an auto_update handler.
 
 For example, elaborating on the previous section, each record could
 also remember the last modification with something like
@@ -2432,7 +2432,6 @@ Again, it is possible to use fully qualified method names if necessary.
 
 Returns the meta-source instance associated with the invocant.
 
-
 =head3 schema()
 
 Returns the instance of L<DBIx::DataModel::Schema> from which
@@ -2440,7 +2439,6 @@ the current data row was retrieved. When in single-schema mode,
 the schema comes from C<< $self->metadm->schema->class->singleton >>; 
 when in multi-schema mode, a reference to the schema 
 is kept under C<__schema> within each row object.
-
 
 =head3 primary_key()
 

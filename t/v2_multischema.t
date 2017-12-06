@@ -1,14 +1,18 @@
 use strict;
 use warnings;
 no warnings 'uninitialized';
+use mro 'c3';
 
 use DBI;
 use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
+use Scalar::Does qw/does/;
+use DBIx::DataModel;
+use DBIx::DataModel::Meta::Utils;
 
-use constant N_DBI_MOCK_TESTS => 7;
-use constant N_BASIC_TESTS    => 1;
+use constant N_DBI_MOCK_TESTS => 8;
+use constant N_BASIC_TESTS    => 0;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
 
@@ -22,10 +26,8 @@ sub die_ok(&) {
   ok($err, $err);
 }
 
-
-
-use_ok("DBIx::DataModel");
-
+  
+# define a small schema
 DBIx::DataModel->Schema('HR') # Human Resources
 ->Table(Employee   => T_Employee   => qw/emp_id/)
 ->Table(Department => T_Department => qw/dpt_id/)
@@ -34,6 +36,41 @@ DBIx::DataModel->Schema('HR') # Human Resources
               [qw/Activity   activities * /])
 ->Association([qw/Department department 1 /],
               [qw/Activity   activities * /]);
+
+
+
+# override the update method in one of the generated classes
+package HR::Department;
+use Scalar::Does qw/does/;
+
+sub update {
+  my $self      = shift;
+  my $to_update = $_[-1];
+
+  if (does($to_update, 'HASH')) {
+    $to_update->{__UPDATE_METHOD} = 'was_overridden';
+  }
+  return $self->next::method(@_);
+}
+
+package main;
+
+
+
+
+# # override the update method in one of the generated classes
+# DBIx::DataModel::Meta::Utils->define_method(class => 'HR::Department',
+#                 name  => 'update',
+#                 body  => sub {
+#   my $self      = shift;
+#   my $to_update = $_[-1];
+
+#   if (does($to_update, 'HASH')) {
+#     $to_update->{__UPDATE_METHOD} = 'was_overridden';
+#   }
+#   return $self->next::method(@_);
+# });
+
 
 
 SKIP: {
@@ -105,6 +142,13 @@ SKIP: {
       "db_table() - correct name");
   ok (!$schema->db_table('foobar'),
       "db_table() - incorrect name");
+
+
+  # check that the overridden update() method is invoked
+  $schema->table('Department')->update(123, {foo => 'bar'});
+  sqlLike('UPDATE T_Department SET __UPDATE_METHOD = ?, foo = ? WHERE dpt_id = ?',
+         ['was_overridden', 'bar', 123],
+         'overridden update() method');
 
 
   my @tables = $schema->metadm->tables;

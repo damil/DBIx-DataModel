@@ -6,14 +6,14 @@ use Module::Build;
 my $builder = Module::Build->new(
     module_name         => 'DBIx::DataModel',
     license             => 'perl',
-    dist_author         => 'Laurent Dami <laurent.dami AT etat.ge.ch>',
+    dist_author         => 'Laurent Dami <dami AT cpan.org>',
     dist_version_from   => 'lib/DBIx/DataModel.pm',
     requires => {
         'perl'                 => 5.008,
         'Test::More'           => 0,
 	'Carp'                 => 0,
 	'DBI'                  => 0,
-	'SQL::Abstract::More'  => 1.21,
+	'SQL::Abstract::More'  => 1.31,
 	'Module::Build'        => 0,
         'Acme::Damn'           => 0,
         'Scalar::Util'         => 0,
@@ -24,7 +24,6 @@ my $builder = Module::Build->new(
         'MRO::Compat'          => 0,
         'Module::Load'         => 0,
         'Params::Validate'     => 0,
-        'Scalar::Does'         => 0,
 	'Try::Tiny'            => 0,
     },
     build_requires => {

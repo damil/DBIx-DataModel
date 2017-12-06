@@ -68,10 +68,6 @@ foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
 }
 
 
-
-
-
-
 sub expand {
   my ($self, $path, @options) = @_;
   $self->{$path} = $self->$path(@options);

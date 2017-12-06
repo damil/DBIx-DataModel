@@ -195,97 +195,18 @@ sub _parse_ending_options {
 # UPDATE
 #----------------------------------------------------------------------
 
-my $update_spec = {
-  -set   => {type => HASHREF},
-  -where => {type => HASHREF|ARRAYREF},
-};
 
-
-
+# forward to the Source::Table::update() method
 sub update {
   my $self = shift;
-  my $schema = $self->{schema};
-  my $sqla   = $schema->sql_abstract;
 
-  # parse arguments
-  @_ or croak "update() : not enough arguments";
-  my $is_positional_args = ref $_[0] || $_[0] !~ /^-/;
-  my %args;
-  if ($is_positional_args) {
-    (reftype $_[-1] || '') eq 'HASH'
-      or croak "update(): expected a hashref as last argument";
-    $args{-set}   = pop @_;
-    $args{-where} = [-key => @_] if @_;
-  }
-  else {
-    %args = validate(@_, $update_spec);
-  }
+  # create a fake instance of the source classe, containing the schema
+  my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
 
-  # some shortcuts
-  my $meta_source  = $self->{meta_source};
-  my $source_class = $meta_source->class;
-
-  # build a shallow copy of $args{-set}, bless it and call 'to_DB' handlers
-  my $to_set = {%{$args{-set}}, __schema => $self->schema};
-  $self->_maybe_inject_primary_key($to_set, \%args);
-  bless $to_set, $source_class;
-
-  # call column handlers : no_update, auto_update, to_DB
-  my %no_update_column = $meta_source->no_update_column;
-  delete $to_set->{$_} foreach keys %no_update_column;
-  my %auto_update_column = $meta_source->auto_update_column;
-  while (my ($col, $handler) = each %auto_update_column) {
-    $to_set->{$col} = $handler->($to_set, $source_class);
-  }
-  $to_set->apply_column_handler('to_DB');
-
-  # detect references to foreign objects
-  my @sub_refs;
-  foreach my $key (grep {$_ ne '__schema'} keys %$to_set) {
-    my $val     = $to_set->{$key};
-    my $reftype = reftype($val)
-      or next;
-    push @sub_refs, $key
-      if $reftype eq 'HASH'
-        ||( $reftype eq 'ARRAY' 
-              && !$sqla->{array_datatypes}
-              && !$sqla->is_bind_value_with_type($val) );
-    # reftypes SCALAR or REF are OK; they are used by SQLA for verbatim SQL
-  }
-
-  # remove references to foreign objects
-  if (@sub_refs) {
-    carp "data passed to update() contained nested references : ",
-      CORE::join ", ", sort @sub_refs;
-    delete @{$to_set}{@sub_refs};
-  }
-
-  # if this is a single record update (no '-where' arg), build -where from pkey
-  my $where = $args{-where};
-  if (!$where) {
-    my @primary_key = $self->{meta_source}->primary_key;
-    $where = {map {$_ => delete $to_set->{$_}} @primary_key};
-  }
-
-  # TODO : recursive update (or insert)
-
-  # remove ref to $schema and unbless (back to a raw hashref)
-  delete $to_set->{__schema};
-  damn $to_set;
-
-  # database request
-  my ($sql, @bind) = $sqla->update(
-    -table => $meta_source->db_from,
-    -set   => $to_set,
-    -where => $where,
-   );
-  $schema->_debug(do {no warnings 'uninitialized'; 
-                      $sql . " / " . CORE::join(", ", @bind);});
-  my $method = $schema->dbi_prepare_method;
-  my $sth    = $schema->dbh->$method($sql);
-  $sqla->bind_params($sth, @bind);
-  $sth->execute();
+  # call that instance with all remaining args
+  $obj->update(@_);
 }
+
 
 
 
@@ -293,66 +214,19 @@ sub update {
 # DELETE
 #----------------------------------------------------------------------
 
-my $delete_spec = {
-  -where => {type => HASHREF|ARRAYREF},
-};
 
+
+# forward to the Source::Table::delete() method
 sub delete {
   my $self = shift;
 
-  # parse arguments
-  @_ or croak "delete() : not enough arguments";
-  my $is_positional_args = ref $_[0] || $_[0] !~ /^-/;
-  my %args;
-  my $to_delete = {};
-  if ($is_positional_args) {
-    if ((reftype $_[0] || '') eq 'HASH') { # @_ contains a hashref to delete
-      @_ == 1 
-        or croak "delete() : too many arguments";
-      $to_delete = {%{$_[0]}}; # shallow copy
-    }
-    else {                         # @_ contains a primary key to delete
-      $args{-where} = [-key => @_];
-    }
-  }
-  else {
-    %args = validate(@_, $delete_spec);
-  }
+  # create a fake instance of the source classe, containing the schema
+  my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
 
-  $self->_maybe_inject_primary_key($to_delete, \%args);
-
-  my $meta_source  = $self->{meta_source};
-  my $source_class = $meta_source->class;
-  my $where        = $args{-where};
-
-  # if this is a delete of a single record ...
-  if (!$where) {
-    # cascaded delete
-    foreach my $component_name ($meta_source->components) {
-      my $components = $to_delete->{$component_name} or next;
-      does($components, 'ARRAY')
-        or croak "delete() : component $component_name is not an arrayref";
-      $_->delete foreach @$components;
-    }
-    # build $where from primary key
-    $where = {map {$_ => $to_delete->{$_}} $self->{meta_source}->primary_key};
-  }
-
-  else {
-    # otherwise, it will be a bulk delete, no handlers applied
-  }
-
-  # database request
-  my $schema = $self->{schema};
-  my ($sql, @bind) = $schema->sql_abstract->delete(
-    -from => $meta_source->db_from,
-    -where => $where,
-   );
-  $schema->_debug($sql . " / " . CORE::join(", ", @bind) );
-  my $method = $schema->dbi_prepare_method;
-  my $sth    = $schema->dbh->$method($sql);
-  $sth->execute(@bind);
+  # call that instance with all remaining args
+  $obj->delete(@_);
 }
+
 
 
 #----------------------------------------------------------------------

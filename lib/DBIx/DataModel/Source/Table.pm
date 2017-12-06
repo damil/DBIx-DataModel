@@ -10,14 +10,18 @@ use mro 'c3';
 use parent 'DBIx::DataModel::Source';
 use Carp;
 use Storable             qw/freeze/;
-use Scalar::Util         qw/refaddr reftype/;
-use Scalar::Does         qw/does/;
+use Scalar::Util         qw/refaddr reftype blessed/;
+use Acme::Damn           qw/damn/;
 use Module::Load         qw/load/;
 use List::MoreUtils      qw/none/;
+use Params::Validate     qw/validate_with HASHREF/;
+
+# alias to 'does' function from SQL::Abstract::More
+BEGIN {use SQL::Abstract::More 1.31; *does = \&SQL::Abstract::More::does}
 
 use namespace::clean;
 
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
+{no strict 'refs'; no warnings 'once'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 sub _singleInsert {
   my ($self, %options) = @_; 
@@ -191,7 +195,7 @@ sub _weed_out_subtrees {
                                  $sqla->is_bind_value_with_type($v)))
         ||
         # literal SQL in the form $k => \ ["FUNC(?)", $v]
-        (does($v, 'REF') && does($$v, 'ARRAY'))
+        (ref $v eq 'REF' && does($$v, 'ARRAY'))
        ){
         # do nothing (pass the ref to SQL::Abstract::More)
       }
@@ -268,63 +272,272 @@ sub insert {
 
 
 #------------------------------------------------------------
-# update and delete
+# delete
 #------------------------------------------------------------
 
-# update() and delete(): differentiate between usage as
-# $obj->update(), or $class->update(@args). In both cases, we then
-# delegate to the ConnectedSource class
+my $delete_spec = {
+  -where => {type => HASHREF, optional => 0},
+};
 
-sub delete {
-  my ($self, @args) = @_;
 
-  my $metadm      = $self->metadm;
-  my $meta_schema = $metadm->schema;
-  my $schema;
+=pod
 
-  if (ref $self) { # if called as $obj->$method()
-    not @args or croak "delete() : too many arguments";
-    @args = ($self);
-    $schema = delete $self->{__schema};
+May be called as 
+
+  $class->delete({...});   # hashref must include primary key
+  $class->delete(@prim_key);
+  $class->delete(-where => {..});
+
+  $obj->delete();
+
+=cut 
+
+
+sub _parse_delete_args {
+  my $self = shift;
+
+  my @pk_cols = $self->metadm->primary_key;
+  my $where;
+  my @cascaded;
+
+  if ($self->_is_called_as_class_method) {
+    # parse arguments
+    @_ or croak "delete() as class method: not enough arguments";
+
+    my $uses_named_args = ! ref $_[0] && $_[0] =~ /^-/;
+    if ($uses_named_args) {
+      my %args = validate_with(params      => \@_,
+                               spec        => $delete_spec,
+                               allow_extra => 0);
+      $where = $args{-where};
+    }
+    else { # uses positional args
+      if (does $_[0], 'HASH') { # called as: delete({fields})
+        my $hash = shift;
+        @{$where}{@pk_cols} = @{$hash}{@pk_cols};
+        !@_ or croak "delete() : too many arguments";
+      }
+      else { # called as: delete(@primary_key)
+        my ($n_vals, $n_keys) = (scalar(@_), scalar(@pk_cols));
+        $n_vals == $n_keys
+          or croak "delete(): got $n_vals cols in primary key, expected $n_keys";
+        @{$where}{@pk_cols} = @_;
+      }
+      my $missing = join ", ", grep {!defined $where->{$_}} @pk_cols;
+      croak "delete(): missing value for $missing" if $missing;
+    }
+  }
+  else { # called as instance method
+
+    # build $where from primary key
+    @{$where}{@pk_cols} = @{$self}{@pk_cols};
+
+    # cascaded delete
+  COMPONENT_NAME:
+    foreach my $component_name ($self->metadm->components) {
+      my $components = $self->{$component_name} or next COMPONENT_NAME;
+      does($components, 'ARRAY')
+        or croak "delete() : component $component_name is not an arrayref";
+      push @cascaded, @$components;
+    }
   }
 
-  # if in single-schema mode, or called as $class->delete(@args)
-  $schema ||= $meta_schema->class->singleton;
-
-  # delegate to the connected_source class
-  my $cs_class    = $meta_schema->connected_source_class;
-  load $cs_class;
-  $cs_class->new($metadm, $schema)->delete(@args);
+  return ($where, \@cascaded);
 }
+
+
+sub delete {
+  my $self = shift;
+
+  my $schema             = $self->schema;
+  my ($where, $cascaded) = $self->_parse_delete_args(@_);
+
+  # perform cascaded deletes for components within $self
+  $_->delete foreach @$cascaded;
+
+  # perform this delete
+  my ($sql, @bind) = $schema->sql_abstract->delete(
+    -from  => $self->metadm->db_from,
+    -where => $where,
+   );
+  $schema->_debug($sql . " / " . CORE::join(", ", @bind) );
+  my $method = $schema->dbi_prepare_method;
+  my $sth    = $schema->dbh->$method($sql);
+  $sth->execute(@bind);
+}
+
+
+#------------------------------------------------------------
+# update
+#------------------------------------------------------------
+
+my $update_spec = {
+  -set   => {type => HASHREF, optional => 0},
+  -where => {type => HASHREF, optional => 0},
+};
+
+
+
+=pod
+
+May be called as 
+
+  $class->update({...});   # hashref must include primary key
+  $class->update(@prim_key, {...});
+  $class->update(-set => {..}, -where => {..});
+
+  $fake_obj->update(@prim_key, {...});
+  $fake_obj->update(-set => {..}, -where => {..});
+
+  $obj->update();
+  $obj->update({...});
+
+
+=cut 
+
+
+sub _parse_update_args  { # returns ($schema, $to_set, $where)
+  my $self = shift;
+
+  # class of the invocant
+  my $class  = ref $self || $self;
+
+  my ($to_set, $where);
+
+  if ($self->_is_called_as_class_method) {
+    @_
+      or croak "update() as class method: not enough arguments";
+
+    my $uses_named_args = ! ref $_[0] && $_[0] =~ /^-/;
+    if ($uses_named_args) {
+      my %args = validate_with(params      => \@_,
+                               spec        => $update_spec,
+                               allow_extra => 0);
+      ($to_set, $where) = @args{qw/-set -where/};
+    }
+    else { # uses positional args: update([@primary_key], {fields_to_update})
+      does $_[-1], 'HASH'
+        or croak "update(): expected a hashref as last argument";
+      $to_set = { %{pop @_} };  # shallow copy
+      my @pk_cols = $self->metadm->primary_key;
+      if (@_) {
+        my ($n_vals, $n_keys) = (scalar(@_), scalar(@pk_cols));
+        $n_vals == $n_keys
+          or croak "update(): got $n_vals cols in primary key, expected $n_keys";
+        @{$where}{@pk_cols} = @_;
+      }
+      else {
+        # extract primary key from hashref
+        @{$where}{@pk_cols} = delete @{$to_set}{@pk_cols};
+      }
+    }
+  }
+  else { # called as instance method
+    my %clone = %$self;
+
+    # extract primary key from object
+    $where->{$_} = delete $clone{$_} foreach $self->metadm->primary_key;
+
+    if (!@_) {        # if called as $obj->update()
+      delete $clone{__schema};
+      $to_set = \%clone;
+    }
+    elsif (@_ == 1) { # if called as $obj->update({field => $val, ...})
+      does $_[0], 'HASH'
+        or croak "update() as instance method: unexpected argument";
+      $to_set = $_[0];
+    }
+    else {
+      croak "update() as instance method: too many arguments";
+    }
+  }
+
+
+  # apply no_update and auto_update
+  my %no_update_column = $self->metadm->no_update_column;
+  delete $to_set->{$_} foreach keys %no_update_column;
+  my %auto_update_column = $self->metadm->auto_update_column;
+  while (my ($col, $handler) = each %auto_update_column) {
+    $to_set->{$col} = $handler->($to_set, $class);
+  }
+
+  # apply 'to_DB' handlers. Need temporary bless as an object
+  my $schema = $self->schema;
+  $to_set->{__schema} = $schema; # in case the handlers need it
+  bless $to_set, $class;
+  $to_set->apply_column_handler('to_DB');
+  delete $to_set->{__schema};
+  damn $to_set;
+
+
+  # detect references to foreign objects
+  my $sqla = $schema->sql_abstract;
+  my @sub_refs;
+  foreach my $key (keys %$to_set) {
+    my $val     = $to_set->{$key};
+    my $reftype = reftype($val)
+      or next;
+    push @sub_refs, $key
+      if $reftype eq 'HASH'
+        ||( $reftype eq 'ARRAY' 
+              && !$sqla->{array_datatypes}
+              && !$sqla->is_bind_value_with_type($val) );
+    # reftypes SCALAR or REF are OK; they are used by SQLA for verbatim SQL
+  }
+
+  # remove references to foreign objects
+  if (@sub_refs) {
+    carp "data passed to update() contained nested references : ",
+      CORE::join ", ", sort @sub_refs;
+    delete @{$to_set}{@sub_refs};
+  }
+
+  # TODO : recursive update (or insert)
+
+  return ($schema, $to_set, $where);
+}
+
+
 
 
 sub update  {
-  my ($self, @args) = @_;
+  my $self = shift;
 
-  my $metadm      = $self->metadm;
-  my $meta_schema = $metadm->schema;
-  my $schema;
+  my ($schema, $to_set, $where) = $self->_parse_update_args(@_);
 
-  if (ref $self) { 
-    if (@args) { # if called as $obj->update({field => $val, ...})
-      # will call $class->update(@prim_key, {field => $val, ...}
-      unshift @args, $self->primary_key;
-    }
-    else { # if called as $obj->update()
-      # will call $class->update($self)
-      @args = ($self);
-    }
-    $schema = delete $self->{__schema};
-  }
-
-  # if in single-schema mode, or called as $class->update(@args)
-  $schema ||= $meta_schema->class->singleton;
-
-  # delegate to the connected_source class
-  my $cs_class = $meta_schema->connected_source_class;
-  load $cs_class;
-  $cs_class->new($metadm, $schema)->update(@args);
+  # database request
+  my $sqla = $schema->sql_abstract;
+  my ($sql, @bind) = $sqla->update(
+    -table => $self->metadm->db_from,
+    -set   => $to_set,
+    -where => $where,
+   );
+  $schema->_debug(do {no warnings 'uninitialized';
+                      $sql . " / " . CORE::join(", ", @bind);});
+  my $prepare_method = $schema->dbi_prepare_method;
+  my $sth            = $schema->dbh->$prepare_method($sql);
+  $sqla->bind_params($sth, @bind);
+  return $sth->execute(); # will return the number of updated records
 }
+
+
+#------------------------------------------------------------
+# utility methods
+#------------------------------------------------------------
+
+
+sub _is_called_as_class_method {
+  my $self = shift;
+
+  # class method call in the usual Perl sense
+  return 1 if ! ref $self; 
+
+  # fake class method call : an object with only one field '__schema'
+  my @k = keys %$self;
+  return @k == 1 && $k[0] eq '__schema';
+}
+
+
 
 
 1; # End of DBIx::DataModel::Source::Table
@@ -392,6 +605,5 @@ Copyright 2006..2012 Laurent Dami.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
-
 
 
