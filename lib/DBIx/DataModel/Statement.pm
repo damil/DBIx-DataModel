@@ -50,22 +50,22 @@ use constant {
 #----------------------------------------------------------------------
 
 sub new {
-  my ($class, $connected_source, %other_args) = @_;
+  my ($class, $source, %other_args) = @_;
 
-  # check $connected_source
-  $connected_source 
-    && $connected_source->isa('DBIx::DataModel::ConnectedSource')
-    or croak "invalid connected_source for DBIx::DataModel::Statement->new()";
+  # check $source
+  $source 
+    && $source->isa('DBIx::DataModel::Source')
+    or croak "invalid source for DBIx::DataModel::Statement->new()";
 
   # build the object
   my $self = bless {status           => NEW,
                     args             => {},
                     pre_bound_params => {},
                     bound_params     => [],
-                    connected_source => $connected_source}, $class;
+                    source           => $source}, $class;
 
   # add placeholder_regex
-  my $prefix = $connected_source->schema->{placeholder_prefix};
+  my $prefix = $source->schema->{placeholder_prefix};
   $self->{placeholder_regex} = qr/^\Q$prefix\E(.+)/;
 
   # parse remaining args, if any
@@ -77,10 +77,10 @@ sub new {
 
 # accessors
 DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, qw/connected_source status/,
+  __PACKAGE__, qw/source status/,
 );
-sub meta_source {shift->{connected_source}->meta_source}
-sub schema      {shift->{connected_source}->schema}
+sub meta_source {shift->{source}->metadm}
+sub schema      {shift->{source}->schema}
 
 
 
@@ -88,7 +88,7 @@ sub schema      {shift->{connected_source}->schema}
 sub reset {
   my ($self, %other_args) = @_;
 
-  my $new = (ref $self)->new($self->{connected_source}, %other_args);
+  my $new = (ref $self)->new($self->{source}, %other_args);
   %$self = (%$new);
 
   return $self;

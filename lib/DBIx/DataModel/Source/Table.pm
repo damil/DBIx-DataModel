@@ -613,16 +613,6 @@ sub update  {
 #------------------------------------------------------------
 
 
-sub _is_called_as_class_method {
-  my $self = shift;
-
-  # class method call in the usual Perl sense
-  return 1 if ! ref $self; 
-
-  # fake class method call : an object with only one field '__schema'
-  my @k = keys %$self;
-  return @k == 1 && $k[0] eq '__schema';
-}
 
 sub _parse_ending_options {
   my ($class_or_self, $args_ref, $regex) = @_;
