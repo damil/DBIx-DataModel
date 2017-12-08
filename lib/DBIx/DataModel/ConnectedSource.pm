@@ -39,7 +39,7 @@ sub metadm {
   return $self->{meta_source};
 }
 
-# several methods are delegated to the Statement class.
+# methods delegated to the Statement class
 foreach my $method (qw/select bless_from_DB/) {
   no strict 'refs';
   *{$method} = sub {
@@ -52,6 +52,20 @@ foreach my $method (qw/select bless_from_DB/) {
   };
 }
 
+
+# methods delegated to the Source/Table class
+foreach my $method (qw/insert update delete/) {
+  no strict 'refs';
+  *{$method} = sub {
+    my $self = shift;
+
+    # create a fake instance of the source classe, containing the schema
+    my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
+
+    # call that instance with all remaining args
+    $obj->$method(@_);
+  };
+}
 
 
 sub fetch {
@@ -74,157 +88,6 @@ sub fetch_cached {
   my $freeze_args = freeze \@_;
   return $self->{meta_source}{fetch_cached}{$dbh_addr}{$freeze_args}
            ||= $self->fetch(@_);
-}
-
-
-
-
-
-#----------------------------------------------------------------------
-# INSERT
-#----------------------------------------------------------------------
-
-sub insert {
-  my $self = shift;
-
-  # end of list may contain options, recognized because option name is a scalar
-  my $options      = $self->_parse_ending_options(\@_, qr/^-returning$/);
-  my $want_subhash = does($options->{-returning}, 'HASH');
-
-  # records to insert
-  my @records = @_;
-  @records or croak "insert(): no record to insert";
-
-  my $got_records_as_arrayrefs = does($records[0], 'ARRAY');
-
-  # if data is received as arrayrefs, transform it into a list of hashrefs.
-  # NOTE : this is a bit stupid; a more efficient implementation
-  # would be to prepare one single DB statement and then execute it on
-  # each data row, or even SQL like INSERT ... VALUES(...), VALUES(..), ...
-  # (supported by some DBMS), but that would require some refactoring 
-  # of _singleInsert and _rawInsert.
-  if ($got_records_as_arrayrefs) {
-    my $header_row = shift @records;
-    foreach my $data_row (@records) {
-      does ($data_row, 'ARRAY')
-        or croak "data row after a header row should be an arrayref";
-      @$data_row == @$header_row
-        or croak "number of items in data row not same as header row";
-      my %real_record;
-      @real_record{@$header_row} = @$data_row;
-      $data_row = \%real_record;
-    }
-  }
-
-  # insert each record, one by one
-  my @results;
-  my $meta_source        = $self->{meta_source};
-  my %no_update_column   = $meta_source->no_update_column;
-  my %auto_insert_column = $meta_source->auto_insert_column;
-  my %auto_update_column = $meta_source->auto_update_column;
-
-  my $source_class = $self->{meta_source}->class;
-  while (my $record = shift @records) {
-
-    # TODO: shallow copy in order not to perturb the caller
-    # BUT : if the insert injects a primary key, we want to retrieve it !
-    # SO => contradiction
-    # $record = {%$record} unless $got_records_as_arrayrefs;
-
-    # bless, apply column handers and remove unwanted cols
-    bless $record, $source_class;
-    $record->apply_column_handler('to_DB');
-    delete $record->{$_} foreach keys %no_update_column;
-    while (my ($col, $handler) = each %auto_insert_column) {
-      $record->{$col} = $handler->($record, $source_class);
-    }
-    while (my ($col, $handler) = each %auto_update_column) {
-      $record->{$col} = $handler->($record, $source_class);
-    }
-
-    # inject schema
-    $record->{__schema} = $self->{schema};
-
-    # remove subtrees (will be inserted later)
-    my $subrecords = $record->_weed_out_subtrees;
-
-    # do the insertion. Result depends on %$options.
-    my @single_result = $record->_singleInsert(%$options);
-
-    # NOTE: at this point, $record is expected to hold its own primary key
-
-    # insert the subtrees into DB, and keep the return vals if $want_subhash
-    if ($subrecords) {
-      my $subresults = $record->_insert_subtrees($subrecords, %$options);
-      if ($want_subhash) {
-        does($single_result[0], 'HASH')
-          or die "_single_insert(..., -returning => {}) "
-               . "did not return a hashref";
-        $single_result[0]{$_} = $subresults->{$_} for keys %$subresults;
-      }
-    }
-
-    push @results, @single_result;
-  }
-
-  # choose what to return according to context
-  return @results if wantarray;             # list context
-  return          if not defined wantarray; # void context
-  carp "insert({...}, {...}, ..) called in scalar context" if @results > 1;
-  return $results[0];                       # scalar context
-}
-
-
-
-sub _parse_ending_options {
-  my ($class_or_self, $args_ref, $regex) = @_;
-
-  # end of list may contain options, recognized because option name is a
-  # scalar matching the given regex
-  my %options;
-  while (@$args_ref >= 2 && !ref $args_ref->[-2] 
-                         && $args_ref->[-2] && $args_ref->[-2] =~ $regex) {
-    my ($opt_val, $opt_name) = (pop @$args_ref, pop @$args_ref);
-    $options{$opt_name} = $opt_val;
-  }
-  return \%options;
-}
-
-
-#----------------------------------------------------------------------
-# UPDATE
-#----------------------------------------------------------------------
-
-
-# forward to the Source::Table::update() method
-sub update {
-  my $self = shift;
-
-  # create a fake instance of the source classe, containing the schema
-  my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
-
-  # call that instance with all remaining args
-  $obj->update(@_);
-}
-
-
-
-
-#----------------------------------------------------------------------
-# DELETE
-#----------------------------------------------------------------------
-
-
-
-# forward to the Source::Table::delete() method
-sub delete {
-  my $self = shift;
-
-  # create a fake instance of the source classe, containing the schema
-  my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
-
-  # call that instance with all remaining args
-  $obj->delete(@_);
 }
 
 
@@ -275,27 +138,8 @@ sub join {
 }
 
 
-#----------------------------------------------------------------------
-# Utilities
-#----------------------------------------------------------------------
 
 
-sub _maybe_inject_primary_key {
-  my ($self, $record, $args) = @_;
-
-  # if primary key was supplied separately, inject it into the record
-  my $where = $args->{-where};
-  if (does($where, 'ARRAY') && $where->[0] eq '-key') {
-    # got the primary key in the form -where => [-key => @pk_vals]
-    my @pk_cols = $self->{meta_source}->primary_key;
-    my @pk_vals = @{$where}[1 .. $#$where];
-    @pk_cols == @pk_vals
-      or croak sprintf "got %d cols in primary key, expected %d",
-                        scalar(@pk_vals), scalar(@pk_cols);
-    @{$record}{@pk_cols} = @pk_vals;
-    delete $args->{-where};
-  }
-}
 
 
 1;
