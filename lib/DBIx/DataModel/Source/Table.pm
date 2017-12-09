@@ -25,12 +25,9 @@ use namespace::clean;
 
 
 
-
-
 #------------------------------------------------------------
 # insert
 #------------------------------------------------------------
-
 
 sub insert {
   my $self = shift;
@@ -128,8 +125,6 @@ sub insert {
   carp "insert({...}, {...}, ..) called in scalar context" if @results > 1;
   return $results[0];                       # scalar context
 }
-
-
 
 
 sub _singleInsert {
@@ -322,17 +317,6 @@ sub _weed_out_subtrees {
 
 
 
-sub has_invalid_columns {
-  my ($self) = @_;
-  my $results = $self->apply_column_handler('validate');
-  my @invalid;			# names of invalid columns
-  while (my ($k, $v) = each %$results) {
-    push @invalid, $k if defined($v) and not $v;
-  }
-  return @invalid ? \@invalid : undef;
-}
-
-
 sub _insert_subtrees {
   my ($self, $subrecords, %options) = @_;
   my $class = ref $self;
@@ -353,9 +337,6 @@ sub _insert_subtrees {
 
   return \%results;
 }
-
-
-
 
 
 #------------------------------------------------------------
@@ -612,6 +593,15 @@ sub update  {
 # utility methods
 #------------------------------------------------------------
 
+sub has_invalid_columns {
+  my ($self) = @_;
+  my $results = $self->apply_column_handler('validate');
+  my @invalid;			# names of invalid columns
+  while (my ($k, $v) = each %$results) {
+    push @invalid, $k if defined($v) and not $v;
+  }
+  return @invalid ? \@invalid : undef;
+}
 
 
 sub _parse_ending_options {
@@ -627,10 +617,6 @@ sub _parse_ending_options {
   }
   return \%options;
 }
-
-
-
-
 
 
 1; # End of DBIx::DataModel::Source::Table

@@ -6,18 +6,20 @@ package DBIx::DataModel::Statement;
 use warnings;
 use strict;
 use Carp;
-use List::Util       qw/min first/;
+use List::Util       qw/min/;
 use List::MoreUtils  qw/firstval any/;
-use Scalar::Util     qw/weaken refaddr reftype dualvar/;
-use Params::Validate qw/validate ARRAYREF HASHREF/;
+use Scalar::Util     qw/weaken reftype dualvar/;
 use POSIX            qw/LONG_MAX/;
-use Acme::Damn       qw/damn/;
 use Clone            qw/clone/;
 use Try::Tiny;
 
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
 use namespace::clean;
+
+#----------------------------------------------------------------------
+# internals
+#----------------------------------------------------------------------
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
@@ -277,7 +279,7 @@ sub sqlize {
     }
   }
 
-  # EXPERIMENTAL: "where_on"
+  # "where_on" : conditions to be added in joins
   if (my $where_on = $args->{-where_on}) {
     # retrieve components of the join
     my ($join_op, $first_table, @other_join_args) = @{$sqla_args{-from}};

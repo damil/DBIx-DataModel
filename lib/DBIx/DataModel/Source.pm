@@ -19,7 +19,7 @@ use namespace::clean;
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 #----------------------------------------------------------------------
-# RUNTIME PUBLIC METHODS
+# accessors
 #----------------------------------------------------------------------
 
 sub schema {
@@ -49,26 +49,9 @@ sub primary_key {
   }
 }
 
-
-# # several class methods, only available if in single-schema mode;
-# # such methods are delegated to the ConnectedSource class.
-# foreach my $method (qw/select fetch fetch_cached bless_from_DB/) {
-#   no strict 'refs';
-#   *{$method} = sub {
-#     my $class = shift;
-#     not ref($class) 
-#       or croak "$method() should be called as class method";
-
-#     my $metadm      = $class->metadm;
-#     my $meta_schema = $metadm->schema;
-#     my $schema      = $meta_schema->class->singleton;
-#     my $cs_class    = $meta_schema->connected_source_class;
-#     load $cs_class;
-#     my $cs          = $cs_class->new($metadm, $schema);
-#     return $cs->$method(@_);
-#   };
-# }
-
+#----------------------------------------------------------------------
+# select and fetch
+#----------------------------------------------------------------------
 
 # methods delegated to the Statement class
 foreach my $method (qw/select bless_from_DB/) {
@@ -116,7 +99,7 @@ sub fetch_cached {
 
 
 #----------------------------------------------------------------------
-# JOIN
+# join
 #----------------------------------------------------------------------
 
 
@@ -180,8 +163,9 @@ sub join {
 }
 
 
-
-
+#----------------------------------------------------------------------
+# column handlers and column expansion
+#----------------------------------------------------------------------
 
 
 sub expand {
@@ -218,6 +202,12 @@ sub apply_column_handler {
 
   return $results;
 }
+
+
+#----------------------------------------------------------------------
+# utilities
+#----------------------------------------------------------------------
+
 
 sub _is_called_as_class_method {
   my $self = shift;
