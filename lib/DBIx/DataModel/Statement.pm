@@ -85,8 +85,7 @@ sub meta_source {shift->{source}->metadm}
 sub schema      {shift->{source}->schema}
 
 
-
-# THINK : not documented yet, is this method useful ?
+# back to the original state
 sub reset {
   my ($self, %other_args) = @_;
 
@@ -767,21 +766,13 @@ The design principles for statements are described in the
 L<DESIGN|DBIx::DataModel::Doc::Design/"STATEMENT OBJECTS"> section of
 the manual (purpose, lifecycle, etc.).
 
+Methods for statements are described in the 
+L<Reference manual|DBIx::DataModel::Doc::Reference/"STATEMENTS">.
+
+
+
 =head1 METHODS
 
-=head2 new
-
-  my $statement 
-    = DBIx::DataModel::Statement->new($connected_source, %options);
-
-This is the statement constructor; C<$connected_source> is an
-instance of L<DBIx::DataModel::ConnectedSource>. 
-If present, C<%options> are delegated
-to the L<refine()|DBIx::DataModel::Doc::Reference/refine()> method.
-
-Explicit calls to the statement constructor are exceptional;
-the usual way to create a statement is through 
-L<ConnectedSource::select()|DBIx::DataModel::Doc::Reference/ConnectedSource::select()>.
 
 
 =head1 PRIVATE METHOD NAMES

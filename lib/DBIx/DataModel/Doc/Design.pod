@@ -310,7 +310,9 @@ L<select()|DBIx::DataModel::Doc::Reference/select()> method.
 
 When applied to a
 L<ConnectedSource|DBIx::DataModel::ConnectedSource>
-L<join()|DBIx::DataModel::Doc::Reference/ConnectedSource::join()>
+or when applied as a class method to
+a L<Source|DBIx::DataModel::Source>,
+L<join()|DBIx::DataModel::Doc::Reference/Source::join()>
 creates a new statement to query one or several tables associated with
 the connected source.  The new statement contains a
 condition to restrict the results according to the primary key of the
@@ -321,8 +323,10 @@ L<prepare|DBIx::DataModel::Doc::Reference/prepare()>d.  Later on, we can
 L<bind|DBIx::DataModel::Doc::Reference/bind()> the statement
 to an instance of the initial source, and then execute it.
 
-When applied to a I<data row> (to an instance of a Table or Join subclass),
-L<join()|DBIx::DataModel::Doc::Reference/Table::join()>
+When applied to a I<data row> (to an instance of a
+L<Table|DBIx::DataModel::Source::Table>
+or L<Join|DBIx::DataModel::Source::Join> subclass),
+L<join()|DBIx::DataModel::Doc::Reference/Source::join()>
 is an instance method that works like the
 class method above (i.e. it creates a statement), but in addition,
 values of the current object are immediately bound to the appropriated
@@ -337,8 +341,10 @@ to retrieve data rows.
 =head3 Polymorphic C<select()>
 
 The L<select()|DBIx::DataModel::Doc::Statement/select()>  method
-is most commonly called from the
-L<ConnectedSource|DBIx::DataModel::ConnectedSource> class, but this
+is most commonly called from
+L<Source|DBIx::DataModel::Source> or
+L<ConnectedSource|DBIx::DataModel::ConnectedSource> 
+classes, but this
 is just a proxy to the implementation in
 L<Statement|DBIx::DataModel::Statement> class.
 This method performs many different things, depending on what kind
@@ -346,15 +352,6 @@ of result is requested through the C<-result_as> parameter,
 and also depending on the current state of the statement.
 More details about statements are provided below in the
 L</"STATEMENT OBJECTS"> section.
-
-Another L<select()|DBIx::DataModel::Doc::Reference/Source::select()>  method
-is defined on data sources (i.e. subclasses of
-L<DBIx::DataModel::Source|DBIx::DataModel::Source>), but
-it only works when in single-schema mode : it uses the
-L<singleton()|DBIx::DataModel::Doc::Reference/singleton()>  method
-to get the current schema, creates a statement on that schema
-and that datasource, and then delegates the C<select()> call
-to that statement.
 
 
 =head1 ASSOCIATIONS
@@ -1525,3 +1522,5 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
     Source/Table.pm and ConnnectedSource.pm (and possibly others)
 
   - check auto_insert / auto_update columns to prevent intersections
+
+  - support for database schemas (i.e. prefix table names with schema names)

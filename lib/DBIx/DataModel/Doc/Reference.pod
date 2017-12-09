@@ -1124,20 +1124,27 @@ C<dbh>, C<dbh_options>, C<debug>,
 C<select_implicitly_for>, C<dbi_prepare_method>. 
 
 
-=head2 Creating "connected sources"
+=head3 Schema::metadm()
+
+Returns the meta-schema instance associated with the invocant.
+
+
+=head2 Accessing data sources
+
+=head3 Principle
 
 Data is stored in I<data sources> that are accessed through a given
 I<schema>; therefore, before issuing data manipulation statements, we
 need to establish a relationship between a data source and a schema :
-this is the job of the two methods below. Both create a
-L<DBIx::DataModel::ConnectedSource> instance.  That object can then
-perform data selection, update or deletion, as described in the next
-chapter.
+this is the job of the two methods below. Both create an instance of
+L<DBIx::DataModel::ConnectedSource>, which is nothing but a pair of
+references to a C<$meta_source> and to a C<$schema>.  That object can
+then perform data selection, update or deletion.
+
 
 =head3 Schema::table()
 
-  my $source = $schema->table($table_name);
-  my $result = $source->select(...); # or ->insert(..), ->update(..), etc.
+  my $connected_source = $schema->table($table_name);
 
 This is the recommended way to reach a table from a schema.
 The C<$table_name> is the Perl name that was declared in L</define_table()>,
@@ -1170,15 +1177,25 @@ When in multi-schema mode, the only way is through the C<table()> method :
 
 This C<Schema::table()> method should not be confused with
 the meta-schema navigation method L</Meta::Schema::table()>, described 
-at the end of this document.
+at the end of this document. It is also different from the
+uppercase C<Table()> method, used as a proxy to
+L</define_table>.
+
+
+=head3 Schema::db_table()
+
+  my $connected_source = $schema->db_table($db_table_name);
+
+Works like the C<table()> method above, except that the argument
+is the database table name instead of the Perl class name.
+
 
 =head3 Schema::join()
 
-  my $source = $schema->join($table, $path1, $path2, ...);
-  my $result = $source->select(...);
+  my $connected_source = $schema->join($table, $path1, $path2, ...);
 
 This method calls L</define_join()> to define or retrieve a join
-subclass; then it creates a fresh I<connected_source> related to that 
+subclass; then it creates a  I<connected_source> related to that 
 join datasource and to the C<$schema>. From that object, data
 can be retrieved through the L</select()> method.
 
@@ -1188,6 +1205,47 @@ at the end of this document, which is just an accessor method.
 
 Besides, a derivative of the present method is defined 
 in L</Table::join()>.
+
+
+=head3 Methods of connected sources
+
+A connected source has accessor methods for its
+C<meta_source> and C<schema> attributes. In addition, the
+C<metadm> method is a synonym for C<meta_source>.
+This is for convenience, because in something like
+
+  my $meta_table = $schema->table($table_name)->metadm;
+
+one naturally expects to get the meta-object associated with table
+C<$table_name>, forgetting the fact that the subexpression 
+C<<$schema->table($table_name) >> is a connected source and not a table!
+
+
+All other method calls on connected sources are just proxyed to
+L</Source> methods. Here is the list :
+
+=over
+
+=item insert
+
+=item update
+
+=item delete
+
+=item select
+
+=item fetch
+
+=item fetch_cached
+
+=item join
+
+=item bless_from_DB
+
+=back
+
+
+
 
 
 =head2 Transactions
@@ -1239,11 +1297,7 @@ in that case will try again, as many times as required in
 the C<TxnRetries> attribute.
 
 
-=head2 Schema utility methods
-
-=head3 Schema::metadm()
-
-Returns the meta-schema instance associated with the invocant.
+=head2 Other schema methods
 
 =head3 unbless()
 
@@ -1257,9 +1311,7 @@ needs to be exported through an external module that only considers
 plain datastructures; this is the case for example with L<YAML::Syck/Dump>.
 
 
-
-
-=head2 Schema class methods, delegated to the meta-schema
+=head3 Schema class methods delegated to the meta-schema
 
 Front-end data definition methods listed in 
 L</"META-SCHEMA DEFINITION"> can be called on the schema
@@ -1281,406 +1333,11 @@ following methods can be called on the schema class :
 =back
 
 
-=head1 CONNECTED SOURCES
-
-=head2 Principle
-
-A I<connected source> is basically just a pair of references to a
-C<$meta_source> and to a C<$schema>. Such objects are created
-explicitly through methods L</Schema::table()> or L</Schema::join()>;
-they are also created implicitly when, in single-schema mode, class
-methods are called on table classes. The constructor is not documented
-because client code is not expected to call it directly; instead,
-client code should use the C<Schema> methods just mentioned.
-
-
-=head2 Accessors
-
-=head3 schema()
-
-Accessor for the connected source's schema.
-
-=head3 source()
-
-Accessor for the connected source's meta-source.
-
-=head3 metadm()
-
-Synonym for C<source()>.
-This is for convenience, because in something like
-
-  my $meta_table = $schema->table($table_name)->metadm;
-
-one naturally expects to get the meta-object associated with table
-C<$table_name>, forgetting the fact that the subexpression 
-C<<$schema->table($table_name) >> is a connected source and not a table!
-
-
-=head2 Data retrieval
-
-=head3 ConnectedSource::select()
-
-Proxy method to L<Statement::select()|/"select()">
-
-=head3 fetch()
-
-  my $record = $connected_source->fetch(@key_values, \%options);
-
-Fetches a single record, from its primary key value
-(on one or several columns). This method is just syntactic sugar for 
-
-  my $record = $connected_source->select(-fetch => \@key_values, %options);
-
-(see below). C<%options> may specify arguments to L</select()>, 
-like C<-for>, C<-pre_exec>, C<-post_exec>, etc. 
-
-
-=head3 fetch_cached()
-
-  my $record = $connected_source->fetch_cached(@key_values, \%options);
-
-Like C<fetch>, except that the result is stored in a cache,
-and further calls to the same methods with the same
-parameters will return the cached record instead of going
-back to the database. The cache does not know about any updates 
-to the database, so this is mainly useful for readonly data.
-
-The cache is stored internally in
-C<< $meta_source->{fetch_cached}{$dbh_addr}{$freeze_args} >>
-(where C<$dbh_addr> is C<< Scalar::Util::refaddr(MyTable->dbh) >>
-and C<$freeze_args> is C<< Storable::freeze(@keyValues, \%options) >>).
-If needed, client code may use this information to clear the cache or tie 
-it to a more sophisticated caching module.
-
-
-=head3 ConnectedSource::join()
-
-  my $join_stmt = $connected_source->join(qw/path1 path2 .../);
-  $join_stmt->prepare();
-
-Returns a statement that will select a collection of data rows from
-tables associated with the current meta-source, performing the
-appropriate joins.  Internally this is implemented throught the
-C</define_join()> method, with an additional C<-where> criteria to
-constrain on the primary key(s) of the meta-source.  That statement
-cannot be executed yet, because the values of the primary key are not
-known until we have an row of that source; but the statement can
-already be L<prepare|/prepare()>d.  Later on, we can
-L<execute|/execute()> the statement by binding it to an instance of
-the C<$connected_source> :
-
-   my $obj          = $connected_source->fetch(...);
-   my $related_rows = $join_stmt->execute($obj)->all;
-
-This is especially useful for loop efficiency :
-
-  my $join_stmt = $connected_source->join(qw/path1 path2 .../);
-  $join_stmt->prepare();
-  my $list = $connected_source->select(...);
-  foreach my $row (@$list) {
-    my $related_rows = $join_stmt->execute($row)->all;
-    # ... work with $related_rows
-  } 
-
-=head2 Data manipulation
-
-=head3 insert()
-
-  my @ids = $connected_source->insert(
-    {col1 => $val1, col2 => $val2, ...}, 
-    {...},
-    %options,
-  );
-  # or
-  my @ids = $connected_source->insert(
-    [qw/ col1   col2   .../],
-    [    $val1, $val2, ... ],
-    ...
-  );
-
-Inserts a collection of rows into the database, given
-either as a list of hashrefs, or as a first arrayref containing
-the column names, followed by a list of arrayrefs containing
-values for each row to be inserted.
-
-In either form, the method applies the C<to_DB> handlers, removes the
-C<no_update> columns, and then inserts the new records into the
-database. 
-
-Primary key column(s) should of course be present 
-in the supplied hashrefs, unless the the key is auto-generated
-by the database (see below). 
-
-Each hashref will be blessed into the C<$table> class, and
-will be inserted through the internal 
-L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert"> method.
-The default implementation of this method should be good enough
-for most common uses, but you may want to refine it in your
-table classes if you need some fancy handling on primary keys
-(like for example computing a random key and checking whether
-that key is free; see L<DBIx::DataModel::Doc::Internals> for an example).
-The default implementation uses the following
-algorithm to retrieve keys auto-generated by the database :
-
-=over
-
-=item *
-
-if a dbh option called C<returning_through> is found (see options 
-passed to the L</"dbh"> method), the method automatically adds 
-a C<-returning> clause for retrieving value(s) from the primary
-key column(s). The way to retrieve such values depends on 
-C<returning_through>: when 'FETCH', it performs an additional 
-call to C<< $sth->fetchrow_array >>; when 'INOUT', it binds 
-inout parameters into the statement. When setting the database handle
-through the L</dbh> method, the C<returning_through> option is automatically
-set to 'FETCH' if it is a Pg driver, or automatically set to 'INOUT'
-if it is an Oracle driver.
-
-=item *
-
-if a dbh option called C<last_insert_id> is found, this is
-taken as a callback function, which gets called as
-
-  $dbh_options{last_insert_id}->($dbh, $table_name, $column_name)
-
-=item *
-
-if dbh options called C<catalog> and/or C<schema> are found,
-C<DBIx::DataModel> will call 
-
-  $dbh->last_insert_id($dbh_options{catalog}, $dbh_options{schema},
-                       $table_name, $column_name)
-
-=item *
-
-otherwise, C<DBIx::DataModel> will call 
-
-  $dbh->last_insert_id(undef, undef, undef, undef)
-
-=back
-
-=head4 Cascaded insert
-
-If the table is a composite class (see L<Composition()|/"Composition">
-above), then the component parts may be supplied within the hashref,
-with keys equal to the role names, and values given as arrayrefs of
-sub-hashrefs; then these will be inserted into the database, at the
-same time as the main record, with join values automatically filled
-in (cascaded insert).  For example :
-
-   HR::Employee->insert({firstname  => "Johann Sebastian",  
-                         lastname   => "Bach",
-                         activities => [{d_begin  => '01.01.1695',
-        			         d_end    => '18.07.1750',
-	        		         dpt_code => 'CPT'}]});
-
-=head4 Insert options
-
-The C<insert()> call may take a list of B<%options> 
-specified at the I<end> of the argument list (notice they are
-I<not> given as a hashref, but as a mere hash, or list of pairs).
-Actually the only option currently supported is 
-B<-returning>,  :
-
-=over
-
-=item *
-
-if the C<-returning> option is set to an empty hashref, the return
-value will be a list of hashrefs (one for each inserted record),
-containing the column name(s) and value(s) of the primary key for that
-record, and possibly containing subhashes or subarrays for other
-records created through cascaded inserts. For example:
-
-  my @result = HR->table('Employee'>
-                 ->insert({..., activities => [{...}, ...]},
-                          ...,
-                          -returning => {});
-  my $prim_key_first_emp = $result[0]{emp_id};
-  my $prim_key_first_act = $result[0]{activities}[0]{act_id};
-
-=item *
-
-if the C<-returning> option is set to any other value, that value is passed
-to L<SQL::Abstract::More/insert> and finally to the SQL level 
-(INSERT ... RETURNING ...);  whatever is returned from the 
-database for each single record gets flattened into a single
-list transmitted back to the caller.
-
-  my @result = $statement->insert({...}, ..., 
-                                  -returning => $scalar_or_arrayref);
-
-
-=item *
-
-if the C<-returning> option is absent, values returned by calls to
-L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert">
-are collected into a flattened
-array, and then returned by C<insert()>; usually, these are the
-primary keys of the inserted records.  If this array contains several
-values, and C<insert()> was called from a scalar context, a warning is
-issued.
-
-=back
-
-=head4 Reftype checking
-
-If a record contains columns that are arrayrefs or hashrefs, and 
-these are not known as "component parts" (see
-L</"Cascaded insert"> above), then a warning is generated
-and these columns are automatically removed from the record.
-
-An exception to this rule is when the L<SQL::Abstract|SQL::Abstract>
-instance associated with the schema has the option
-C<< array_datatypes => 1 >> : in that case, columns with arrayrefs
-are passed as-is to the SQL::Abstract::More and DBI layers, under the 
-assumption that the DBD driver will take appropriate action on
-those datatypes.
-
-Another exception is when the value is of shape
-C<< [$orig_value, \%datataype] >>, which is interpreted as a 
-value together with an SQL datatype; again this is 
-passed to the SQL::Abstract::More layer.
-
-=head3 update()
-
-  $connected_source->update(-set   => {col1 => $val1, ...},
-                            -where => \%condition);
-  $connected_source->update({col1 => $val1, ...});
-  $connected_source->update(@primary_key, {col1 => $val1, ...});
-
-Generates a request to the database to update one or several
-records. The API for this method accepts several syntaxes :
-
-=over 
-
-=item *
-
-the first syntax with C<-set> and C<-where> keywords
-closely reflects the SQL syntax of shape 
-
-  UPDATE table SET col1='val1', col2='val2', ... WHERE ...
-
-This is mostly used for updating several records simultaneously (bulk
-update). 
-
-=item * 
-
-the second syntax is used for updating a single record, passed as a
-hashref; it does not matter if this hashref is blessed or not, because
-a copy will be blessed into the class of the invocant. 
-A C<-where> clause will be automatically generated by extracting the
-primary key column(s) from the record; then the remaining columns are
-treated as the columns to update. 
-
-=item * 
-
-the third syntax with C<< @primary_key >> is an alternate way to
-supply the values for the primary key (it may be more convenient
-because you don't need to repeat the name of primary key columns). So
-if C<emp_id> is the primary key of table C<Employee>, then the
-following are equivalent :
-
-  HR->table('Employee')->update({emp_id  => $eid, 
-                                 address => $new_addr, 
-                                 phone   => $new_phone});
-  HR->table('Employee')->update($eid => {address => $new_addr, 
-                                         phone   => $new_phone});
-
-=back
-
-Yet another syntax is to directly call C<update()> on a data row,
-without any argument : see L</Table::update()> below.
-
-Before calling the database, the
-C<to_DB> handlers are applied, the C<no_update_columns> are
-removed, and the C<auto_update_columns> are inserted.
-
-The C<update> method only updates the columns received
-as arguments : it knows nothing about other columns that may sit
-in the database. Therefore if you have two concurrent clients
-doing
-
-  (client1)  ...->update($id, {c1 => $v1, c2 => $v2});
-  (client2)  ...->update($id, {c3 => $v3, c4 => $v4, c5 => $v5});
-
-the final state of record C<$id> in the database is guaranteed to
-reflect changes from both clients, because the sets C<('c1', 'c2')>
-and C<('c3', 'c4', 'c5')> of updated columns are disjoint.
-
-=head4 Reftype checking
-
-Like for inserts, columns with arrayrefs or hashrefs
-are automatically removed from the update list (with a warning),
-except some special cases as described above for C<insert()>.
-
-=head3 delete()
-
-  $connected_source->delete(-where => \%condition);
-  $connected_source->delete({col1 => $val1, ...});
-  $connected_source->delete(@primary_key);
-
-Generates a request to the database to delete one or several
-records. The API for this method accepts several syntaxes :
-
-=over 
-
-=item *
-
-the first syntax with the C<-where> keyword
-closely reflects the SQL syntax of shape 
-
-  DELETE FROM table WHERE ...
-
-This is mostly used for deleting several records simultaneously (bulk
-delete). 
-
-=item * 
-
-the second syntax is used for deleting a single
-record. A C<-where> clause will be automatically generated
-by extracting the primary key column(s) from the record.
-
-If the source is a composite class (see
-L<Composition()|/"Composition"> above), and if the record contains
-references to lists of component parts, then those will be recursively
-deleted together with the main object (cascaded delete). However, if
-there are other component parts in the database, not referenced in the
-hashref, then those will not be automatically deleted : in other
-words, the C<delete> method does not go by itself to the database to
-find all component parts (this is the job of the client
-code, or sometimes of the database itself).
-
-=item * 
-
-the third syntax with C<< @primary_key >> is an alternate way to
-supply the values for the primary key (it may be more convenient
-because you don't need to repeat the name of primary key columns).
-Note that C<< $statement->delete(11, 22) >>
-does not mean "delete records with keys 11 and 22", but rather
-"delete record having primary key (11, 22)"; in other words,
-with this syntax you only delete one record at a time. 
-
-=back
-
-Yet another syntax is to directly call C<delete()> on a data row,
-without any argument : see L</Table::delete()> below.
-
-
-
-=head2 Utility methods
-
-=head3 ConnectedSource::bless_from_DB()
-
-Proxy method to L<Statement::bless_from_DB()|/"bless_from_DB()">.
-
-
 =head1 STATEMENTS
 
 A I<statement> object encapsulates a SELECT request to the database.  It
 starts by assembling various pieces of information : the datasource to
-query, the database connection, the various clauses for generating the
+query, including its database connection, the various clauses for generating the
 SQL request.  Once everything is ready, the database request is
 issued, and the results are collected. These steps may occur either
 all at once (which is the most frequent case), or through several
@@ -1695,6 +1352,44 @@ L<DBIx::DataModel::Statement::JDBC|DBIx::DataModel::Statement::JDBC>
 subclass in this distribution adds some methods specific to
 L<DBD::JDBC|DBD::JDBC> data sources, allowing to call
 JDBC methods C<getMemberCount()>, C<absolute()>, C<relative()>, etc.
+
+
+
+
+=head2 Constructor, accessor and proxy methods
+
+
+=head3 Statement::new()
+
+  my $statement 
+    = DBIx::DataModel::Statement->new($datasource, %options);
+
+This is the statement constructor; C<$datasource> is an
+instance of L<DBIx::DataModel::Source>.
+If present, C<%options> are delegated
+to the L<refine()|/refine()> method.
+
+Explicit calls to the statement constructor are exceptional;
+the usual way to create a statement is through 
+L<Source::select()|/Source::select()>.
+
+=head3 source()
+
+Accessor for the statement's datasource.
+
+=head3 status()
+
+Accessor for the statement's status ("new", "refined",
+"sqlized", "prepared" or "executed").
+
+=head3 meta_source()
+
+Proxy for C<< $self->source->metadm >>.
+
+=head3 schema()
+
+Proxy for C<< $self->source->schema >>.
+
 
 
 =head2 Data selection
@@ -2346,25 +2041,10 @@ See L<DBI/"bind_param"> for explanations.
 
   $statement->reset(%args);
 
-Resets the statement back into C<NEW> state, erasing all information except references
-to the C<$schema> and C<$meta_source>.
+Resets the statement back into C<NEW> state, erasing all information
+except references to the C<$schema> and C<$meta_source>.
 
 C<%args> are optional; if present, they are passed to the L</refine()> method.
-
-
-
-=head2 Proxy methods
-
-Since the statement holds references to a schema and a meta-source,
-there are some accessors or proxy methods to these objects.
-
-=head3 schema()
-
-Accessor for the statement's schema.
-
-=head3 source()
-
-Accessor for the statement's meta-source.
 
 
 =head2 Utility methods
@@ -2379,8 +2059,6 @@ and applies the C<from_DB> column handlers.
 
 
 =head1 SOURCES
-
-=head2 Principle
 
 Data rows coming from the database are blessed into I<source classes>,
 which are either I<tables> or I<joins>; such classes implement
@@ -2440,24 +2118,9 @@ the schema comes from C<< $self->metadm->schema->class->singleton >>;
 when in multi-schema mode, a reference to the schema 
 is kept under C<__schema> within each row object.
 
-=head3 primary_key()
 
-  my @primary_key_columns = $class->primary_key;
-  my @primary_key_values  = $object->primary_key;
+=head2 Instance methods
 
-If called as a class method, returns the list of columns
-registered as primary key for that table (via L</Table()>),
-or computed as primary key for that view (concatenation of primary
-keys of joined tables that are in a 1-to-many association).
-
-If called as an instance method, returns the list of values 
-in those columns.
-
-When called in scalar context and the primary key has only one column,
-returns that column (so you can call C<< my $k = $obj->primary_key >>).
-
-
-=head2 Data manipulation
 
 =head3 expand()
 
@@ -2571,48 +2234,8 @@ The C<TO_JSON> method merely copies the object hash into a plain hash, and
 removes the C<__schema> slot.
 
 
-=head2 Methods delegated to the ConnectedSource class
-
-=head3 Table::update()
-
-  $source_class->update(@update_args);
-  $source_instance->update({field1 => $val1, ...});
-  $source_instance->update();
 
 
-This is both a class and an instance method, that 
-implicitly creates a a connected source from  the source's schema
-and meta-source, and then calls the C<update()> method on that 
-connected source. 
-
-When used as a class method, the argument syntax is exactly like
-for L<Connected_source::update()|update>.
-
-When used as an instance method with arguments, this is equivalent to 
-
-  $connected_source->update($source_instance->primary_key,
-                            {field1 => $val1, ...});
-
-in other words, the invocant is only used for taking
-its primary key, and the updated fields are passed
-as an argument hashref.
-
-
-When used as an instance method without arguments, this is equivalent to
-
-  $connected_source->update($source_instance);
-
-in other words, the updated fields are all column values stored 
-in memory within the object (ignoring all non-scalar values). 
-
-
-=head2 Table::delete()
-
-  $source_class->delete(@delete_args);
-  $source_instance->delete();
-
-Exactly like the C<update()> method just above, but
-calling C<ConnectedSource::delete()>.
 
 
 =head2 Table::join()
@@ -2639,43 +2262,484 @@ C<select()>.
 
 
 
-=head2 class methods delegated to the ConnectedSource class
+=head2 Class methods
 
-When in single-schema mode, some class methods
-are delegated to a connecte source created on the fly, 
-using the L</singleton()> method; hence it is possible to write requests 
-like
+Class methods encapsulate operations on a whole table in the
+database, as opposed to instance methods that encapsulate
+operations on a single record. Here the terme "class methods"
+is broader than in the usual Perl sense :
+
+=over
+
+=item * 
+
+when in single-schema mode, class methods may be invoked
+directly on the class name, using the ordinary Perl mechanism :
 
   my $result = HR::Employee->select(...);
 
-instead of 
+This will implicitly retrieve the L</singleton()> schema and call
+the database on that schema.
 
-  my $result = HR->table('Employee')->select(...);
+=item *
 
+when in multi-schema mode, the syntax above does not work,
+because the C<HR::Employee> class cannot decide on which database
+schema the operation should be performed. Instead, the call should
+be made on an instance of L</ConnectedSource>, using this syntax :
 
-=head3 Source::select()
+  my $result = $schema->table('Employee')->select(...);
 
-  my $result = $source->select(%args);
+The C<< $schema->table('Employee') >> part returns a connected
+source which will create a fake object of class C<HR::Employe>
+and invoke the C<select()> method on it; technically this is a
+Perl instance call, but it will be recognized as a
+"class method call" in the DBIx::DataModel sense.
 
-Equivalent to 
-
-  my $metadm      = $source->metadm;
-  my $meta_schema = $metadm->schema;
-  my $schema      = $meta_schema->class->singleton;
-  my $cs_class    = $meta_schema->connected_source_class;
-  $cs_class->new($metadm, $schema)->select(%args);
-
-=head3 Source::fetch()
-
-similar to C<select()> above
-
-=head3 Source::fetch_cached()
-
-similar to C<select()> above
+=back
 
 =head3 Source::bless_from_DB()
 
-similar to C<select()> above
+Delegated to L<Statement::bless_from_DB()|/bless_from_DB()>
+
+=head3 Source::select()
+
+Delegated to L<Statement::select|/select()>
+
+
+=head3 fetch()
+
+  my $record = $source->fetch(@key_values, \%options);
+
+Fetches a single record, from its primary key value
+(on one or several columns). C<%options> may specify arguments to L</select()>, 
+like C<-for>, C<-pre_exec>, C<-post_exec>, etc. 
+
+
+=head3 fetch_cached()
+
+  my $record = $source->fetch_cached(@key_values, \%options);
+
+Like C<fetch>, except that the result is stored in a cache,
+and further calls to the same methods with the same
+parameters will return the cached record instead of going
+back to the database. The cache does not know about any updates 
+to the database, so this is mainly useful for readonly data.
+
+The cache is stored internally in
+C<< $source->metadm->{fetch_cached}{$dbh_addr}{$freeze_args} >>
+(where C<$dbh_addr> is C<< Scalar::Util::refaddr($source->schema->dbh) >>
+and C<$freeze_args> is C<< Storable::freeze(@keyValues, \%options) >>).
+If needed, client code may use this information to clear the cache or tie 
+it to a more sophisticated caching module.
+
+
+
+=head3 insert()
+
+  my @ids = $source->insert(
+    {col1 => $val1, col2 => $val2, ...}, 
+    {...},
+    %options,
+  );
+  # or
+  my @ids = $connected_source->insert(
+    [qw/ col1   col2   .../],
+    [    $val1, $val2, ... ],
+    ...
+  );
+
+Inserts a collection of rows into the database, given
+either as a list of hashrefs, or as a first arrayref containing
+the column names, followed by a list of arrayrefs containing
+values for each row to be inserted.
+
+In either form, the method applies the C<to_DB> handlers, removes the
+C<no_update> columns, and then inserts the new records into the
+database. 
+
+Primary key column(s) should of course be present 
+in the supplied hashrefs, unless the the key is auto-generated
+by the database (see below). 
+
+Each hashref will be blessed into the C<$source> class, and
+will be inserted through the internal 
+L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert"> method.
+The default implementation of this method should be good enough
+for most common uses, but you may want to refine it in your
+table classes if you need some fancy handling on primary keys
+(like for example computing a random key and checking whether
+that key is free; see L<DBIx::DataModel::Doc::Internals> for an example).
+The default implementation uses the following
+algorithm to retrieve keys auto-generated by the database :
+
+=over
+
+=item *
+
+if a dbh option called C<returning_through> is found (see options 
+passed to the L</"dbh"> method), the method automatically adds 
+a C<-returning> clause for retrieving value(s) from the primary
+key column(s). The way to retrieve such values depends on 
+C<returning_through>: when 'FETCH', it performs an additional 
+call to C<< $sth->fetchrow_array >>; when 'INOUT', it binds 
+inout parameters into the statement. When setting the database handle
+through the L</dbh> method, the C<returning_through> option is automatically
+set to 'FETCH' if it is a Pg driver, or automatically set to 'INOUT'
+if it is an Oracle driver.
+
+=item *
+
+if a dbh option called C<last_insert_id> is found, this is
+taken as a callback function, which gets called as
+
+  $dbh_options{last_insert_id}->($dbh, $table_name, $column_name)
+
+=item *
+
+if dbh options called C<catalog> and/or C<schema> are found,
+C<DBIx::DataModel> will call 
+
+  $dbh->last_insert_id($dbh_options{catalog}, $dbh_options{schema},
+                       $table_name, $column_name)
+
+=item *
+
+otherwise, C<DBIx::DataModel> will call 
+
+  $dbh->last_insert_id(undef, undef, undef, undef)
+
+=back
+
+=head4 Cascaded insert
+
+If the table is a composite class (see L<Composition()|/"Composition">
+above), then the component parts may be supplied within the hashref,
+with keys equal to the role names, and values given as arrayrefs of
+sub-hashrefs; then these will be inserted into the database, at the
+same time as the main record, with join values automatically filled
+in (cascaded insert).  For example :
+
+   HR::Employee->insert({firstname  => "Johann Sebastian",  
+                         lastname   => "Bach",
+                         activities => [{d_begin  => '01.01.1695',
+        			         d_end    => '18.07.1750',
+	        		         dpt_code => 'CPT'}]});
+
+=head4 Insert options
+
+The C<insert()> call may take a list of B<%options> 
+specified at the I<end> of the argument list (notice they are
+I<not> given as a hashref, but as a mere hash, or list of pairs).
+Actually the only option currently supported is 
+B<-returning>,  :
+
+=over
+
+=item *
+
+if the C<-returning> option is set to an empty hashref, the return
+value will be a list of hashrefs (one for each inserted record),
+containing the column name(s) and value(s) of the primary key for that
+record, and possibly containing subhashes or subarrays for other
+records created through cascaded inserts. For example:
+
+  my @result = HR->table('Employee'>
+                 ->insert({..., activities => [{...}, ...]},
+                          ...,
+                          -returning => {});
+  my $prim_key_first_emp = $result[0]{emp_id};
+  my $prim_key_first_act = $result[0]{activities}[0]{act_id};
+
+=item *
+
+if the C<-returning> option is set to any other value, that value is passed
+to L<SQL::Abstract::More/insert> and finally to the SQL level 
+(INSERT ... RETURNING ...);  whatever is returned from the 
+database for each single record gets flattened into a single
+list transmitted back to the caller.
+
+  my @result = $statement->insert({...}, ..., 
+                                  -returning => $scalar_or_arrayref);
+
+
+=item *
+
+if the C<-returning> option is absent, values returned by calls to
+L<_singleInsert()|DBIx::DataModel::Doc::Internals/"_singleInsert">
+are collected into a flattened
+array, and then returned by C<insert()>; usually, these are the
+primary keys of the inserted records.  If this array contains several
+values, and C<insert()> was called from a scalar context, a warning is
+issued.
+
+=back
+
+=head4 Reftype checking
+
+If a record contains columns that are arrayrefs or hashrefs, and 
+these are not known as "component parts" (see
+L</"Cascaded insert"> above), then a warning is generated
+and these columns are automatically removed from the record.
+
+An exception to this rule is when the L<SQL::Abstract|SQL::Abstract>
+instance associated with the schema has the option
+C<< array_datatypes => 1 >> : in that case, columns with arrayrefs
+are passed as-is to the C<SQL::Abstract::More> and DBI layers, under the 
+assumption that the DBD driver will take appropriate action on
+those datatypes.
+
+Another exception is when the value is of shape
+C<< [$orig_value, \%datataype] >>, which is interpreted as a 
+value together with an SQL datatype; again this is 
+passed to the C<SQL::Abstract::More> layer.
+
+
+
+
+
+=head2 Bimodal methods (can be invoked both as class and as instance methods)
+
+=head3 primary_key()
+
+  my @primary_key_columns = $class->primary_key;
+  my @primary_key_values  = $object->primary_key;
+
+If called as a class method, returns the list of columns
+registered as primary key for that table (via L</Table()>),
+or computed as primary key for that view (concatenation of primary
+keys of joined tables that are in a 1-to-many association).
+
+If called as an instance method, returns the list of values 
+in those columns.
+
+When called in scalar context and the primary key has only one column,
+returns that column (so you can call C<< my $k = $obj->primary_key >>).
+
+
+=head3 ConnectedSource::join()
+
+  my $join_stmt = $source->join(qw/path1 path2 .../);
+  $join_stmt->prepare();
+
+Returns a statement that will select a collection of data rows from
+tables associated with the current meta-source, performing the
+appropriate joins.  Internally this is implemented throught the
+C</define_join()> method, with an additional C<-where> criteria to
+constrain on the primary key(s) of the meta-source.  That statement
+cannot be executed yet, because the values of the primary key are not
+known until we have an row of that source; but the statement can
+already be L<prepare|/prepare()>d.  Later on, we can
+L<execute|/execute()> the statement by binding it to an instance of
+the C<$connected_source> :
+
+   my $obj          = $connected_source->fetch(...);
+   my $related_rows = $join_stmt->execute($obj)->all;
+
+This is especially useful for loop efficiency :
+
+  my $join_stmt = $connected_source->join(qw/path1 path2 .../);
+  $join_stmt->prepare();
+  my $list = $connected_source->select(...);
+  foreach my $row (@$list) {
+    my $related_rows = $join_stmt->execute($row)->all;
+    # ... work with $related_rows
+  } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=head3 update()
+
+  # class method calls
+  $source_class->update(-set   => {col1 => $val1, ...},
+                        -where => \%condition);
+  $source_class->update({pk_col1 => $pk_val1, ..., col1 => $val1, ...});
+  $source_class->update(@primary_key, {col1 => $val1, ...});
+  
+  # or instance method calls
+  $source_instance->update({field1 => $val1, ...});
+  $source_instance->update();
+
+Generates a request to the database to update one or several
+records. 
+
+As a class method call, the API for this method accepts 
+three different syntaxes :
+
+=over 
+
+=item *
+
+the syntax with C<-set> and C<-where> keywords
+closely reflects the SQL syntax of shape 
+
+  UPDATE table SET col1='val1', col2='val2', ... WHERE ...
+
+This is mostly used for updating several records simultaneously (bulk
+update). The invocant must be a source class, not a source instance.
+
+=item * 
+
+the second syntax is for updating a single record, passed as a
+hashref; it does not matter if this hashref is blessed or not.  A
+C<-where> clause will be automatically generated by extracting the
+primary key column(s) from the record; then the remaining columns are
+treated as the columns to update. If values for primary key columns
+are missing, an error is generated.
+
+=item * 
+
+the third syntax with C<< @primary_key >> is an alternate way to
+supply the values for the primary key; it may be more convenient
+because you don't need to repeat the name of primary key columns. So
+if C<emp_id> is the primary key of table C<Employee>, then the
+following are equivalent :
+
+  HR->table('Employee')->update({emp_id  => $eid, 
+                                 address => $new_addr, 
+                                 phone   => $new_phone});
+  HR->table('Employee')->update($eid => {address => $new_addr, 
+                                         phone   => $new_phone});
+
+=back
+
+
+When used as an instance method, there are two different syntaxes :
+
+=over
+
+=item *
+
+with arguments, this is equivalent to 
+
+  $source_class->update($source_instance->primary_key,
+                        {field1 => $val1, ...});
+
+in other words, the C<-where> part is taken from the 
+primary key of the invocant, and the updated fields are passed
+as an argument hashref. Primary key colums may appear in this 
+hashref, but this will result in I<changing the primary key> 
+for that record. Ex :
+
+  $an_employee->update({emp_id => $new_eid, phone => $new_phone});
+
+=item *
+
+When used as an instance method without arguments, this is equivalent to
+
+  $source_class->update($source_instance);
+
+in other words, the updated fields are all column values stored 
+in memory within the object, except the primary key columns.
+
+=back
+
+
+Before calling the database, the
+C<to_DB> handlers are applied, the C<no_update_columns> are
+removed, and the C<auto_update_columns> are inserted.
+
+The C<update> method only updates the columns received
+as arguments : it knows nothing about other columns that may sit
+in the database. Therefore if you have two concurrent clients
+doing
+
+  (client1)  ...->update($id, {c1 => $v1, c2 => $v2});
+  (client2)  ...->update($id, {c3 => $v3, c4 => $v4, c5 => $v5});
+
+the final state of record C<$id> in the database is guaranteed to
+reflect changes from both clients, because the sets of updated columns
+C<('c1', 'c2')> and C<('c3', 'c4', 'c5')>  are disjoint.
+
+Like for inserts, columns with arrayrefs or hashrefs
+are automatically removed from the update list (with a warning),
+except some special cases as described above for C<insert()>.
+
+In all syntaxes described above, the return value from the C<update()>
+method is the number of records updated in the database.
+
+
+=head3 delete()
+
+  # class method calls
+  $source_class->delete(-where => \%condition);
+  $source_class->delete({col1 => $val1, ...});
+  $source_class->delete(@primary_key);
+
+  # or instance method call
+  $source_instance->delete();
+
+Generates a request to the database to delete one or several
+records.
+
+
+As a class method call, the API for this method accepts 
+three different syntaxes :
+
+
+=over 
+
+=item *
+
+the syntax with the C<-where> keyword
+closely reflects the SQL syntax of shape 
+
+  DELETE FROM table WHERE ...
+
+This is mostly used for deleting several records simultaneously (bulk
+delete). 
+
+=item * 
+
+the second syntax is used for deleting a single
+record. A C<-where> clause will be automatically generated
+by extracting the primary key column(s) from the record.
+
+If the source is a composite class (see
+L<Composition()|/"Composition"> above), and if the record contains
+references to lists of component parts, then those will be recursively
+deleted together with the main object (cascaded delete). However, if
+there are other component parts in the database, not referenced in the
+object hashref, then those will not be automatically deleted : in other
+words, the C<delete> method does not go by itself to the database to
+find all component parts (this is the job of the client
+code, or sometimes of the database itself).
+
+=item * 
+
+the third syntax with C<< @primary_key >> is an alternate way to
+supply the values for the primary key; it may be more convenient
+because you don't need to repeat the name of primary key columns.
+Note that C<< $statement->delete(11, 22) >>
+does not mean "delete records with keys 11 and 22", but rather
+"delete record having primary key (11, 22)"; in other words,
+with this syntax you only delete one record at a time. 
+With this syntax no cascaded delete
+is performed.
+
+=back
+
+
+When used as an instance method, the only syntax is to call
+the C<delete()> method without any arguments :
+
+  $source_instance->delete();
+
+In all syntaxes described above, the return value from the C<delete()>
+method is the number of records deleted in the database.
+
 
 
 =head1 META-SCHEMA NAVIGATION
