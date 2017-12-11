@@ -8,15 +8,15 @@ package DBIx::DataModel::Schema;
 use warnings;
 use strict;
 use Carp;
+use DBIx::DataModel::Meta::Utils qw/does/;
 use DBIx::DataModel::Source::Table;
 
 use Scalar::Util     qw/blessed reftype/;
-use Scalar::Does     qw/does/;
 use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
-use SQL::Abstract::More 1.21;
+use SQL::Abstract::More 1.31;
 use Try::Tiny;
 
 use namespace::clean;

@@ -3,10 +3,9 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
+use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors does/;
 
 use Scalar::Util         qw/weaken/;
-use Scalar::Does         qw/does/;
 use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;
 use Carp;
 

@@ -3,12 +3,11 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta::Source";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils qw/define_method/;
+use DBIx::DataModel::Meta::Utils qw/define_method does/;
 
 use Carp;
 use Params::Validate qw/HASHREF ARRAYREF SCALAR/;
 use List::MoreUtils  qw/any/;
-use Scalar::Does     qw/does/;
 
 use namespace::clean;
 

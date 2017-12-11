@@ -11,11 +11,9 @@ no warnings 'uninitialized';
 use Carp;
 use List::Util   qw/max/;
 use Exporter     qw/import/;
-use Scalar::Does qw/does/;
 use DBI;
 use Try::Tiny;
 use Module::Load ();
-
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
@@ -85,7 +83,7 @@ sub parse_DBI {
 
   # dbh connection
   my $arg1    = shift or croak "missing arg (dsn for DBI->connect(..))";
-  my $dbh = does($arg1, 'DBI::db') ? $arg1 : do {
+  my $dbh = ref $arg1 && $arg1->isa('DBI::db') ? $arg1 : do {
     my $user    = shift || "";
     my $passwd  = shift || "";
     my $options = shift || {RaiseError => 1};
