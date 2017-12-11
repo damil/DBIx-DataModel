@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta::Source";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Meta::Utils qw/define_method/;
 
 use Carp;
 use Params::Validate qw/HASHREF ARRAYREF SCALAR/;
@@ -97,7 +97,7 @@ sub define_navigation_method {
   };
 
   # install the method
-  DBIx::DataModel::Meta::Utils->define_method(
+  define_method(
     class => $self->{class},
     name  => $method_name,
     body  => $method_body,
@@ -162,7 +162,7 @@ sub define_auto_expand {
   };
 
   # install the method
-  DBIx::DataModel::Meta::Utils->define_method(
+  define_method(
     class          => $self->{class},
     name           => 'auto_expand',
     body           => $body,

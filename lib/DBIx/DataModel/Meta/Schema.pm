@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'DBIx::DataModel::Meta';
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors/;
 use DBIx::DataModel::Source::Join;
 use DBIx::DataModel::Meta::Source::Join;
 
@@ -95,7 +95,7 @@ sub new {
   bless $self, $class;
 
   # create the Perl class
-  DBIx::DataModel::Meta::Utils->define_class(
+  define_class(
     name    => $self->{class},
     isa     => $isa,
     metadm  => $self,
@@ -105,9 +105,7 @@ sub new {
 }
 
 # accessors for args passed to new()
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, grep {$_ ne 'isa'} keys %$spec
- );
+define_readonly_accessors(__PACKAGE__, grep {$_ ne 'isa'} keys %$spec);
 
 # accessors for internal lists of other meta-objects
 foreach my $kind (qw/table association type join/) {

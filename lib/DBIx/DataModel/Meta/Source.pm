@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors/;
 
 use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT/;
 use Scalar::Util     qw/weaken/;
@@ -29,9 +29,7 @@ my %common_arg_spec = (
   # other slot filled later : 'name'
 );
 
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, keys %common_arg_spec, 'name'
-);
+define_readonly_accessors(__PACKAGE__, keys %common_arg_spec, 'name');
 
 
 sub _new_meta_source { # called by new() in Meta::Table and Meta::Join
@@ -73,7 +71,7 @@ sub _new_meta_source { # called by new() in Meta::Table and Meta::Join
   }
 
   # create the Perl class
-  DBIx::DataModel::Meta::Utils->define_class(
+  define_class(
     name   => $self->{class},
     isa    => \@isa,
     metadm => $self,

@@ -5,8 +5,7 @@ package DBIx::DataModel::ConnectedSource;
 
 use warnings;
 use strict;
-use DBIx::DataModel::Meta::Utils;
-
+use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
 use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
@@ -18,9 +17,7 @@ sub new {
 
 
 # accessors
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, qw/meta_source schema/,
-);
+define_readonly_accessors(__PACKAGE__, qw/meta_source schema/);
 
 # additional accessor; here, 'metadm' is a synonym for 'meta_source'
 sub metadm {

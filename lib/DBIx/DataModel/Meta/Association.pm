@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Meta::Utils qw/define_method define_readonly_accessors/;
 
 use Carp;
 use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT UNDEF/;
@@ -110,9 +110,7 @@ sub new {
 
 
 # accessor methods
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, qw/schema name kind path_AB path_BA/,
-);
+define_readonly_accessors(__PACKAGE__, qw/schema name kind path_AB path_BA/);
 
 
 #----------------------------------------------------------------------
@@ -208,7 +206,7 @@ sub _install_path {
     };
 
     # define the method
-    DBIx::DataModel::Meta::Utils->define_method(
+    define_method(
       class => $self->{$from}{table}{class},
       name  => $method_name,
       body  => $method_body,

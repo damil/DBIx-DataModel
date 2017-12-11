@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
+use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
 
 use Scalar::Util         qw/weaken/;
 use Scalar::Does         qw/does/;
@@ -36,10 +37,7 @@ sub new {
 
 
 # accessor methods
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, qw/schema name handlers/
-);
-
+define_readonly_accessors(__PACKAGE__, qw/schema name handlers/);
 
 
 1;

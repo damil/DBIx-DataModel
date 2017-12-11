@@ -3,10 +3,10 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
 
-use Scalar::Util         qw/looks_like_number weaken/;
-use Params::Validate     qw/validate SCALAR HASHREF ARRAYREF OBJECT/;
+use Scalar::Util                 qw/looks_like_number weaken/;
+use Params::Validate             qw/validate SCALAR HASHREF ARRAYREF OBJECT/;
 use Carp;
 use namespace::clean;
 
@@ -49,9 +49,7 @@ sub new {
   bless $self, $class;
 }
 
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, keys %$path_spec
-);
+define_readonly_accessors(__PACKAGE__, keys %$path_spec);
 
 
 sub opposite {

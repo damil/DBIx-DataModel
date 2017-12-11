@@ -6,19 +6,26 @@ use strict;
 use warnings;
 
 use Carp;
-use Module::Load         qw/load/;
-use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
-                                     OBJECT HASHREF/;
-use List::MoreUtils      qw/any/;
-use mro 'c3';
-
-use namespace::clean;
-
+use Module::Load               qw/load/;
+use Params::Validate           qw/validate SCALAR ARRAYREF CODEREF
+                                            BOOLEAN OBJECT HASHREF/;
+use List::MoreUtils            qw/any/;
+use mro                        qw/c3/;
 use DBIx::DataModel;
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
+use SQL::Abstract::More 1.31;
+
+use Exporter             qw/import/;
+our @EXPORT = qw/define_class define_method define_readonly_accessors
+                 does/;
+
+
+BEGIN {
+  no strict 'refs';
+  *CARP_NOT = \@DBIx::DataModel::CARP_NOT;
+  *does = \&SQL::Abstract::More::does;
+}
 
 sub define_class {
-  my $self = shift;
 
   # check parameters
   my %params = validate(@_, {
@@ -53,16 +60,14 @@ sub define_class {
   mro::set_mro($params{name}, 'c3');
 
   # install an accessor to the metaclass object within the package
-  $self->define_method(class          => $params{name},
-                       name           => 'metadm', 
-                       body           => sub {return $params{metadm}},
-                       check_override => 0,                          );
+  define_method(class          => $params{name},
+                name           => 'metadm', 
+                body           => sub {return $params{metadm}},
+                check_override => 0,                          );
 }
 
 
 sub define_method {
-  my $self = shift;
-
   # check parameters
   my %params = validate(@_, {
       class          => {type => SCALAR               },
@@ -92,10 +97,10 @@ sub define_method {
 
 
 sub define_readonly_accessors {
-  my ($self, $target_class, @accessors) = @_;
+  my ($target_class, @accessors) = @_;
 
   foreach my $accessor (@accessors) {
-    $self->define_method(
+    define_method(
       class => $target_class,
       name  => $accessor, 
       body  => sub { my $self = shift;

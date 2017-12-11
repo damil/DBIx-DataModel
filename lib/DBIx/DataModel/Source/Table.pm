@@ -9,15 +9,14 @@ use strict;
 use mro 'c3';
 use parent 'DBIx::DataModel::Source';
 use Carp;
-use Storable             qw/freeze/;
-use Scalar::Util         qw/refaddr reftype blessed/;
-use Acme::Damn           qw/damn/;
-use Module::Load         qw/load/;
-use List::MoreUtils      qw/none/;
-use Params::Validate     qw/validate_with HASHREF/;
+use Storable                     qw/freeze/;
+use Scalar::Util                 qw/refaddr reftype blessed/;
+use Acme::Damn                   qw/damn/;
+use Module::Load                 qw/load/;
+use List::MoreUtils              qw/none/;
+use Params::Validate             qw/validate_with HASHREF/;
+use DBIx::DataModel::Meta::Utils qw/does/;
 
-# alias to 'does' function from SQL::Abstract::More
-BEGIN {use SQL::Abstract::More 1.31; *does = \&SQL::Abstract::More::does}
 
 use namespace::clean;
 

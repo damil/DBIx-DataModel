@@ -14,7 +14,7 @@ use Clone            qw/clone/;
 use Try::Tiny;
 
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils;
+use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
 use namespace::clean;
 
 #----------------------------------------------------------------------
@@ -78,9 +78,8 @@ sub new {
 
 
 # accessors
-DBIx::DataModel::Meta::Utils->define_readonly_accessors(
-  __PACKAGE__, qw/source status/,
-);
+define_readonly_accessors( __PACKAGE__, qw/source status/);
+
 sub meta_source {shift->{source}->metadm}
 sub schema      {shift->{source}->schema}
 
