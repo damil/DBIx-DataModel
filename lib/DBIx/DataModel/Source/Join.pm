@@ -4,9 +4,8 @@ use strict;
 use parent 'DBIx::DataModel::Source';
 use mro 'c3';
 require 5.008; # for filehandle in memory
-use Carp;
+use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
 
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 # Support for Storable::{freeze,thaw} : just a stupid blank operation,
 # but that will force Storable::thaw to try to reload the join class ... 

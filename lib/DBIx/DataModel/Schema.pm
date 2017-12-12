@@ -7,7 +7,6 @@ package DBIx::DataModel::Schema;
 
 use warnings;
 use strict;
-use Carp;
 use DBIx::DataModel::Meta::Utils qw/does/;
 use DBIx::DataModel::Source::Table;
 
@@ -16,12 +15,14 @@ use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
+use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
+
 use SQL::Abstract::More 1.31;
 use Try::Tiny;
 
 use namespace::clean;
 
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
+
 
 my $spec = {
   dbh                   => {type => OBJECT|ARRAYREF, optional => 1},

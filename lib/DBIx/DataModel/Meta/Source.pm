@@ -8,11 +8,9 @@ use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors/;
 use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT/;
 use Scalar::Util     qw/weaken/;
 use List::MoreUtils  qw/any/;
-use Carp;
+use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 
 use namespace::clean;
-
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 #----------------------------------------------------------------------
 # COMPILE-TIME METHODS

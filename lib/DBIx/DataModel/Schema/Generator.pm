@@ -14,8 +14,8 @@ use Exporter     qw/import/;
 use DBI;
 use Try::Tiny;
 use Module::Load ();
+use Carp::Clan   qw[^(DBIx::DataModel::|SQL::Abstract)];
 
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 our @EXPORT = qw/fromDBIxClass fromDBI/;
 

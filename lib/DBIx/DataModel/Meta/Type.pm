@@ -7,8 +7,7 @@ use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors does/;
 
 use Scalar::Util         qw/weaken/;
 use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;
-use Carp;
-
+use Carp::Clan           qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;
 
 {no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}

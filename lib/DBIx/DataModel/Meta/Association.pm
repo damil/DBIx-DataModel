@@ -5,7 +5,7 @@ use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_method define_readonly_accessors/;
 
-use Carp;
+use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT UNDEF/;
 use List::MoreUtils  qw/pairwise/;
 use Scalar::Util     qw/weaken dualvar looks_like_number/;
@@ -13,7 +13,6 @@ use Module::Load     qw/load/;
 use POSIX            qw/LONG_MAX/;
 use namespace::clean;
 
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 # specification for parameters to new()
 my $association_spec = {

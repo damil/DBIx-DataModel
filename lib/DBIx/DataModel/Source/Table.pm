@@ -8,7 +8,6 @@ no warnings 'uninitialized';
 use strict;
 use mro 'c3';
 use parent 'DBIx::DataModel::Source';
-use Carp;
 use Storable                     qw/freeze/;
 use Scalar::Util                 qw/refaddr reftype blessed/;
 use Acme::Damn                   qw/damn/;
@@ -16,11 +15,10 @@ use Module::Load                 qw/load/;
 use List::MoreUtils              qw/none/;
 use Params::Validate             qw/validate_with HASHREF/;
 use DBIx::DataModel::Meta::Utils qw/does/;
-
+use Carp::Clan                   qw[^(DBIx::DataModel::|SQL::Abstract)];
 
 use namespace::clean;
 
-{no strict 'refs'; no warnings 'once'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 
 

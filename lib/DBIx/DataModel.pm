@@ -7,38 +7,11 @@ use 5.008;
 use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
-
+use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
 our $VERSION = '2.46';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
-
-# Modules considered to belong to the same family for carp/croak (see L<Carp>).
-# All inner classes import the same list.
-our @CARP_NOT = qw[
-  DBIx::DataModel::Compatibility::V0
-  DBIx::DataModel::Compatibility::V1
-  DBIx::DataModel::ConnectedSource
-  DBIx::DataModel::Meta
-  DBIx::DataModel::Meta::Association
-  DBIx::DataModel::Meta::Path
-  DBIx::DataModel::Meta::Schema
-  DBIx::DataModel::Meta::Source
-  DBIx::DataModel::Meta::Source::Join
-  DBIx::DataModel::Meta::Source::Table
-  DBIx::DataModel::Meta::Type
-  DBIx::DataModel::Meta::Utils
-  DBIx::DataModel::Schema
-  DBIx::DataModel::Schema::Generator
-  DBIx::DataModel::Source
-  DBIx::DataModel::Source::Table
-  DBIx::DataModel::Source::Join
-  DBIx::DataModel::Statement
-  DBIx::DataModel::Statement::JDBC
-  DBIx::DataModel::Statement::Oracle
-  SQL::Abstract
-  SQL::Abstract::More
-];
 
 sub define_schema {
   my ($class, %params) = @_;

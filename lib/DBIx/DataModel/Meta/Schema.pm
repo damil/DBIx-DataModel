@@ -12,10 +12,8 @@ use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
 use List::MoreUtils      qw/any firstval lastval uniq/;
 use Scalar::Util         qw/reftype/;
 use Module::Load         qw/load/;
-use Carp;
+use Carp::Clan           qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;
-
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 #----------------------------------------------------------------------
 # Params::Validate specification for new()

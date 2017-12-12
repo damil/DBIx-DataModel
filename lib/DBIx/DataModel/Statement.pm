@@ -5,12 +5,12 @@ package DBIx::DataModel::Statement;
 
 use warnings;
 use strict;
-use Carp;
 use List::Util       qw/min/;
 use List::MoreUtils  qw/firstval any/;
 use Scalar::Util     qw/weaken reftype dualvar/;
 use POSIX            qw/LONG_MAX/;
 use Clone            qw/clone/;
+use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 use Try::Tiny;
 
 use DBIx::DataModel;
@@ -20,8 +20,6 @@ use namespace::clean;
 #----------------------------------------------------------------------
 # internals
 #----------------------------------------------------------------------
-
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
 
 use overload
 

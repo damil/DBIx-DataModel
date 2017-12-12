@@ -13,17 +13,15 @@ use List::MoreUtils            qw/any/;
 use mro                        qw/c3/;
 use DBIx::DataModel;
 use SQL::Abstract::More 1.31;
+use Carp::Clan                 qw[^(DBIx::DataModel::|SQL::Abstract)];
+use Exporter                   qw/import/;
 
-use Exporter             qw/import/;
 our @EXPORT = qw/define_class define_method define_readonly_accessors
                  does/;
 
 
-BEGIN {
-  no strict 'refs';
-  *CARP_NOT = \@DBIx::DataModel::CARP_NOT;
-  *does = \&SQL::Abstract::More::does;
-}
+BEGIN {no strict 'refs'; *does = \&SQL::Abstract::More::does;}
+
 
 sub define_class {
 

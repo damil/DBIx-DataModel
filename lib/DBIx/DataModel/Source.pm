@@ -8,15 +8,15 @@ use warnings;
 no warnings 'uninitialized';
 use strict;
 use mro 'c3';
-use Carp;
 use List::MoreUtils qw/firstval/;
 use Module::Load    qw/load/;
 use Scalar::Util    qw/reftype refaddr/;
 use Storable        qw/freeze/;
+use Carp::Clan      qw[^(DBIx::DataModel::|SQL::Abstract)];
 
 use namespace::clean;
 
-{no strict 'refs'; *CARP_NOT = \@DBIx::DataModel::CARP_NOT;}
+
 
 #----------------------------------------------------------------------
 # accessors
