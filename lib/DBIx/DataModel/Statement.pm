@@ -496,10 +496,9 @@ sub select {
     /^flat(?:_array(?:ref)?)?$/ and do {
       $self->_build_reuse_row;
       my @vals;
-      my $hash_key_name = $self->{sth}{FetchHashKeyName} || 'NAME';
-      my $cols = $self->{sth}{$hash_key_name};
+      my @headers = $self->headers;
       while (my $row = $self->next) {
-        push @vals, @{$row}{@$cols};
+        push @vals, @{$row}{@headers};
       }
       $self->{sth}->finish;
       return \@vals;
@@ -663,6 +662,17 @@ sub bless_from_DB {
 }
 
 
+sub headers {
+  my $self = shift;
+
+  $self->{status} == EXECUTED
+    or $self->execute(@_);
+
+  my $hash_key_name = $self->{sth}{FetchHashKeyName} || 'NAME';
+  return @{$self->{sth}{$hash_key_name}};
+}
+
+
 #----------------------------------------------------------------------
 # PRIVATE METHODS IN RELATION WITH SELECT()
 #----------------------------------------------------------------------
@@ -675,9 +685,8 @@ sub _build_reuse_row {
 
   # create a reusable hash and bind_columns to it (see L<DBI/bind_columns>)
   my %row;
-  my $hash_key_name = $self->{sth}{FetchHashKeyName} || 'NAME';
-  $self->{sth}->bind_columns(\(@row{@{$self->{sth}{$hash_key_name}}}));
-  $self->{reuse_row} = \%row; 
+  $self->{sth}->bind_columns(\(@row{$self->headers}));
+  $self->{reuse_row} = \%row;
 }
 
 
@@ -763,14 +772,11 @@ The design principles for statements are described in the
 L<DESIGN|DBIx::DataModel::Doc::Design/"STATEMENT OBJECTS"> section of
 the manual (purpose, lifecycle, etc.).
 
-Methods for statements are described in the 
-L<Reference manual|DBIx::DataModel::Doc::Reference/"STATEMENTS">.
-
-
-
 =head1 METHODS
 
 
+Methods for statements are described in the 
+L<Reference manual|DBIx::DataModel::Doc::Reference/"STATEMENTS">.
 
 =head1 PRIVATE METHOD NAMES
 

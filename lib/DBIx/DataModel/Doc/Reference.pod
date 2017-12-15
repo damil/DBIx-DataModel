@@ -1996,6 +1996,15 @@ statement has been sqlized (through direct call
 to the L</sqlize> method, or indirect call via
 L</prepare>, L</execute> or L</select>).
 
+=head3 headers
+
+  my @headers = $statement->headers;
+
+Returns an array of column names as returned from the DBD driver
+through C<< $sth->{$sth->{FetchHashKeyName} >>, which will default
+to C<< $sth->{NAME} >>. See the L<DBI> documentation for details.
+
+
 =head3 bind()
 
   $statement->bind(foo => 123, bar => 456);
