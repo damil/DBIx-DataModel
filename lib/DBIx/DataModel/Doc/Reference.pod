@@ -1382,6 +1382,12 @@ Accessor for the statement's datasource.
 Accessor for the statement's status ("new", "refined",
 "sqlized", "prepared" or "executed").
 
+=head3 sth()
+
+Accessor for the lower-level DBI statement handle.
+Automatically calls C<< $self->prepare >> if necessary.
+
+
 =head3 meta_source()
 
 Proxy for C<< $self->source->metadm >>.
@@ -2001,8 +2007,8 @@ L</prepare>, L</execute> or L</select>).
   my @headers = $statement->headers;
 
 Returns an array of column names as returned from the DBD driver
-through C<< $sth->{$sth->{FetchHashKeyName} >>, which will default
-to C<< $sth->{NAME} >>. See the L<DBI> documentation for details.
+through C<< $self->sth->{FetchHashKeyName} >>.
+See the L<DBI> documentation for details.
 
 
 =head3 bind()
@@ -2054,6 +2060,10 @@ Resets the statement back into C<NEW> state, erasing all information
 except references to the C<$schema> and C<$meta_source>.
 
 C<%args> are optional; if present, they are passed to the L</refine()> method.
+
+=head3 finish()
+
+Calls C<< $self->sth->finish >>
 
 
 =head2 Utility methods

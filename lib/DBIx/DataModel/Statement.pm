@@ -363,6 +363,14 @@ sub prepare {
 }
 
 
+sub sth {
+  my ($self) = @_;
+
+  $self->prepare              if $self->{status} < PREPARED;
+  return $self->{sth};
+}
+
+
 
 sub execute {
   my ($self, @bind_args) = @_;
@@ -377,7 +385,7 @@ sub execute {
 
   # shortcuts
   my $args = $self->{args};
-  my $sth  = $self->{sth};
+  my $sth  = $self->sth;
 
   # previous row_count, row_num and reuse_row are no longer valid
   delete $self->{reuse_row};
@@ -456,7 +464,7 @@ sub select {
     /^sth$/i        and do {
         not $args->{-post_bless}
           or croak "-post_bless incompatible with -result_as=>'sth'";
-        return $self->{sth};
+        return $self->sth;
       };
 
     # CASE rows : all data rows (this is the default)
@@ -482,7 +490,7 @@ sub select {
         $node = $node->{$_} ||= {} foreach @key;
         $node->{$last_key_item} = $row;
       }
-      $self->{sth}->finish;
+      $self->finish;
       return \%hash;
     };
 
@@ -500,7 +508,7 @@ sub select {
       while (my $row = $self->next) {
         push @vals, @{$row}{@headers};
       }
-      $self->{sth}->finish;
+      $self->finish;
       return \@vals;
     };
 
@@ -574,7 +582,7 @@ sub next {
 
   $self->execute if $self->{status} < EXECUTED;
 
-  my $sth      = $self->{sth}          or croak "absent sth in statement";
+  my $sth      = $self->sth          or croak "absent sth in statement";
   my $callback = $self->{row_callback} or croak "absent callback in statement";
 
   if (not defined $n_rows) {  # if user wants a single row
@@ -668,10 +676,15 @@ sub headers {
   $self->{status} == EXECUTED
     or $self->execute(@_);
 
-  my $hash_key_name = $self->{sth}{FetchHashKeyName} || 'NAME';
-  return @{$self->{sth}{$hash_key_name}};
+  my $hash_key_name = $self->sth->{FetchHashKeyName} || 'NAME';
+  return @{$self->sth->{$hash_key_name}};
 }
 
+
+sub finish {
+  my $self = shift;
+  $self->sth->finish;
+}
 
 #----------------------------------------------------------------------
 # PRIVATE METHODS IN RELATION WITH SELECT()
@@ -685,7 +698,7 @@ sub _build_reuse_row {
 
   # create a reusable hash and bind_columns to it (see L<DBI/bind_columns>)
   my %row;
-  $self->{sth}->bind_columns(\(@row{$self->headers}));
+  $self->sth->bind_columns(\(@row{$self->headers}));
   $self->{reuse_row} = \%row;
 }
 
@@ -693,7 +706,7 @@ sub _build_reuse_row {
 sub _next_and_finish {
   my $self = shift;
   my $row_or_rows = $self->next( @_ ); # pass original parameters
-  $self->{sth}->finish;
+  $self->finish;
   return $row_or_rows;
 }
 
