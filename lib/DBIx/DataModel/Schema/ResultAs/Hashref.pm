@@ -32,7 +32,7 @@ sub get_result {
     my @key = map {$row->{$_} // ''} @cols;
     my $last_key_item = pop @key;
     my $node          = \%hash;
-    $node = $node->{$_} ||= {} foreach @key;
+    $node = $node->{$_} //= {} foreach @key;
     $node->{$last_key_item} = $row;
   }
   $statement->finish;

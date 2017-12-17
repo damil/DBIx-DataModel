@@ -28,8 +28,6 @@ sub new {
 sub get_result {
   my ($self, $statement) = @_;
 
-  $DB::single = 1;
-
   # 
   $statement->execute;
   $statement->make_fast;
@@ -41,7 +39,8 @@ sub get_result {
   $statement->finish;
 
 
-  my $workbook  = Excel::Writer::XLSX->new(@$self);
+  my $workbook  = Excel::Writer::XLSX->new(@$self)
+    or die "open Excel file @$self: $!";
   my $worksheet = $workbook->add_worksheet();
 
   $worksheet->add_table(0, 0, scalar(@rows), scalar(@headers)-1, {

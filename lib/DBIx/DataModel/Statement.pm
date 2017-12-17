@@ -474,27 +474,6 @@ sub select {
     # CASE firstrow : just the first row
     /^firstrow$/i   and return $self->_next_and_finish;
 
-    # # CASE hashref : all data rows, put into a hashref
-    # /^hashref$/i   and do {
-    #   @subclass_args or @subclass_args = $self->meta_source->primary_key
-    #     or croak "-result_as=>'hashref' impossible: no primary key";
-    #   my %hash;
-    #   while (my $row = $self->next) {
-    #     my @key;
-    #     foreach my $col (@subclass_args) {
-    #       my $val = $row->{$col};
-    #       $val = '' if not defined $val; # $val might be 0, so no '||'
-    #       push @key, $val;
-    #     }
-    #     my $last_key_item = pop @key;
-    #     my $node          = \%hash;
-    #     $node = $node->{$_} ||= {} foreach @key;
-    #     $node->{$last_key_item} = $row;
-    #   }
-    #   $self->finish;
-    #   return \%hash;
-    # };
-
     # CASE fast_statement : creates a reusable row
     /^fast[-_]statement$/i and do {
         $self->execute;
