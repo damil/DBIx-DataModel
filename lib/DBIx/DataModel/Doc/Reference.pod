@@ -1984,6 +1984,14 @@ is reset, and fresh data rows can be retrieved again through
 the L</next> or L</all> methods.
 
 
+=head3 make_fast()
+
+Builds a reusable hash for data rows. This spares the time for
+building a fresh Perl hash for each row; but of course each
+new row will overwrite data of the previous row.
+See the doc for L</fast_statement> above.
+
+
 =head3 sql()
 
   $sql         = $statement->sql;

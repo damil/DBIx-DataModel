@@ -7,7 +7,6 @@ use DBI;
 use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
-use Scalar::Does qw/does/;
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils;
 
@@ -41,7 +40,8 @@ DBIx::DataModel->Schema('HR') # Human Resources
 
 # override the update method in one of the generated classes
 package HR::Department;
-use Scalar::Does qw/does/;
+use DBIx::DataModel::Meta::Utils qw/does/;
+
 
 sub update {
   my $self      = shift;

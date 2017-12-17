@@ -11,7 +11,9 @@ use Scalar::Util     qw/weaken reftype dualvar/;
 use POSIX            qw/LONG_MAX/;
 use Clone            qw/clone/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
-use Try::Tiny;
+use Try::Tiny        qw/try catch/;
+use Module::Load     qw/load/;
+use MRO::Compat;
 
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
@@ -417,6 +419,8 @@ sub execute {
 }
 
 
+my %cache_result_class;
+
 sub select {
   my $self = shift;
 
@@ -428,7 +432,7 @@ sub select {
                                         qw/-pre_exec -post_exec -post_bless/;
 
  SWITCH:
-  my ($result_as, @key_cols) 
+  my ($result_as, @subclass_args) 
     = ref $args->{-result_as} ? @{$args->{-result_as}}
                               : ($args->{-result_as} || "rows");
   for ($result_as) {
@@ -439,13 +443,11 @@ sub select {
         return $self;
       };
 
-    # for all other cases, must first sqlize the statement
-    $self->sqlize if $self->{status} < SQLIZED;
-
     # CASE sql : just return the SQL and bind values
     /^sql$/i        and do {
       not $callbacks 
         or croak "$callbacks incompatible with -result_as=>'sql'";
+      $self->sqlize if $self->{status} < SQLIZED;
       return $self->sql;
     };
 
@@ -453,19 +455,18 @@ sub select {
     /^subquery$/i        and do {
       not $callbacks 
         or croak "$callbacks incompatible with -result_as=>'subquery'";
+      $self->sqlize if $self->{status} < SQLIZED;
       my ($sql, @bind) = $self->sql;
       return \ ["($sql)", @bind];
     };
 
-    # for all other cases, must first execute the statement
-    $self->execute;
-
     # CASE sth : return the DBI statement handle
     /^sth$/i        and do {
-        not $args->{-post_bless}
-          or croak "-post_bless incompatible with -result_as=>'sth'";
-        return $self->sth;
-      };
+      $self->execute;
+      not $args->{-post_bless}
+        or croak "-post_bless incompatible with -result_as=>'sth'";
+      return $self->sth;
+    };
 
     # CASE rows : all data rows (this is the default)
     /^(rows|arrayref)$/i  and return $self->all;
@@ -473,36 +474,38 @@ sub select {
     # CASE firstrow : just the first row
     /^firstrow$/i   and return $self->_next_and_finish;
 
-    # CASE hashref : all data rows, put into a hashref
-    /^hashref$/i   and do {
-      @key_cols or @key_cols = $self->meta_source->primary_key
-        or croak "-result_as=>'hashref' impossible: no primary key";
-      my %hash;
-      while (my $row = $self->next) {
-        my @key;
-        foreach my $col (@key_cols) {
-          my $val = $row->{$col};
-          $val = '' if not defined $val; # $val might be 0, so no '||'
-          push @key, $val;
-        }
-        my $last_key_item = pop @key;
-        my $node          = \%hash;
-        $node = $node->{$_} ||= {} foreach @key;
-        $node->{$last_key_item} = $row;
-      }
-      $self->finish;
-      return \%hash;
-    };
+    # # CASE hashref : all data rows, put into a hashref
+    # /^hashref$/i   and do {
+    #   @subclass_args or @subclass_args = $self->meta_source->primary_key
+    #     or croak "-result_as=>'hashref' impossible: no primary key";
+    #   my %hash;
+    #   while (my $row = $self->next) {
+    #     my @key;
+    #     foreach my $col (@subclass_args) {
+    #       my $val = $row->{$col};
+    #       $val = '' if not defined $val; # $val might be 0, so no '||'
+    #       push @key, $val;
+    #     }
+    #     my $last_key_item = pop @key;
+    #     my $node          = \%hash;
+    #     $node = $node->{$_} ||= {} foreach @key;
+    #     $node->{$last_key_item} = $row;
+    #   }
+    #   $self->finish;
+    #   return \%hash;
+    # };
 
     # CASE fast_statement : creates a reusable row
     /^fast[-_]statement$/i and do {
-        $self->_build_reuse_row;
+        $self->execute;
+        $self->make_fast;
         return $self;
       };
 
     # CASE flat_arrayref : flattened columns from each row
     /^flat(?:_array(?:ref)?)?$/ and do {
-      $self->_build_reuse_row;
+      $self->execute;
+      $self->make_fast;
       my @vals;
       my @headers = $self->headers;
       while (my $row = $self->next) {
@@ -512,9 +515,12 @@ sub select {
       return \@vals;
     };
 
-
-    # OTHERWISE
-    croak "unknown -result_as value: $_"; 
+    # OTHERWISE : try to load a result class dynamically
+    my $subclass = $cache_result_class{$_}
+               //= $self->_find_result_class($_)
+      or croak "don't know how to perform -result_as => $_"; 
+    my $result_maker = $subclass->new(@subclass_args);
+    return $result_maker->get_result($self);
   }
 }
 
@@ -686,21 +692,24 @@ sub finish {
   $self->sth->finish;
 }
 
-#----------------------------------------------------------------------
-# PRIVATE METHODS IN RELATION WITH SELECT()
-#----------------------------------------------------------------------
 
-sub _build_reuse_row {
+sub make_fast {
   my ($self) = @_;
 
   $self->{status} == EXECUTED
-    or croak "cannot _build_reuse_row() when in state $self->{status}";
+    or croak "cannot make_fast() when in state $self->{status}";
 
   # create a reusable hash and bind_columns to it (see L<DBI/bind_columns>)
   my %row;
   $self->sth->bind_columns(\(@row{$self->headers}));
   $self->{reuse_row} = \%row;
 }
+
+
+#----------------------------------------------------------------------
+# PRIVATE METHODS IN RELATION WITH SELECT()
+#----------------------------------------------------------------------
+
 
 
 sub _next_and_finish {
@@ -761,6 +770,27 @@ sub _compute_from_DB_handlers {
   $self->{from_DB_handlers} = $from_DB_handlers;
 
   return $self;
+}
+
+
+sub _find_result_class {
+  my ($self, $name) = @_;  
+
+  $name            = ucfirst $name;
+  my $schema       = $self->schema;
+  my $schema_class = ref $schema || $schema;
+
+  # try to find subclass $name within namespace of schema or ancestors
+  foreach my $namespace (@{mro::get_linear_isa($schema_class)}) {
+    my $classname = "${namespace}::ResultAs::${name}";
+    my $loaded 
+      = try {load $classname; 1}
+        catch {die $_ if $_ !~ /^Can't locate(?! object method)/};
+
+    return $classname if $loaded;
+  }
+
+  return; # false : not found
 }
 
 
