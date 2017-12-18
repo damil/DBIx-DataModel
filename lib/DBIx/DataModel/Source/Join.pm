@@ -6,6 +6,28 @@ use mro 'c3';
 require 5.008; # for filehandle in memory
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
 
+sub db_from {
+  my $self = shift;
+
+  # list of join components from the Meta::Join
+  my $db_from   = $self->metadm->db_from;
+
+  # if there is no db_schema, just return that list
+  my $db_schema = $self->schema->db_schema
+    or return $db_from;
+
+  # otherwise, prefix each table in list (at odd positions) with $db_schema
+  my @copy = @$db_from;
+  for (my $i=1; $i < @copy; $i += 2) {
+    for my $db_table ($copy[$i]) {
+      $db_table = "$db_schema.$db_table" unless $db_table =~ /\./;
+    }
+  }
+  return \@copy;
+}
+
+
+
 
 # Support for Storable::{freeze,thaw} : just a stupid blank operation,
 # but that will force Storable::thaw to try to reload the join class ... 

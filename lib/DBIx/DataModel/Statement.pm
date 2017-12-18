@@ -260,7 +260,7 @@ sub sqlize {
                         -union -union_all -intersect -except -minus
                         -order_by -group_by -having
                         -limit -offset -page_size -page_index/;
-  my %sqla_args = (-from         => clone($meta_source->db_from),
+  my %sqla_args = (-from         => clone($self->source->db_from),
                    -want_details => 1);
   defined $args->{$_} and $sqla_args{$_} = $args->{$_} for @args_to_copy;
   $sqla_args{-columns} ||= $meta_source->default_columns;
@@ -567,7 +567,7 @@ sub next {
 
   $self->execute if $self->{status} < EXECUTED;
 
-  my $sth      = $self->sth          or croak "absent sth in statement";
+  my $sth      = $self->sth            or croak "absent sth in statement";
   my $callback = $self->{row_callback} or croak "absent callback in statement";
 
   if (not defined $n_rows) {  # if user wants a single row
@@ -638,8 +638,11 @@ sub page_rows {
 sub bless_from_DB {
   my ($self, $row) = @_;
 
-  # inject ref to $schema if in multi-schema mode
-  $row->{__schema} = $self->schema unless $self->schema->{is_singleton};
+  # inject ref to $schema if in multi-schema mode or if temporary
+  # db_schema is set
+  my $schema = $self->schema;
+  $row->{__schema} = $schema unless $schema->{is_singleton}
+                                 && !$schema->{db_schema};
 
   # bless into appropriate class
   bless $row, $self->meta_source->class;

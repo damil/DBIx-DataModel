@@ -23,6 +23,31 @@ use Try::Tiny;
 use namespace::clean;
 
 
+#TMP
+sub with_db_schema {
+  my $self = shift;
+
+  ref $self or $self = $self->singleton;
+  my $shallow_copy = { %$self };
+  $shallow_copy->{db_schema} = shift;
+  return bless $shallow_copy, ref $self;
+}
+
+
+
+=begin TODO
+
+  - set_db_schema()        -- set on current schema
+  - db_schema($new_schema) -- returns clone with temporary db_schema
+  - no change of table if already prefixed by schema name
+
+=end TODO
+
+=cut
+
+
+
+
 
 my $spec = {
   dbh                   => {type => OBJECT|ARRAYREF, optional => 1},
@@ -34,6 +59,7 @@ my $spec = {
   placeholder_prefix    => {type => SCALAR,  default  => '?:'},
   select_implicitly_for => {type => SCALAR,  default  => ''},
   autolimit_firstrow    => {type => BOOLEAN, optional => 1},
+  db_schema             => {type => SCALAR,  optional => 1},
 };
 
 
@@ -148,7 +174,8 @@ sub dbh {
 
 # some rw setters/getters
 my @accessors = qw/debug select_implicitly_for dbi_prepare_method 
-                   sql_abstract placeholder_prefix autolimit_firstrow/;
+                   sql_abstract placeholder_prefix autolimit_firstrow
+                   db_schema/;
 foreach my $accessor (@accessors) {
   no strict 'refs';
   *$accessor = sub {
@@ -166,7 +193,7 @@ foreach my $accessor (@accessors) {
 
 
 my @default_state_components = qw/dbh debug select_implicitly_for
-                                  dbi_prepare_method /;
+                                  dbi_prepare_method db_schema/;
 
 sub localize_state {
   my ($self, @components) = @_; 

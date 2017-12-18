@@ -20,6 +20,14 @@ use Carp::Clan                   qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;
 
 
+sub db_from {
+  my $self = shift;
+
+  my $db_from   = $self->metadm->db_from;
+  my $db_schema = $self->schema->db_schema;
+
+  return $db_schema && $db_from !~ /\./ ? "$db_schema.$db_from" : $db_from;
+}
 
 
 #------------------------------------------------------------
@@ -206,7 +214,6 @@ sub _singleInsert {
 sub _rawInsert {
   my ($self, %options) = @_; 
   my $class  = ref $self or croak "_rawInsert called as class method";
-  my $metadm = $class->metadm;
 
   # clone $self as mere unblessed hash (for SQLA) and extract ref to $schema 
   my %values = %$self;
@@ -226,7 +233,7 @@ sub _rawInsert {
   # perform the insertion
   my $sqla         = $schema->sql_abstract;
   my ($sql, @bind) = $sqla->insert(
-    -into   => $metadm->db_from,
+    -into   => $self->db_from,
     -values => \%values,
     %options,
    );
@@ -246,7 +253,7 @@ sub _get_last_insert_id {
   my ($self, $col) = @_;
   my $class               = ref $self;
   my ($dbh, %dbh_options) = $self->schema->dbh;
-  my $table               = $self->metadm->db_from;
+  my $table               = $self->db_from;
 
   my $id
       # either callback given by client ...
@@ -422,7 +429,7 @@ sub delete {
 
   # perform this delete
   my ($sql, @bind) = $schema->sql_abstract->delete(
-    -from  => $self->metadm->db_from,
+    -from  => $self->db_from,
     -where => $where,
    );
   $schema->_debug($sql . " / " . CORE::join(", ", @bind) );
@@ -573,7 +580,7 @@ sub update  {
   # database request
   my $sqla = $schema->sql_abstract;
   my ($sql, @bind) = $sqla->update(
-    -table => $self->metadm->db_from,
+    -table => $self->db_from,
     -set   => $to_set,
     -where => $where,
    );
