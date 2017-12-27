@@ -10,7 +10,6 @@ use DBIx::DataModel::Meta::Source::Join;
 use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
                                      OBJECT HASHREF/;
 use List::MoreUtils      qw/any firstval lastval uniq/;
-use Scalar::Util         qw/reftype/;
 use Module::Load         qw/load/;
 use Carp::Clan           qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;

@@ -10,7 +10,7 @@ use strict;
 use DBIx::DataModel::Meta::Utils qw/does/;
 use DBIx::DataModel::Source::Table;
 
-use Scalar::Util     qw/blessed reftype/;
+use Scalar::Util     qw/blessed/;
 use Module::Load     qw/load/;
 use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
                                  OBJECT BOOLEAN/;

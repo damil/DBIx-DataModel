@@ -7,7 +7,7 @@ use warnings;
 use strict;
 use List::Util       qw/min/;
 use List::MoreUtils  qw/firstval any/;
-use Scalar::Util     qw/weaken reftype dualvar/;
+use Scalar::Util     qw/weaken dualvar/;
 use POSIX            qw/LONG_MAX/;
 use Clone            qw/clone/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
@@ -16,7 +16,7 @@ use Module::Load     qw/load/;
 use MRO::Compat;
 
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
+use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors does/;
 use namespace::clean;
 
 #----------------------------------------------------------------------
@@ -118,10 +118,13 @@ sub bind {
 
   # arguments can be a list, a hashref or an arrayref
   if (@args == 1) {
-    for (reftype($args[0]) || "") {
-      /^HASH$/  and do {@args = %{$args[0]}; last;};
-      /^ARRAY$/ and do {my $i = 0; @args = map {($i++, $_)} @{$args[0]}; last};
-      #otherwise
+    if (does $args[0], 'HASH') {
+      @args = %{$args[0]};
+    }
+    elsif (does $args[0], 'ARRAY') {
+      my $i = 0; @args = map {($i++, $_)} @{$args[0]};
+    }
+    else {
       croak "unexpected arg type to bind()";
     }
   }
@@ -204,7 +207,7 @@ sub refine {
 
       # -columns : store in $self->{args}{-columns}; can restrict previous list
       /^-columns$/ and do {
-        my @cols = ref $v ? @$v : ($v);
+        my @cols = does($v, 'ARRAY') ? @$v : ($v);
         if (my $old_cols = $args->{-columns}) {
           unless (@$old_cols == 1 && $old_cols->[0] eq '*' ) {
             foreach my $col (@cols) {
@@ -437,8 +440,8 @@ sub select {
 
  SWITCH:
   my ($result_as, @subclass_args) 
-    = ref $args->{-result_as} ? @{$args->{-result_as}}
-                              : ($args->{-result_as} || "rows");
+    = does($args->{-result_as}, 'ARRAY') ? @{$args->{-result_as}}
+                                         : ($args->{-result_as} || "rows");
   for ($result_as) {
 
     # CASE statement : the DBIx::DataModel::Statement object 
@@ -740,7 +743,7 @@ sub _compute_from_DB_handlers {
   # handlers may be overridden from args{-column_types}
   if (my $col_types = $self->{args}{-column_types}) {
     while (my ($type_name, $columns) = each %$col_types) {
-      ref $columns or $columns = [$columns];
+      $columns = [$columns] unless does $columns, 'ARRAY';
       my $type = $self->schema->metadm->type($type_name)
         or croak "no such column type: $type_name";
       $handlers{$_} = $type->{handlers} foreach @$columns;

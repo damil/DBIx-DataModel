@@ -8,11 +8,12 @@ use warnings;
 no warnings 'uninitialized';
 use strict;
 use mro 'c3';
-use List::MoreUtils qw/firstval/;
-use Module::Load    qw/load/;
-use Scalar::Util    qw/reftype refaddr/;
-use Storable        qw/freeze/;
-use Carp::Clan      qw[^(DBIx::DataModel::|SQL::Abstract)];
+use List::MoreUtils              qw/firstval/;
+use Module::Load                 qw/load/;
+use Scalar::Util                 qw/refaddr/;
+use Storable                     qw/freeze/;
+use Carp::Clan                   qw[^(DBIx::DataModel::|SQL::Abstract)];
+use DBIx::DataModel::Meta::Utils qw/does/;
 
 use namespace::clean;
 
@@ -80,7 +81,7 @@ sub fetch {
 
   # if last argument is a hashref, it contains arguments to the select() call
   no warnings 'uninitialized';
-  if ((reftype $_[-1] || '') eq 'HASH') {
+  if (does $_[-1], 'HASH') {
     %select_args = %{pop @_};
   }
 
