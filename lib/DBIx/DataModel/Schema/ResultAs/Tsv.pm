@@ -3,10 +3,8 @@ package DBIx::DataModel::Schema::ResultAs::Tsv;
 #----------------------------------------------------------------------
 use warnings;
 use strict;
-use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
-use IO::Detect       qw/is_filehandle/;
-use Params::Validate qw/validate SCALAR GLOBREF/;
-
+use Carp::Clan        qw[^(DBIx::DataModel::|SQL::Abstract)];
+use Scalar::Util 1.07 qw/openhandle/;
 
 use parent 'DBIx::DataModel::Schema::ResultAs';
 
@@ -23,8 +21,9 @@ sub new {
 sub get_result {
   my ($self, $statement) = @_;
 
+  # open file
   my $fh;
-  if (is_filehandle $self->{file}) {
+  if (openhandle $self->{file}) {
     $fh = $self->{file};
   }
   else {
@@ -32,22 +31,26 @@ sub get_result {
       or croak "open $self->{file} for writing : $!";
   }
 
-  # 
+  # get data
   $statement->execute;
   $statement->make_fast;
 
+  # activate tsv mode by setting output field and record separators
   local $\ = "\n";
   local $, = "\t";
-  no warnings 'uninitialized';
 
+  # print header row
+  no warnings 'uninitialized';
   my @headers   = $statement->headers;
   print $fh @headers;
 
+  # print data rows
   while (my $row = $statement->next) {
     print $fh @{$row}{@headers};
   }
-  $statement->finish;
 
+  # cleanup and return
+  $statement->finish;
   return $self->{file};
 }
 
