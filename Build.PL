@@ -16,7 +16,7 @@ my $builder = Module::Build->new(
 	'SQL::Abstract::More'  => 1.31,
 	'Module::Build'        => 0,
         'Acme::Damn'           => 0,
-        'Scalar::Util'         => 0,
+        'Scalar::Util'         => 1.07,
 	'Storable'             => 0,
 
         # new dependencies in 2.0 
@@ -29,10 +29,15 @@ my $builder = Module::Build->new(
     build_requires => {
         'Task::Weaken'  => 0,
     },
+    test_requires => {
+        'DBD::Mock'                   => 1.36,
+    },
     recommends => {
-        'DBD::Mock'                   => 0,
+
         'Lingua::EN::Inflect::Phrase' => 0,
         'List::Categorize'            => 0.04,
+        'File::Tabular'               => 0,
+        'Excel::Writer::XLSX'         => 0,
     },
     add_to_cleanup      => [ 'DBIx-DataModel-*' ],
     meta_merge => {
