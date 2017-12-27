@@ -333,7 +333,9 @@ sub _parse_join_path {
   # build first member of the @join result
   my %first_join = (kind => '', name => $initial_table);
   $initial_table =~ s/\|(.+)$//  and $first_join{alias} = $1;
-  my $table = $self->table($initial_table);
+  my $table = $self->table($initial_table)
+    or croak "...->join('$initial_table', ...) : this schema has "
+           . "no table named '$initial_table'";
   $first_join{table}       = $table;
   $first_join{primary_key} = [$table->primary_key];
   $first_join{db_table}    = $table->db_from;
