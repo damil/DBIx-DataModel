@@ -5,7 +5,7 @@ use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
 use DBIx::DataModel -compatibility=> undef;
 
-use constant NTESTS  => 6;
+use constant NTESTS  => 7;
 use Test::More tests => NTESTS;
 
 DBIx::DataModel->Schema('HR') # Human Resources
@@ -53,13 +53,17 @@ SKIP: {
           "update from function");
 
   # other subreferences should warn but be removed automatically
-  HR->table('Employee')->update(
-    $emp_id, {foo => 123, skip1 => {bar => 456}, skip2 => bless({}, "Foo")},
-  );
-  sqlLike("UPDATE T_Employee SET foo = ? WHERE ( emp_id = ? )",
-          [123, $emp_id],
-          "skip sub-references");
-
+  { my $warn_msg = '';
+    local $SIG{__WARN__} = sub {$warn_msg .= $_[0]};
+    HR->table('Employee')->update(
+      $emp_id, {foo => 123, skip1 => {bar => 456}, skip2 => bless({}, "Foo")},
+     );
+    
+    sqlLike("UPDATE T_Employee SET foo = ? WHERE ( emp_id = ? )",
+            [123, $emp_id],
+            "skip sub-references");
+    like $warn_msg, qr/nested references/, 'warn for nested references';
+  }
 
   # update an unblessed record
   my $record = {emp_id => $emp_id, foo => 'bar'};
