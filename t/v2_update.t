@@ -5,7 +5,7 @@ use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 
 use DBIx::DataModel -compatibility=> undef;
 
-use constant NTESTS  => 7;
+use constant NTESTS  => 8;
 use Test::More tests => NTESTS;
 
 DBIx::DataModel->Schema('HR') # Human Resources
@@ -52,7 +52,7 @@ SKIP: {
           [$dt, $emp_id],
           "update from function");
 
-  # other subreferences should warn but be removed automatically
+  # in presence of subreferences, warn and then remove them
   { my $warn_msg = '';
     local $SIG{__WARN__} = sub {$warn_msg .= $_[0]};
     HR->table('Employee')->update(
@@ -93,7 +93,14 @@ SKIP: {
           [987, $emp_id],
           "obj update with args");
 
-
+  # -set / -where / -ident
+  HR->table('Employee')->update(
+    -set   => {foo => 123},
+    -where => {baz => {">" => {-ident => 'buz'}}},
+   );
+  sqlLike("UPDATE T_Employee SET foo = ? WHERE baz > buz",
+          [123],
+          "update(-set => .., -where => { ... -ident})");
 
 }
 
