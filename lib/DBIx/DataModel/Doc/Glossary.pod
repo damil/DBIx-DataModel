@@ -128,6 +128,17 @@ usually belong to a module that will be
 loaded through L<use|perlfunc/use>, and therefore will be 
 executed at compile-time. 
 
+=item database schema
+
+A container within the database management system for holding tables
+and other database objects.  By default, table names are looked up
+within the default schema of the current database session; but if
+multiple schemata are supported, table names may be prefixed by the name
+of another schema :  C<SELECT * FROM FOREIGN_SCHEMA.TABLE_NAME WHERE ...>.
+
+Not to be confounded with a L</schema> at the C<DBIx::DataModel> level.
+
+
 =item DB
 
 DataBase
@@ -218,6 +229,18 @@ are C<0..*>, C<0..1>, C<1..1>, C<1..*>.
 C<*> is a shorthand for C<0..*>, and 
 C<1> is a shorthand for C<1..1>.
 
+=item multi-schema mode
+
+A way of using C<DBIx::DataModel> in which
+a L</schema> subclass may have several instances, with
+different database connexions. In this mode, tables and joins
+are accessed through calls to a C<$schema> object; therefore that
+reference must be passed around through the whole application.
+Multi-schema mode is triggered by the first call to
+L<DBIx::DataModel::Doc::Reference/"Schema::new()">.
+
+The other, more simple mode is L</single-schema mode>.
+
 
 =item OO
 
@@ -269,12 +292,30 @@ Within C<DBIx::DataModel>, rows are plain hashrefs
 (C<< { column_name => column_value } >>), blessed as instances of 
 a L</table> or a L</view>.
 
+=item single-schema mode
+
+The most simple way of using C<DBIx::DataModel>, in which
+the L</schema> subclass has only one single instance.
+The advantage in that mode is that tables and joins can be
+accessed through class method calls, without the need to pass
+around a C<$schema> reference through the whole application.
+The disadvantage is that it is not possible to access several
+database connexions simultaneously; it this is a need, then
+use L</multi-schema mode>.
+
 =item schema
 
-An instance of a subclass of 
-L<DBIx::DataModel::Schema|DBIx::DataModel::Schema>, that
-holds information about its tables, views and associations, and
-encapsulates a L</dbh>.
+An instance of a subclass of
+L<DBIx::DataModel::Schema|DBIx::DataModel::Schema>, that holds
+information about its tables, views and associations, and encapsulates
+a L</dbh> connexion to the database. When C<DBIx::DataModel> is used
+in L</single-schema mode>, the term "schema" also refers to the
+subclass itself, because that subclass has only one single instance.
+
+Not to be confounded with a L</database schema> : a Perl schema
+may switch between several database schemata through the
+L<db_schema()|DBIx::DataModel::Reference/db_schema()> method.
+
 
 =item source
 

@@ -12,15 +12,11 @@ use parent 'DBIx::DataModel::Schema::ResultAs';
 
 use namespace::clean;
 
-my $spec_for_new_args = {
-  file => {type => SCALAR|GLOBREF, optional => 0},
-};
-
 sub new {
-  my $class = shift;
+  my ($class, $file) = @_;
 
-  my $self = validate(@_, $spec_for_new_args);
-  return bless $self, $class;
+  croak "-result_as => [Tsv => ...] ... target file is missing" if !$file;
+  return bless {file => $file}, $class;
 }
 
 
@@ -42,7 +38,7 @@ sub get_result {
 
   local $\ = "\n";
   local $, = "\t";
-
+  no warnings 'uninitialized';
 
   my @headers   = $statement->headers;
   print $fh @headers;

@@ -6,10 +6,7 @@ package DBIx::DataModel::Source::Table;
 use warnings;
 no warnings 'uninitialized';
 use strict;
-use mro 'c3';
 use parent 'DBIx::DataModel::Source';
-use Storable                     qw/freeze/;
-use Scalar::Util                 qw/refaddr reftype blessed/;
 use Acme::Damn                   qw/damn/;
 use Module::Load                 qw/load/;
 use List::MoreUtils              qw/none/;
@@ -18,16 +15,6 @@ use DBIx::DataModel::Meta::Utils qw/does/;
 use Carp::Clan                   qw[^(DBIx::DataModel::|SQL::Abstract)];
 
 use namespace::clean;
-
-
-sub db_from {
-  my $self = shift;
-
-  my $db_from   = $self->metadm->db_from;
-  my $db_schema = $self->schema->db_schema;
-
-  return $db_schema && $db_from !~ /\./ ? "$db_schema.$db_from" : $db_from;
-}
 
 
 #------------------------------------------------------------
@@ -61,7 +48,7 @@ sub insert {
     my $header_row = shift @records;
     my $n_headers  = @$header_row;
     foreach my $data_row (@records) {
-      does ($data_row, 'ARRAY')
+      does($data_row, 'ARRAY')
         or croak "data row after a header row should be an arrayref";
       my $n_vals = @$data_row;
       $n_vals == $n_headers
@@ -224,8 +211,7 @@ sub _rawInsert {
 
   # cleanup $options
   if ($options{-returning}) {
-    my $reftype = reftype $options{-returning} || '';
-    if ($reftype eq 'HASH' && !keys %{$options{-returning}}) {
+    if (does($options{-returning}, 'HASH') && !keys %{$options{-returning}}) {
       delete $options{-returning};
     }
   }
@@ -327,7 +313,7 @@ sub _insert_subtrees {
   my %results;
 
   while (my ($role, $arrayref) = each %$subrecords) {
-    reftype $arrayref eq 'ARRAY'
+    does $arrayref, 'ARRAY'
       or croak "Expected an arrayref for component role $role in $class";
     next if not @$arrayref;
 
@@ -350,19 +336,6 @@ sub _insert_subtrees {
 my $delete_spec = {
   -where => {type => HASHREF, optional => 0},
 };
-
-
-=pod
-
-May be called as 
-
-  $class->delete({...});   # hashref must include primary key
-  $class->delete(@prim_key);
-  $class->delete(-where => {..});
-
-  $obj->delete();
-
-=cut 
 
 
 sub _parse_delete_args {
@@ -449,25 +422,6 @@ my $update_spec = {
 };
 
 
-
-=pod
-
-May be called as 
-
-  $class->update({...});   # hashref must include primary key
-  $class->update(@prim_key, {...});
-  $class->update(-set => {..}, -where => {..});
-
-  $fake_obj->update(@prim_key, {...});
-  $fake_obj->update(-set => {..}, -where => {..});
-
-  $obj->update();
-  $obj->update({...});
-
-
-=cut 
-
-
 sub _parse_update_args  { # returns ($schema, $to_set, $where)
   my $self = shift;
 
@@ -547,11 +501,10 @@ sub _parse_update_args  { # returns ($schema, $to_set, $where)
   my @sub_refs;
   foreach my $key (keys %$to_set) {
     my $val     = $to_set->{$key};
-    my $reftype = reftype($val)
-      or next;
+    next if !ref $val;
     push @sub_refs, $key
-      if $reftype eq 'HASH'
-        ||( $reftype eq 'ARRAY' 
+      if does($val, 'HASH')
+        ||( does($val, 'ARRAY')
               && !$sqla->{array_datatypes}
               && !$sqla->is_bind_value_with_type($val) );
     # reftypes SCALAR or REF are OK; they are used by SQLA for verbatim SQL
@@ -597,6 +550,16 @@ sub update  {
 # utility methods
 #------------------------------------------------------------
 
+sub db_from {
+  my $self = shift;
+
+  my $db_from   = $self->metadm->db_from;
+  my $db_schema = $self->schema->db_schema;
+
+  # prefix table with $db_schema if non-empty and there is no hardwired db_schema
+  return $db_schema && $db_from !~ /\./ ? "$db_schema.$db_from" : $db_from;
+}
+
 sub has_invalid_columns {
   my ($self) = @_;
   my $results = $self->apply_column_handler('validate');
@@ -606,7 +569,6 @@ sub has_invalid_columns {
   }
   return @invalid ? \@invalid : undef;
 }
-
 
 sub _parse_ending_options {
   my ($class_or_self, $args_ref, $regex) = @_;
@@ -674,6 +636,8 @@ This module implements
 
 =item L<hasInvalidColumns|DBIx::DataModel::Doc::Reference/hasInvalidColumns>
 
+=item L<db_from|DBIx::DataModel::Doc::Reference/db_from>
+
 =back
 
 
@@ -684,7 +648,7 @@ Laurent Dami, C<< <laurent.dami AT etat.ge.ch> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2006..2012 Laurent Dami.
+Copyright 2006..2017 Laurent Dami.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -7,22 +7,21 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use DBIx::DataModel;
 
-use constant N_DBI_MOCK_TESTS => 7;
-use constant N_BASIC_TESTS    => 0;
+use constant N_DBI_MOCK_TESTS => 11;
+use constant N_BASIC_TESTS    =>  0;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
 
 
 # die_ok : succeeds if the supplied coderef dies with an exception
-sub die_ok(&) { 
-  my $code=shift; 
-  eval {$code->()}; 
+sub die_ok(&) {
+  my $code=shift;
+  eval {$code->()};
   my $err = $@;
   $err =~ s/ at .*//;
   ok($err, $err);
 }
 
-  
 # define a small schema
 DBIx::DataModel->Schema('HR') # Human Resources
 ->Table(Employee   => T_Employee       => qw/emp_id/)
@@ -79,12 +78,11 @@ SKIP: {
   sqlLike('UPDATE DEV.T_Employee SET lastname = ? WHERE emp_id = ? ' ,
           ['Johann-Sebastian', 1],
 	  'update - DEV');
-  
+
   HR::Employee->delete(3);
   sqlLike('DELETE FROM DEV.T_Employee WHERE emp_id = ?' ,
           [3],
 	  'delete - DEV');
-
 
   $rows = HR->join(qw/Employee activities/)->select;
   sqlLike('SELECT * FROM DEV.T_Employee '

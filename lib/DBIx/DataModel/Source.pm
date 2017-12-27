@@ -139,13 +139,7 @@ sub join {
   # build and return the new statement
   my $statement = $meta_schema->statement_class->new(@stmt_args);
 
-  if ($self->_is_called_as_class_method) {
-    if ($DBIx::DataModel::COMPATIBILITY > 1.99) {
-      carp 'join() was called as class method on a Table; instead, you should '
-         . 'call $schema->table($name)->join(...)';
-    }
-  }
-  else { # called as instance method
+  if (!$self->_is_called_as_class_method) { # called as instance method
     my $left_cols = $statement->{args}{-_left_cols}
       or die "statement had no {left_cols} entry";
 

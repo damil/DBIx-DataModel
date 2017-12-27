@@ -90,8 +90,9 @@ sub define_navigation_method {
     my $statement = $self->join(@path); # Source::join, not Schema::join
 
     # return either the resulting rows, or the query statement
-    return ref $self ? $statement->select(@args)   # when instance method
-                     : $statement->refine(@args);  # when class method
+    return $self->_is_called_as_class_method
+             ? $statement->refine(@args)  # when class method
+             : $statement->select(@args); # when instance method
   };
 
   # install the method

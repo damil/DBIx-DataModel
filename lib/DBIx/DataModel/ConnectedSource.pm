@@ -9,6 +9,9 @@ use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
 use Carp::Clan                   qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;
 
+our $AUTOLOAD;
+
+
 sub new {
   my ($class, $meta_source, $schema) = @_;
   my $self = bless {meta_source => $meta_source, schema => $schema}, $class;
@@ -25,20 +28,23 @@ sub metadm {
 }
 
 
-# methods delegated to the Source/Table class
-foreach my $method (qw/insert update delete select fetch fetch_cached
-                       join bless_from_DB/) {
+sub DESTROY {} # to prevent being handled by AUTOLOAD
+
+sub AUTOLOAD { # need AUTOLOAD because each source may have path methods
+               # that are not known statically
+  my $self   = shift;
+
   no strict 'refs';
-  *{$method} = sub {
-    my $self = shift;
+  my $method = $AUTOLOAD;
+  $method =~ s/^.*:://;
 
-    # create a fake instance of the source classe, containing the schema
-    my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
+  # create a fake instance of the source classe, containing the schema
+  my $obj = bless {__schema => $self->{schema}}, $self->{meta_source}->class;
 
-    # call that instance with all remaining args
-    $obj->$method(@_);
-  };
+  # call that instance with all remaining args
+  $obj->$method(@_);
 }
+
 
 
 1;

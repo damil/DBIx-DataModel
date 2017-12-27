@@ -16,13 +16,15 @@ sub db_from {
   my $db_schema = $self->schema->db_schema
     or return $db_from;
 
-  # otherwise, prefix each table in list (at odd positions) with $db_schema
+  # otherwise, prefix each table in list with $db_schema. The list is of
+  # shape: [-join => $table1, $join_spec1, $table2, $join_spec2 .... $table_n];
+  # therefore tables are at odd positions in the list. Tables already containing
+  # a '.' are left untouched.
   my @copy = @$db_from;
   for (my $i=1; $i < @copy; $i += 2) {
-    for my $db_table ($copy[$i]) {
-      $db_table = "$db_schema.$db_table" unless $db_table =~ /\./;
-    }
+    /\./ or $_ = "$db_schema.$_" for $copy[$i];
   }
+
   return \@copy;
 }
 

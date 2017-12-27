@@ -23,32 +23,6 @@ use Try::Tiny;
 use namespace::clean;
 
 
-#TMP
-sub with_db_schema {
-  my $self = shift;
-
-  ref $self or $self = $self->singleton;
-  my $shallow_copy = { %$self };
-  $shallow_copy->{db_schema} = shift;
-  return bless $shallow_copy, ref $self;
-}
-
-
-
-=begin TODO
-
-  - set_db_schema()        -- set on current schema
-  - db_schema($new_schema) -- returns clone with temporary db_schema
-  - no change of table if already prefixed by schema name
-
-=end TODO
-
-=cut
-
-
-
-
-
 my $spec = {
   dbh                   => {type => OBJECT|ARRAYREF, optional => 1},
   debug                 => {type => OBJECT|SCALAR,   optional => 1},
@@ -190,6 +164,13 @@ foreach my $accessor (@accessors) {
 }
 
 
+sub with_db_schema {
+  my ($self, $db_schema) = @_;
+  ref $self or $self = $self->singleton;
+
+  # return a shallow copy of $self with db_schema set to the given arg
+  return bless { %$self, db_schema => $db_schema}, ref $self;
+}
 
 
 my @default_state_components = qw/dbh debug select_implicitly_for
@@ -207,6 +188,17 @@ sub localize_state {
   return DBIx::DataModel::Schema::_State->new($self, \%saved_state);
 }
 
+
+
+
+sub do_after_commit {
+  my ($self, $coderef) = @_;
+  ref $self or $self = $self->singleton;
+
+  $self->{transaction_dbhs}
+    or croak "do_after_commit() called outside of a transaction";
+  push @{$self->{after_commit_callbacks}}, $coderef;
+}
 
 
 sub do_transaction { 
@@ -280,6 +272,11 @@ sub do_transaction {
         # commit all dbhs and then reset the list of dbhs
         $_->commit foreach @$transaction_dbhs;
         delete $self->{transaction_dbhs};
+
+        # execute the after_commit callbacks
+        my $callbacks = delete $self->{after_commit_callbacks} // [];
+        $_->() foreach @$callbacks;
+
         last RETRY; # transaction successful, get out of the loop
       }
       catch {
@@ -301,6 +298,7 @@ sub do_transaction {
             catch {push @rollback_errs, $_};
         }
         delete $self->{transaction_dbhs};
+        delete $self->{after_commit_callbacks};
         DBIx::DataModel::Schema::_Exception->throw($err, @rollback_errs);
       };
     }

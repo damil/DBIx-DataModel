@@ -32,6 +32,7 @@ my $builder = Module::Build->new(
     recommends => {
         'DBD::Mock'                   => 0,
         'Lingua::EN::Inflect::Phrase' => 0,
+        'List::Categorize'            => 0.04,
     },
     add_to_cleanup      => [ 'DBIx-DataModel-*' ],
     meta_merge => {

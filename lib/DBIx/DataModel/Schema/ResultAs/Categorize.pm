@@ -4,7 +4,7 @@ package DBIx::DataModel::Schema::ResultAs::Categorize;
 use warnings;
 use strict;
 use Carp::Clan              qw[^(DBIx::DataModel::|SQL::Abstract)];
-use List::Categorize::Multi qw/categorize/;
+use List::Categorize 0.04   qw/categorize/;
 
 use parent 'DBIx::DataModel::Schema::ResultAs';
 
@@ -26,7 +26,6 @@ sub get_result {
 
   $statement->execute;
   my $rows = $statement->all;
-  $DB::single =1;
   my %result = categorize {@{$_}{@cols}} @$rows;
   $statement->finish;
 

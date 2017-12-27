@@ -148,6 +148,10 @@ sub bind {
     }
   }
 
+  # THINK : probably we should check here that $args{__schema}, if present,
+  # is the same as $self->schema (same database connection) ... but how
+  # to check for "sameness" ?
+
   return $self;
 }
 

@@ -8,7 +8,7 @@ use warnings;
 use strict;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
-our $VERSION = '2.46';
+our $VERSION = '2.47';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility

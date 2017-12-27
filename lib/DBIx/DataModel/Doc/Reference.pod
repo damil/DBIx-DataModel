@@ -1097,6 +1097,52 @@ C<< -result_as => 'subquery' >> (because the FOR clause in an
 SQL statement only makes sense at the top level, not in a subquery).
 
 
+=head3 db_schema()
+
+  $schema->db_schema($string);      # set
+  my $string = $schema->db_schema;  # get
+
+Sets or retrieves a string to be used as I<database schema name>.
+If non-empty, that string will be prepended to table names in
+the generated SQL statements. This may be useful  in situations
+where the database connexion has access to several schemata of similar structure.
+Suppose for example that there is a DEV schema similar to the
+production schema; then the following code 
+
+  $schema->db_schema('DEV');
+  my $rows = $schema->join(qw/Activity employee/)->select(...)
+  $schema->db_schema(undef);
+
+will generate
+
+  SELECT ... FROM DEV.Activity INNER JOIN DEV.Employee ...
+
+instead of 
+
+  SELECT ... FROM Activity INNER JOIN Employee ...
+
+Technically, the alteration of table names is performed by
+the L</db_from()> method.
+
+Setting the C<db_schema> will remain into effect until the next call
+to that method with a different string.
+
+For a I<temporary> change of database schema,
+see method L<with_db_schema()> below.
+
+
+=head3 with_db_schema()
+
+  $rows = $schema->with_db_schema($string)->table($table_name)->select(...);
+  $rows = $schema->with_db_schema($string)->join(qw/Table path1 ../)->...;
+
+This method returns a I<copy> of the current schema, with the
+C<db_schema> attribute set to $string. The original Perl C<$schema> is left
+untouched. This is useful for a I<temporary> switch of database
+schema, as opposed to the C<db_schema()> method above that performs a
+permanent change. 
+
+
 =head3 localize_state()
 
   {
@@ -1204,7 +1250,7 @@ the meta-schema navigation method L</Meta::Schema::join()>, described
 at the end of this document, which is just an accessor method.
 
 Besides, a derivative of the present method is defined 
-in L</Table::join()>.
+in L</Source::join()>.
 
 
 =head3 Methods of connected sources
@@ -2189,6 +2235,19 @@ If the optional argument C<$with_recursion> is true, then
 C<auto_expand> is recursively called on the expanded objects.
 
 
+=head3 db_from()
+
+This is the internal method used by C<select()>, C<insert()>,
+C<update()>, etc. for generating the datasource specification
+passed L<SQL::Abstract::More> call (for example the C<-from>
+argument in a call to C<select()>).
+
+The basic algorithm is in L</Meta::Source::db_from()>; table
+names coming from that method may then be prepended with a
+I<database schema name>, if C<< $self->schema->db_schema >>
+is non-empy. This is how temporary or permanent switches of
+database schema are implemented.
+
 
 =head3 apply_column_handler()
 
@@ -2261,31 +2320,6 @@ The C<TO_JSON> method merely copies the object hash into a plain hash, and
 removes the C<__schema> slot.
 
 
-
-
-
-
-=head2 Table::join()
-
-
-Calls L</"ConnectedSource::join()"> to create a statement, and
-immediately binds it to the current object. So for example if 
-C<< $emp->{emp_id} == 987 >>, then
-
-  $emp->join(qw/activities department/)
-      ->select(-where => {d_end => undef})
-
-will generate
-
-  SELECT * FROM Activity INNER JOIN Department 
-                         ON Activity.dpt_id = Department.dpt_id
-           WHERE emp_id = 987 
-             AND d_end IS NULL
-
-Observe that the C<WHERE> clause contains a combination of
-criteria, coming on one hand from the initial C<$emp> object, 
-and on the other hand from the regular C<-where> clause within the 
-C<select()>.
 
 
 
@@ -2544,26 +2578,36 @@ When called in scalar context and the primary key has only one column,
 returns that column (so you can call C<< my $k = $obj->primary_key >>).
 
 
-=head3 ConnectedSource::join()
+
+=head3 Source::join()
 
   my $join_stmt = $source->join(qw/path1 path2 .../);
   $join_stmt->prepare();
 
-Returns a statement that will select a collection of data rows from
-tables associated with the current meta-source, performing the
-appropriate joins.  Internally this is implemented throught the
-C</define_join()> method, with an additional C<-where> criteria to
-constrain on the primary key(s) of the meta-source.  That statement
-cannot be executed yet, because the values of the primary key are not
-known until we have an row of that source; but the statement can
-already be L<prepare|/prepare()>d.  Later on, we can
-L<execute|/execute()> the statement by binding it to an instance of
-the C<$connected_source> :
+As a class method, this returns a statement that will select a
+collection of data rows from tables associated with the current
+meta-source, performing the appropriate joins.  Internally this is
+implemented throught the C</define_join()> method, with an additional
+C<-where> criteria to constrain on the primary key(s) of the
+meta-source.  That statement cannot be executed yet, because the
+values of the primary key are not known until we have an row of that
+source; but the statement can already be L<prepare|/prepare()>d.
+Later on, we can L<bind|/bind()> the statement
+to an instance of the C<$source>, and then 
+L<execute|/execute()> it :
+
+   my $obj          = $connected_source->fetch(...);
+   $join_stmt->bind($obj);
+   $join_stmt->execute();
+   my $related_rows = $join_stmt->all;
+
+Both operations can even be performed in one single line, because
+arguments to C<execute()> are passed to the C<bind()> method : 
 
    my $obj          = $connected_source->fetch(...);
    my $related_rows = $join_stmt->execute($obj)->all;
 
-This is especially useful for loop efficiency :
+Such prepared statements are especially useful for loop efficiency :
 
   my $join_stmt = $connected_source->join(qw/path1 path2 .../);
   $join_stmt->prepare();
@@ -2574,16 +2618,25 @@ This is especially useful for loop efficiency :
   } 
 
 
+When used as an instance method, C<join()> calls the class method
+to create a statement and immediately binds it to the current object.
+So for example if 
+C<< $emp->{emp_id} == 987 >>, then
 
+  $emp->join(qw/activities department/)
+      ->select(-where => {d_end => undef})
 
+will generate
 
+  SELECT * FROM Activity INNER JOIN Department 
+                         ON Activity.dpt_id = Department.dpt_id
+           WHERE emp_id = 987 
+             AND d_end IS NULL
 
-
-
-
-
-
-
+Observe that the C<WHERE> clause contains a combination of
+criteria, coming on one hand from the initial C<$emp> object, 
+and on the other hand from the regular C<-where> clause within the 
+C<select()>.
 
 
 
@@ -2936,12 +2989,17 @@ values are instances of L<DBIx::DataModel::Meta::Path>.
 If a C<$path_name> is supplied, returns the corresponding 
 metapath object.
 
-=head3 db_from()
+=head3 Meta::Source::db_from()
 
-Returns what will be injected as
-C<-from> argument into the 
-L<SQL::Abstract::More/select> call.
+Returns what will be injected as C<-from> argument into the 
+L<SQL::Abstract::More/select> call. For a C<Table>, this is
+just the table name; for a C<Join>, it is the collection of
+joined tables together with the join conditions on columns.
 
+The C<db_from()> method of I<sources> (as opposed to the
+present I<meta-source> method) will reuse this data, possibly
+with the addition of a database schema name in front of table
+names; see L</db_from()>.
 
 =head3 where()
 

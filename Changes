@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+  - extensible results : subclasses in DBIDM::Schema::ResultAs namespace
+  - 
+
+
 v2.46 02.06.2015
   - let SQL::Abstract quote identifiers in ON conditions (Sergiy Zuban++)
   - fix some edge cases for $statement->row_count() (Sergiy Zuban++)
