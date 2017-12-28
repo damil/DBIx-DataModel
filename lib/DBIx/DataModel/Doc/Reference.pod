@@ -1443,7 +1443,6 @@ Proxy for C<< $self->source->metadm >>.
 Proxy for C<< $self->source->schema >>.
 
 
-
 =head2 Data selection
 
 =head3 select()
@@ -2554,8 +2553,6 @@ Another exception is when the value is of shape
 C<< [$orig_value, \%datataype] >>, which is interpreted as a 
 value together with an SQL datatype; again this is 
 passed to the C<SQL::Abstract::More> layer.
-
-
 
 
 

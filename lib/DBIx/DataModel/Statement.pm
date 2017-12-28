@@ -105,8 +105,8 @@ sub reset {
 sub sql {
   my ($self) = @_;
 
-  $self->{status} >= SQLIZED
-    or croak "can't call sql() when in status $self->{status}";
+  $self->status >= SQLIZED
+    or croak "can't call sql() when in status ". $self->status;
 
   return wantarray ? ($self->{sql}, @{$self->{bound_params}})
                    : $self->{sql};
@@ -138,7 +138,7 @@ sub bind {
 
   # do bind (different behaviour according to status)
   my %args = @args;
-  if ($self->{status} < SQLIZED) {
+  if ($self->status < SQLIZED) {
     while (my ($k, $v) = each %args) {
       $self->{pre_bound_params}{$k} = $v;
     }
@@ -162,8 +162,8 @@ sub bind {
 sub refine {
   my ($self, %more_args) = @_;
 
-  $self->{status} <= REFINED
-    or croak "can't refine() when in status $self->{status}";
+  $self->status <= REFINED
+    or croak "can't refine() when in status " . $self->status;
   $self->{status} = REFINED;
 
   my $args = $self->{args};
@@ -247,8 +247,8 @@ sub refine {
 sub sqlize {
   my ($self, @args) = @_;
 
-  $self->{status} < SQLIZED
-    or croak "can't sqlize() when in status $self->{status}";
+  $self->status < SQLIZED
+    or croak "can't sqlize() when in status ". $self->status;
 
   # merge new args into $self->{args}
   $self->refine(@args) if @args;
@@ -348,10 +348,10 @@ sub prepare {
 
   my $meta_source = $self->meta_source;
 
-  $self->sqlize(@args) if @args or $self->{status} < SQLIZED;
+  $self->sqlize(@args) if @args or $self->status < SQLIZED;
 
-  $self->{status} == SQLIZED
-    or croak "can't prepare() when in status $self->{status}";
+  $self->status == SQLIZED
+    or croak "can't prepare() when in status " . $self->status;
 
   # log the statement and bind values
   $self->schema->_debug("PREPARE $self->{sql} / @{$self->{bound_params}}");
@@ -375,7 +375,7 @@ sub prepare {
 sub sth {
   my ($self) = @_;
 
-  $self->prepare              if $self->{status} < PREPARED;
+  $self->prepare              if $self->status < PREPARED;
   return $self->{sth};
 }
 
@@ -385,7 +385,7 @@ sub execute {
   my ($self, @bind_args) = @_;
 
   # if not prepared yet, prepare it
-  $self->prepare              if $self->{status} < PREPARED;
+  $self->prepare              if $self->status < PREPARED;
 
   # TODO: DON'T REMEMBER why the line below was here. Keep it around for a while ...
   push @bind_args, offset => $self->{offset}  if $self->{offset};
@@ -426,6 +426,33 @@ sub execute {
 }
 
 
+
+
+sub _forbid_callbacks {
+  my ($self, $subclass) = @_;
+
+  my $args = $self->{args} || {}; # all combined args
+  my $callbacks = CORE::join ", ", grep {exists $args->{$_}} 
+                                        qw/-pre_exec -post_exec -post_bless/;
+  if ($callbacks) {
+    $subclass =~ s/^.*:://;
+    croak "$callbacks incompatible with -result_as=>'$subclass'";
+  }
+}
+
+
+sub arg {
+  my ($self, $arg_name) = @_;
+
+  my $args = $self->{args} || {};
+  return $args->{$arg_name};
+}
+
+
+
+
+
+
 my %cache_result_class;
 
 sub select {
@@ -433,75 +460,19 @@ sub select {
 
   $self->refine(@_) if @_;
 
-  my $args = $self->{args}; # all combined args
-
-  my $callbacks = CORE::join ", ", grep {exists $args->{$_}} 
-                                        qw/-pre_exec -post_exec -post_bless/;
+  my $arg_result_as = $self->arg(-result_as);
 
  SWITCH:
-  my ($result_as, @subclass_args) 
-    = does($args->{-result_as}, 'ARRAY') ? @{$args->{-result_as}}
-                                         : ($args->{-result_as} || "rows");
+  my ($result_as, @subclass_args)
+    = does($arg_result_as, 'ARRAY') ? @$arg_result_as
+                                    : ($arg_result_as || "rows");
+
+  # historically,some kinds of results accepted various aliases
+  $result_as =~ s/^flat(?:_array(?:ref)?)?$/flat/;
+  $result_as =~ s/^arrayref$/rows/;
+  $result_as =~ s/^fast-statement$/fast_statement/;
+
   for ($result_as) {
-
-    # CASE statement : the DBIx::DataModel::Statement object 
-    /^statement$/i and do {
-        delete $self->{args}{-result_as};
-        return $self;
-      };
-
-    # CASE sql : just return the SQL and bind values
-    /^sql$/i        and do {
-      not $callbacks 
-        or croak "$callbacks incompatible with -result_as=>'sql'";
-      $self->sqlize if $self->{status} < SQLIZED;
-      return $self->sql;
-    };
-
-    # CASE subquery : return a ref to an arrayref with SQL and bind values
-    /^subquery$/i        and do {
-      not $callbacks 
-        or croak "$callbacks incompatible with -result_as=>'subquery'";
-      $self->sqlize if $self->{status} < SQLIZED;
-      my ($sql, @bind) = $self->sql;
-      return \ ["($sql)", @bind];
-    };
-
-    # CASE sth : return the DBI statement handle
-    /^sth$/i        and do {
-      $self->execute;
-      not $args->{-post_bless}
-        or croak "-post_bless incompatible with -result_as=>'sth'";
-      return $self->sth;
-    };
-
-    # CASE rows : all data rows (this is the default)
-    /^(rows|arrayref)$/i  and return $self->all;
-
-    # CASE firstrow : just the first row
-    /^firstrow$/i   and return $self->_next_and_finish;
-
-    # CASE fast_statement : creates a reusable row
-    /^fast[-_]statement$/i and do {
-        $self->execute;
-        $self->make_fast;
-        return $self;
-      };
-
-    # CASE flat_arrayref : flattened columns from each row
-    /^flat(?:_array(?:ref)?)?$/ and do {
-      $self->execute;
-      $self->make_fast;
-      my @vals;
-      my @headers = $self->headers;
-      while (my $row = $self->next) {
-        push @vals, @{$row}{@headers};
-      }
-      $self->finish;
-      return \@vals;
-    };
-
-    # OTHERWISE : try to load a result class dynamically
     my $subclass = $cache_result_class{$_}
                //= $self->_find_result_class($_)
       or croak "don't know how to perform -result_as => $_"; 
@@ -515,7 +486,7 @@ sub row_count {
   my ($self) = @_;
 
   if (! exists $self->{row_count}) {
-    $self->sqlize if $self->{status} < SQLIZED;
+    $self->sqlize if $self->status < SQLIZED;
     my ($sql, @bind) = $self->sql;
 
     # get syntax used for LIMIT clauses ...
@@ -572,7 +543,7 @@ sub row_num {
 sub next {
   my ($self, $n_rows) = @_;
 
-  $self->execute if $self->{status} < EXECUTED;
+  $self->execute if $self->status < EXECUTED;
 
   my $sth      = $self->sth            or croak "absent sth in statement";
   my $callback = $self->{row_callback} or croak "absent callback in statement";
@@ -668,7 +639,7 @@ sub bless_from_DB {
 sub headers {
   my $self = shift;
 
-  $self->{status} == EXECUTED
+  $self->status == EXECUTED
     or $self->execute(@_);
 
   my $hash_key_name = $self->sth->{FetchHashKeyName} || 'NAME';
@@ -685,8 +656,8 @@ sub finish {
 sub make_fast {
   my ($self) = @_;
 
-  $self->{status} == EXECUTED
-    or croak "cannot make_fast() when in state $self->{status}";
+  $self->status == EXECUTED
+    or croak "cannot make_fast() when in state " . $self->status;
 
   # create a reusable hash and bind_columns to it (see L<DBI/bind_columns>)
   my %row;

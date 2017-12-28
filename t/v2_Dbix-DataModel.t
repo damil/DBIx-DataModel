@@ -402,7 +402,7 @@ SKIP: {
 
   $dbh->{mock_clear_history} = 1;
   $dbh->{mock_add_resultset} = [ [qw/emp_id act_id/],
-                                 [qw/1 1/], 
+                                 [qw/1 1/],
                                  [qw/2 2/],
                                  [qw/1 1bis/],
                                 ];
