@@ -80,6 +80,7 @@ sub new {
 # accessors
 define_readonly_accessors( __PACKAGE__, qw/source status/);
 
+# proxy methods
 sub meta_source {shift->{source}->metadm}
 sub schema      {shift->{source}->schema}
 
@@ -94,6 +95,13 @@ sub reset {
   return $self;
 }
 
+
+sub arg {
+  my ($self, $arg_name) = @_;
+
+  my $args = $self->{args} || {};
+  return $args->{$arg_name};
+}
 
 
 
@@ -153,7 +161,7 @@ sub bind {
 
   # THINK : probably we should check here that $args{__schema}, if present,
   # is the same as $self->schema (same database connection) ... but how
-  # to check for "sameness" ?
+  # to check for "sameness" on database handles ?
 
   return $self;
 }
@@ -222,7 +230,7 @@ sub refine {
       };
 
 
-      # other args are just stored, will be used later
+      # other args are just stored, they will be used later
       /^-( order_by       | group_by  | having    | for
          | union(?:_all)? | intersect | except    | minus
          | result_as      | post_SQL  | pre_exec  | post_exec  | post_bless
@@ -231,6 +239,8 @@ sub refine {
          | _left_cols     | where_on
          )$/x
          and do {$args->{$k} = $v; last SWITCH};
+
+      # TODO : this hard-coded list of args should be more abstract
 
       # otherwise
       croak "invalid arg : $k";
@@ -424,30 +434,6 @@ sub execute {
   $self->{status} = EXECUTED;
   return $self;
 }
-
-
-
-
-sub _forbid_callbacks {
-  my ($self, $subclass) = @_;
-
-  my $args = $self->{args} || {}; # all combined args
-  my $callbacks = CORE::join ", ", grep {exists $args->{$_}} 
-                                        qw/-pre_exec -post_exec -post_bless/;
-  if ($callbacks) {
-    $subclass =~ s/^.*:://;
-    croak "$callbacks incompatible with -result_as=>'$subclass'";
-  }
-}
-
-
-sub arg {
-  my ($self, $arg_name) = @_;
-
-  my $args = $self->{args} || {};
-  return $args->{$arg_name};
-}
-
 
 
 
@@ -670,6 +656,17 @@ sub make_fast {
 # PRIVATE METHODS IN RELATION WITH SELECT()
 #----------------------------------------------------------------------
 
+sub _forbid_callbacks {
+  my ($self, $subclass) = @_;
+
+  my $callbacks = CORE::join ", ", grep {$self->args($_)} 
+                                        qw/-pre_exec -post_exec -post_bless/;
+  if ($callbacks) {
+    $subclass =~ s/^.*:://;
+    croak "$callbacks incompatible with -result_as=>'$subclass'";
+  }
+}
+
 
 
 sub _next_and_finish {
@@ -776,7 +773,6 @@ L<DESIGN|DBIx::DataModel::Doc::Design/"STATEMENT OBJECTS"> section of
 the manual (purpose, lifecycle, etc.).
 
 =head1 METHODS
-
 
 Methods for statements are described in the 
 L<Reference manual|DBIx::DataModel::Doc::Reference/"STATEMENTS">.
