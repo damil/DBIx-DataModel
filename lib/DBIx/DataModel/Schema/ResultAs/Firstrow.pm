@@ -15,3 +15,10 @@ sub get_result {
 1;
 
 
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::Firstrow - first data row
+
+=head1 DESCRIPTION
+
+Returns the first data row and finishes the statement.

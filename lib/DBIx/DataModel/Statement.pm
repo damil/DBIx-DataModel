@@ -446,22 +446,21 @@ sub select {
 
   $self->refine(@_) if @_;
 
-  my $arg_result_as = $self->arg(-result_as);
+  my $arg_result_as = $self->arg(-result_as) || 'rows';
 
  SWITCH:
   my ($result_as, @subclass_args)
-    = does($arg_result_as, 'ARRAY') ? @$arg_result_as
-                                    : ($arg_result_as || "rows");
+    = does($arg_result_as, 'ARRAY') ? @$arg_result_as : ($arg_result_as);
 
   # historically,some kinds of results accepted various aliases
-  $result_as =~ s/^flat(?:_array(?:ref)?)?$/flat/;
+  $result_as =~ s/^flat(?:_array|)$/flat_arrayref/;
   $result_as =~ s/^arrayref$/rows/;
   $result_as =~ s/^fast-statement$/fast_statement/;
 
   for ($result_as) {
     my $subclass = $cache_result_class{$_}
                //= $self->_find_result_class($_)
-      or croak "don't know how to perform -result_as => $_"; 
+      or croak "don't know how to perform -result_as => '$_'"; 
     my $result_maker = $subclass->new(@subclass_args);
     return $result_maker->get_result($self);
   }
@@ -659,7 +658,7 @@ sub make_fast {
 sub _forbid_callbacks {
   my ($self, $subclass) = @_;
 
-  my $callbacks = CORE::join ", ", grep {$self->args($_)} 
+  my $callbacks = CORE::join ", ", grep {$self->arg($_)} 
                                         qw/-pre_exec -post_exec -post_bless/;
   if ($callbacks) {
     $subclass =~ s/^.*:://;

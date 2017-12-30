@@ -47,3 +47,18 @@ sub get_result {
 1;
 
 
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::File_tabular - write rows in a tabular file
+
+=head1 SYNOPSIS
+
+  $source->select(..., -result_as => [file_tabular => $file_name, \%options]);
+
+=head1 DESCRIPTION
+
+Writes all rows into a flat file through the L<File::Tabular> module.
+
+

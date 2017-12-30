@@ -18,3 +18,14 @@ sub get_result {
 1;
 
 
+
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::Statement - returns the statement
+
+=head1 DESCRIPTION
+
+Merely returns the L<DBIx::DataModel::Statement> object.
+

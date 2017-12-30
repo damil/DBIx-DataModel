@@ -18,4 +18,23 @@ sub get_result {
 
 1;
 
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::Subquery - SQL and bind values in a form suitable for a subquery
+
+=head1 DESCRIPTION
+
+Returns a ref to an arrayref containing C<< \["($sql)", @bind] >>.
+This is meant to be passed to a second query through the C<-in> or
+C<-not_in> operator of L<SQL::Abstract|SQL::Abstract>, as in :
+
+  my $subquery = $source1->select(..., -result_as => 'subquery');
+  my $rows     = $source2->select(
+      -columns => ...,
+      -where   => {foo => 123, bar => {-not_in => $subquery}}
+   );
+
+
 

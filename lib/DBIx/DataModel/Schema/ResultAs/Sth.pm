@@ -17,4 +17,18 @@ sub get_result {
 
 1;
 
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::Sth - DBI statement handle
+
+=head1 DESCRIPTION
+
+Returns the underlying L<DBI> statement handle, in an executed state.
+
+Then it is up to the caller to retrieve data rows using the DBI API.
+If needed, these rows can be later blessed into appropriate objects
+through L<bless_from_DB()|/"bless_from_DB">.
+
 

@@ -46,7 +46,9 @@ sub get_result {
 
   # print data rows
   while (my $row = $statement->next) {
-    print $fh @{$row}{@headers};
+    my @data = @{$row}{@headers}; 
+    s/[\t\n]+/ /g foreach @data;
+    print $fh @data;
   }
 
   # cleanup and return
@@ -57,4 +59,21 @@ sub get_result {
 
 1;
 
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::Tsv - writes into a tab-separated file
+
+=head1 SYNOPSIS
+
+  $source->select(..., $result_as => [tsv => $filename]);
+
+=head1 DESCRIPTION
+
+Writes all resulting rows into a tab-separated flat file.
+Tab or newline characters within the data will be converted to spaces.
+If you need more control over such conversions, use
+L<DBIx::DataModel::Schema::ResultAs::File_tabular> where you
+can specify options for L<File::Tabular>.
 

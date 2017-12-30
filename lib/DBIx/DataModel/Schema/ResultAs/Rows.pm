@@ -14,4 +14,13 @@ sub get_result {
 
 1;
 
+__END__
+
+=head1 NAME
+
+DBIx::DataModel::Schema::ResultAs::Rows - all data rows
+
+=head1 DESCRIPTION
+
+Returns an arrayref of all data rows.
 
