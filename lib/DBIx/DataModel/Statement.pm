@@ -730,7 +730,7 @@ sub _compute_from_DB_handlers {
 
 
 sub _find_result_class {
-  my ($self, $name) = @_;  
+  my ($self, $name) = @_;
 
   $name            = ucfirst $name;
   my $schema       = $self->schema;

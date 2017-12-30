@@ -5,7 +5,7 @@ use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors/;
 
-use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT/;
+use Params::Validate qw/validate_with SCALAR ARRAYREF HASHREF OBJECT/;
 use Scalar::Util     qw/weaken/;
 use List::MoreUtils  qw/any/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
@@ -39,7 +39,11 @@ sub _new_meta_source { # called by new() in Meta::Table and Meta::Join
   my %spec = (%common_arg_spec, %$more_arg_spec);
 
   # validate the parameters
-  my $self = validate(@_, \%spec);
+  my $self = validate_with(
+    params      => \@_,
+    spec        => \%spec,
+    allow_extra => 0,
+   );
 
   # force into arrayref if accepts ARRAYREF but given as scalar
   for my $attr (grep {($spec{$_}{type} || 0) & ARRAYREF} keys %spec) {

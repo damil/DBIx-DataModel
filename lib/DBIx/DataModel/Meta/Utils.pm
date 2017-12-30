@@ -7,8 +7,8 @@ use warnings;
 
 use Carp;
 use Module::Load               qw/load/;
-use Params::Validate           qw/validate SCALAR ARRAYREF CODEREF
-                                            BOOLEAN OBJECT HASHREF/;
+use Params::Validate           qw/validate_with SCALAR ARRAYREF CODEREF
+                                                BOOLEAN OBJECT HASHREF/;
 use List::MoreUtils            qw/any/;
 use mro                        qw/c3/;
 use DBIx::DataModel;
@@ -39,11 +39,14 @@ sub define_class {
   &_check_call_as_class_method;
 
   # check parameters
-  my %params = validate(@_, {
+  my %params = validate_with(
+    params => \@_,
+    spec   => {
       name    => {type => SCALAR  },
       isa     => {type => ARRAYREF},
       metadm  => {isa  => 'DBIx::DataModel::Meta'},
-    }
+    },
+    allow_extra => 0,
   );
 
   # deactivate strict refs because we'll be playing with symbol tables
@@ -83,12 +86,15 @@ sub define_method {
 
   
   # check parameters
-  my %params = validate(@_, {
+  my %params = validate_with(
+    params => \@_,
+    spec   => {
       class          => {type => SCALAR               },
       name           => {type => SCALAR               },
       body           => {type => CODEREF              },
       check_override => {type => BOOLEAN, default => 1},
-    }
+    },
+    allow_extra => 0,
   );
 
   # fully qualified name

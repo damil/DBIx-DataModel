@@ -7,8 +7,8 @@ use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors/;
 use DBIx::DataModel::Source::Join;
 use DBIx::DataModel::Meta::Source::Join;
 
-use Params::Validate     qw/validate SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
-                                     OBJECT HASHREF/;
+use Params::Validate     qw/validate_with SCALAR ARRAYREF CODEREF UNDEF BOOLEAN
+                                          OBJECT HASHREF/;
 use List::MoreUtils      qw/any firstval lastval uniq/;
 use Module::Load         qw/load/;
 use Carp::Clan           qw[^(DBIx::DataModel::|SQL::Abstract)];
@@ -74,7 +74,11 @@ sub new {
   my $class = shift;
 
   # check parameters
-  my $self = validate(@_, $spec);
+  my $self = validate_with(
+    params      => \@_,
+    spec        => $spec,
+    allow_extra => 0,
+   );
 
   # canonical representations (arrayref) for some attributes
   for my $attr (qw/isa table_parent parent join_parent/) {

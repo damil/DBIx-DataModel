@@ -12,8 +12,8 @@ use DBIx::DataModel::Source::Table;
 
 use Scalar::Util     qw/blessed/;
 use Module::Load     qw/load/;
-use Params::Validate qw/validate SCALAR ARRAYREF CODEREF UNDEF 
-                                 OBJECT BOOLEAN/;
+use Params::Validate qw/validate_with SCALAR ARRAYREF CODEREF UNDEF 
+                                      OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 
@@ -45,7 +45,11 @@ sub new {
     or croak "$class is already used in single-schema mode, can't call new()";
 
   # validate params
-  my %params = validate(@_, $spec);
+  my %params = validate_with(
+    params      => \@_,
+    spec        => $spec,
+    allow_extra => 0,
+   );
 
   # instantiate and call 'setter' methods for %params
   my $self = bless {}, $class;

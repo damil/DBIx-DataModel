@@ -6,7 +6,7 @@ use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors does/;
 
 use Scalar::Util         qw/weaken/;
-use Params::Validate     qw/validate OBJECT SCALAR HASHREF/;
+use Params::Validate     qw/validate_with OBJECT SCALAR HASHREF/;
 use Carp::Clan           qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;
 
@@ -16,11 +16,15 @@ sub new {
   my $class = shift;
 
   # parse arguments and create $self
-  my $self = validate(@_, {
-    schema   => {type => OBJECT, isa  => "DBIx::DataModel::Meta::Schema"},
-    name     => {type => SCALAR},
-    handlers => {type => HASHREF},
-  });
+  my $self = validate_with(
+    params      => \@_,
+    spec        => {
+      schema   => {type => OBJECT, isa  => "DBIx::DataModel::Meta::Schema"},
+      name     => {type => SCALAR},
+      handlers => {type => HASHREF},
+    },
+    allow_extra => 0,
+   );
 
   while (my ($name, $body) = each %{$self->{handlers}}) {
     does($body, 'CODE')

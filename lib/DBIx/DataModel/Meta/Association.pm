@@ -6,7 +6,7 @@ use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_method define_readonly_accessors/;
 
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
-use Params::Validate qw/validate SCALAR ARRAYREF HASHREF OBJECT UNDEF/;
+use Params::Validate qw/validate_with SCALAR ARRAYREF HASHREF OBJECT UNDEF/;
 use List::MoreUtils  qw/pairwise/;
 use Scalar::Util     qw/weaken dualvar looks_like_number/;
 use Module::Load     qw/load/;
@@ -40,13 +40,21 @@ my $association_end_spec = {
 sub new {
   my $class = shift;
 
-  my $self = validate(@_, $association_spec);
+  my $self = validate_with(
+    params      => \@_,
+    spec        => $association_spec,
+    allow_extra => 0,
+   );
 
   # work on both association ends (A and  B)
   for my $letter (qw/A B/) {
     # parse parameters for this association end
     my @letter_params = %{$self->{$letter}};
-    my $assoc_end = validate(@letter_params, $association_end_spec);
+    my $assoc_end = validate_with(
+      params      => \@letter_params,
+      spec        => $association_end_spec,
+      allow_extra => 0,
+     );
 
     croak "join_cols is present but empty"
       if $assoc_end->{join_cols} && !@{$assoc_end->{join_cols}};

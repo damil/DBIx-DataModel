@@ -6,7 +6,7 @@ use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors/;
 
 use Scalar::Util                 qw/looks_like_number weaken/;
-use Params::Validate             qw/validate SCALAR HASHREF ARRAYREF OBJECT/;
+use Params::Validate             qw/validate_with SCALAR HASHREF ARRAYREF OBJECT/;
 use Carp::Clan                   qw[^(DBIx::DataModel::|SQL::Abstract)];
 use namespace::clean;
 
@@ -27,7 +27,11 @@ sub new {
   my $class = shift;
 
   # parse arguments and create $self
-  my $self = validate(@_, $path_spec);
+  my $self = validate_with(
+    params      => \@_,
+    spec        => $path_spec,
+    allow_extra => 0,
+   );
 
   my $path = $self->{name};
   weaken $self->{$_} for qw/from to association/;
