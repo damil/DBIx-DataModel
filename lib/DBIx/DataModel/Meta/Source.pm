@@ -117,11 +117,18 @@ sub _consolidate_hash {
   my ($self, $field, $optional_hash_key) = @_;
   my %hash;
 
-  foreach my $meta_source ($self, $self->ancestors, $self->{schema}) {
+  my @meta_sources = ($self, $self->ancestors, $self->{schema});
+
+  foreach my $meta_source (reverse @meta_sources) {
     while (my ($name, $val) = each %{$meta_source->{$field} || {}}) {
-      $hash{$name} ||= $val;
+      $val ? $hash{$name} = $val : delete $hash{$name};
     }
   }
+  # foreach my $meta_source ($self, $self->ancestors, $self->{schema}) {
+  #   while (my ($name, $val) = each %{$meta_source->{$field} || {}}) {
+  #     $hash{$name} ||= $val;
+  #   }
+  # }
   return $optional_hash_key ? $hash{$optional_hash_key} : %hash;
 }
 
