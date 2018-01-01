@@ -425,9 +425,6 @@ my $update_spec = {
 sub _parse_update_args  { # returns ($schema, $to_set, $where)
   my $self = shift;
 
-  # class of the invocant
-  my $class  = ref $self || $self;
-
   my ($to_set, $where);
 
   if ($self->_is_called_as_class_method) {
@@ -478,6 +475,15 @@ sub _parse_update_args  { # returns ($schema, $to_set, $where)
     }
   }
 
+  return ($to_set, $where);
+}
+
+
+sub _apply_handlers_for_update {
+  my ($self, $to_set, $where) = @_;
+
+  # class of the invocant
+  my $class  = ref $self || $self;
 
   # apply no_update and auto_update
   my %no_update_column = $self->metadm->no_update_column;
@@ -517,9 +523,9 @@ sub _parse_update_args  { # returns ($schema, $to_set, $where)
     delete @{$to_set}{@sub_refs};
   }
 
-  # TODO : recursive update (or insert)
-
-  return ($schema, $to_set, $where);
+  # THINK : instead of removing references to foreign objects, one could
+  # maybe perform recursive updates (including insert/update/delete of child
+  # objects)
 }
 
 
@@ -528,10 +534,13 @@ sub _parse_update_args  { # returns ($schema, $to_set, $where)
 sub update  {
   my $self = shift;
 
-  my ($schema, $to_set, $where) = $self->_parse_update_args(@_);
+  # prepare datastructures for generating the SQL
+  my ($to_set, $where) = $self->_parse_update_args(@_);
+  $self->_apply_handlers_for_update($to_set, $where);
 
   # database request
-  my $sqla = $schema->sql_abstract;
+  my $schema       = $self->schema;
+  my $sqla         = $schema->sql_abstract;
   my ($sql, @bind) = $sqla->update(
     -table => $self->db_from,
     -set   => $to_set,
