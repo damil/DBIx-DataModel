@@ -10,7 +10,7 @@ my $builder = Module::Build->new(
     dist_version_from   => 'lib/DBIx/DataModel.pm',
     requires => {
         'perl'                 => 5.008,
-        'Test::More'           => 0,
+        'version'              => 0,
 	'Carp::Clan'           => 0,
 	'DBI'                  => 0,
 	'SQL::Abstract::More'  => 1.31,
@@ -18,8 +18,6 @@ my $builder = Module::Build->new(
         'Acme::Damn'           => 0,
         'Scalar::Util'         => 1.07,
 	'Storable'             => 0,
-
-        # new dependencies in 2.0 
         'namespace::clean'     => 0,
         'MRO::Compat'          => 0,
         'Module::Load'         => 0,

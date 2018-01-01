@@ -6,9 +6,10 @@ package DBIx::DataModel;
 use 5.008;
 use warnings;
 use strict;
+use version;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
-our $VERSION = '2.47';
+our $VERSION = '2.47_01';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
@@ -35,8 +36,10 @@ sub import {
                   || $VERSION;             # undef : means no compatibility
   }
 
-  require DBIx::DataModel::Compatibility::V1 if $COMPATIBILITY < 1.99;
-  require DBIx::DataModel::Compatibility::V0 if $COMPATIBILITY < 1.00;
+  require DBIx::DataModel::Compatibility::V1
+    if version->parse($COMPATIBILITY) < version->parse("1.99");
+  require DBIx::DataModel::Compatibility::V0
+    if version->parse($COMPATIBILITY) < version->parse("1.00");
 }
 
 

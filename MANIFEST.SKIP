@@ -3,6 +3,7 @@
 \bCVS\b
 ,v$
 \B\.svn\b
+^\.git
 
 # Avoid Makemaker generated and utility files.
 \bMakefile$
@@ -22,7 +23,12 @@ Build.bat$
 \.tmp$
 \.old$
 \.bak$
+\.log$
+\.BUG$
 \#$
 \b\.#
 ^MYMETA.yml$
 ^MYMETA\.json$
+
+DBIC_example
+tmp/

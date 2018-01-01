@@ -1482,11 +1482,6 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
 
   - explain how to design families of tables with an intermediate superclass
 
-  - add attribute 'db_schema_name' in Schema->new(). Then one can have
-       my $dev  = Schema->new(dbh => ..., db_schema_name => 'DEV');
-       my $prod = Schema->new(dbh => ..., db_schema_name => 'PROD');
-    and that name is prepended to table names
-
   - doc glossary, introduce the 'path' term
 
   - find a way to rename _singleInsert > _single_insert, without breaking
@@ -1507,17 +1502,10 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
   - think about freeze/thaw in multi-schema mode
   - tune croak() in Statement.pm so that SQL errors are reported 
     from caller's line
-  - add methods $schema->meta_table($name), $schema->meta_join(qw/.../)
   - add method "delete_..." for components of a Composition
-  - -result_as => 'count'
-      .. or should it be select(-columns => [-count => '*'],
-                                -result_as => 'scalar') ??
-
 
   - $obj->join(path1 ...)->select(...) should automatically add
     -result_as => 'firstrow' when all multiplicities are 1. See TODO
     in ConnnectedSources::join
-    
   - check auto_insert / auto_update columns to prevent intersections
 
-  - support for database schemas (i.e. prefix table names with schema names)
