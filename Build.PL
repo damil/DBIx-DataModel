@@ -31,13 +31,16 @@ my $builder = Module::Build->new(
     },
     test_requires => {
         'DBD::Mock'                   => 1.36,
+        'FindBin'                     => 0,
     },
     recommends => {
-
         'Lingua::EN::Inflect::Phrase' => 0,
         'List::Categorize'            => 0.04,
         'File::Tabular'               => 0,
         'Excel::Writer::XLSX'         => 0,
+        'JSON::MaybeXS'               => 0,
+        'Cpanel::JSON::XS'            => 0,
+        'YAML::XS'                    => 0,
     },
     add_to_cleanup      => [ 'DBIx-DataModel-*' ],
     meta_merge => {

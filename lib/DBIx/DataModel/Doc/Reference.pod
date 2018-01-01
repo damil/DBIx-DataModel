@@ -1893,6 +1893,15 @@ Writes all rows into a flat file through the L<File::Tabular> module.
 Writes all rows into an Excel file.
 
 
+=item L<json|DBIx::DataModel::Schema::ResultAs::Json>
+
+Converts all rows to JSON format, using L<JSON::MaybeXS>.
+
+=item L<yaml|DBIx::DataModel::Schema::ResultAs::Yaml>
+
+Converts all rows to YAML format, using L<YAML::XS>.
+
+
 =back
 
 

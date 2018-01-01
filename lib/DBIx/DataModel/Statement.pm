@@ -460,7 +460,7 @@ sub select {
   for ($result_as) {
     my $subclass = $cache_result_class{$_}
                //= $self->_find_result_class($_)
-      or croak "don't know how to perform -result_as => '$_'"; 
+      or croak "didn't find any ResultAs subclass to implement -result_as => '$_'";
     my $result_maker = $subclass->new(@subclass_args);
     return $result_maker->get_result($self);
   }
@@ -730,23 +730,26 @@ sub _compute_from_DB_handlers {
 
 
 sub _find_result_class {
-  my ($self, $name) = @_;
-
-  $name            = ucfirst $name;
+  my $self         = shift;
+  my $name         = ucfirst shift;
   my $schema       = $self->schema;
   my $schema_class = ref $schema || $schema;
 
   # try to find subclass $name within namespace of schema or ancestors
   foreach my $namespace (@{mro::get_linear_isa($schema_class)}) {
-    my $classname = "${namespace}::ResultAs::${name}";
-    my $loaded 
-      = try {load $classname; 1}
-        catch {die $_ if $_ !~ /^Can't locate(?! object method)/};
+    my $class = "${namespace}::ResultAs::${name}";
 
-    return $classname if $loaded;
+    # see if that class is already loaded (by checking for a 'get_result' method)
+    my $is_loaded  = defined &{$class."::get_result"};
+
+    # otherwise, try to load the module
+    $is_loaded ||= try   {load $class; 1}
+                   catch {die $_ if $_ !~ /^Can't locate(?! object method)/};
+
+    return $class if $is_loaded; # true : class is found, exit loop
   }
 
-  return; # false : not found
+  return; # false : class not found
 }
 
 

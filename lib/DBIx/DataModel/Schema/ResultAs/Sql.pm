@@ -3,6 +3,7 @@ package DBIx::DataModel::Schema::ResultAs::Sql;
 #----------------------------------------------------------------------
 use warnings;
 use strict;
+use DBIx::DataModel::Statement;
 
 use parent 'DBIx::DataModel::Schema::ResultAs';
 
