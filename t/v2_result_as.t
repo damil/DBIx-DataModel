@@ -88,6 +88,14 @@ subtest 'categorize'=> sub {
  };
 };
 
+subtest 'count'=> sub {
+  $dbh->{mock_add_resultset} = [ ['N_ROWS'], [3] ];
+  my $result = HR->table('Employee')->select(-result_as => 'count');
+  sqlLike('SELECT COUNT(*) AS N_ROWS FROM T_EMPLOYEE', [], 'sql for count(*)');
+  is $result, 3, 'count';
+};
+
+
 subtest 'fast_statement'=> sub {
   $dbh->{mock_add_resultset} = \@fake_data;
   my $result = HR->table('Employee')->select(-result_as => 'fast_statement');

@@ -1861,6 +1861,12 @@ L<SQL::Abstract|SQL::Abstract>, as in :
    );
 
 
+=item L<count|DBIx::DataModel::Schema::ResultAs::Count>
+
+Refines the statement with C<< -columns => 'COUNT(*) >> and returns the count
+of rows.
+
+
 =item L<categorize|DBIx::DataModel::Schema::ResultAs::Categorize>
 
   my $tree = $source->select(..., $result_as => [categorize => ($key1, $key2)]);
