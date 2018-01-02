@@ -9,7 +9,7 @@ use strict;
 use version;
 use MRO::Compat  (); # don't want to call MRO::Compat::import()
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
-our $VERSION = '2.47_01';
+our $VERSION = '2.47_02';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility

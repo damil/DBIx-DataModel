@@ -25,10 +25,9 @@ Build.bat$
 \.bak$
 \.log$
 \.BUG$
+\.tar\.gz$
 \#$
 \b\.#
 ^MYMETA.yml$
 ^MYMETA\.json$
-
-DBIC_example
 tmp/
