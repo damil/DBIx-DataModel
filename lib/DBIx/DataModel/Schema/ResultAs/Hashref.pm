@@ -4,7 +4,6 @@ package DBIx::DataModel::Schema::ResultAs::Hashref;
 use warnings;
 use strict;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
-use IO::Detect       qw/is_filehandle/;
 
 use parent 'DBIx::DataModel::Schema::ResultAs';
 
