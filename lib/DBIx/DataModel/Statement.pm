@@ -13,7 +13,7 @@ use Clone            qw/clone/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 use Try::Tiny        qw/try catch/;
 use Module::Load     qw/load/;
-use MRO::Compat;
+use mro              qw/c3/;
 
 use DBIx::DataModel;
 use DBIx::DataModel::Meta::Utils qw/define_readonly_accessors does/;
