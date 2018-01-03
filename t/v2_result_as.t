@@ -57,8 +57,8 @@ my @fake_data = ( [qw/emp_id firstname        lastname   /],
 
 
 subtest 'categorize'=> sub {
-  eval "use List::Categorize; 1"
-    or plan skip_all => "List::Categorize not installed";
+  eval "use List::Categorize 0.04; 1"
+    or plan skip_all => "List::Categorize 0.04 not installed";
 
   $dbh->{mock_add_resultset}
     = [@fake_data,

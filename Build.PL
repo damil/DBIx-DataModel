@@ -12,6 +12,7 @@ my $builder = Module::Build->new(
         'perl'                 => 5.008,
         'version'              => 0,
 	'Carp::Clan'           => 0,
+        'Clone'                => 0,
 	'DBI'                  => 0,
 	'SQL::Abstract::More'  => 1.31,
 	'Module::Build'        => 0,
