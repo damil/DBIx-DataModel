@@ -190,6 +190,13 @@ subtest 'subquery'=> sub {
   isa_ok $$result, 'ARRAY', 'subquery: ref to arrayref';
 };
 
+subtest 'table'=> sub {
+  $dbh->{mock_add_resultset} = \@fake_data;
+  my $result = HR->table('Employee')->select(-result_as => 'table');
+  is_deeply $result, \@fake_data, 'table';
+};
+
+
 subtest 'tsv'=> sub {
   open my $fh, ">", \my $in_memory;
 
@@ -202,8 +209,6 @@ subtest 'tsv'=> sub {
   my $expected = join "\n", (map {join "\t", @$_} @fake_data), "";
   is $in_memory, $expected, "Tsv file OK";
 };
-
-
 
 
 subtest 'xlsx'=> sub {

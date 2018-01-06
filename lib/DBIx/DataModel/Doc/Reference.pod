@@ -1878,6 +1878,14 @@ need not be unique : each leaf of the tree will contain I<lists>
 of rows matching those categories, while the C<hashref> result kind
 only keeps the I<last> row matching the given keys.
 
+=item L<table|DBIx::DataModel::Schema::ResultAs::Table>
+
+  $source->select(..., $result_as => 'table');
+
+Returns a "table", i.e. an arrayref where the first row contains
+an arrayref of headers, and the following rows contain arrayrefs of
+data values.
+
 =item L<tsv|DBIx::DataModel::Schema::ResultAs::Tsv>
 
   $source->select(..., $result_as => [tsv => $filename]);

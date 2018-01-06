@@ -38,6 +38,7 @@ lib/DBIx/DataModel/Schema/ResultAs/Sql.pm
 lib/DBIx/DataModel/Schema/ResultAs/Statement.pm
 lib/DBIx/DataModel/Schema/ResultAs/Sth.pm
 lib/DBIx/DataModel/Schema/ResultAs/Subquery.pm
+lib/DBIx/DataModel/Schema/ResultAs/Table.pm
 lib/DBIx/DataModel/Schema/ResultAs/Tsv.pm
 lib/DBIx/DataModel/Schema/ResultAs/Xlsx.pm
 lib/DBIx/DataModel/Schema/ResultAs/Yaml.pm
