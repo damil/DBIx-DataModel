@@ -278,7 +278,7 @@ sub do_transaction {
         delete $self->{transaction_dbhs};
 
         # execute the after_commit callbacks
-        my $callbacks = delete $self->{after_commit_callbacks} // [];
+        my $callbacks = delete $self->{after_commit_callbacks} || [];
         $_->() foreach @$callbacks;
 
         last RETRY; # transaction successful, get out of the loop

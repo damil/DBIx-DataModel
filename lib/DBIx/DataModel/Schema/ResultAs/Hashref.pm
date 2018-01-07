@@ -28,10 +28,10 @@ sub get_result {
 
   my %hash;
   while (my $row = $statement->next) {
-    my @key = map {$row->{$_} // ''} @cols;
+    my @key = map {defined $row->{$_} ? $row->{$_} : ''} @cols;
     my $last_key_item = pop @key;
     my $node          = \%hash;
-    $node = $node->{$_} //= {} foreach @key;
+    $node = $node->{$_} ||= {} foreach @key;
     $node->{$last_key_item} = $row;
   }
   $statement->finish;

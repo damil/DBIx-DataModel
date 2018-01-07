@@ -459,7 +459,7 @@ sub select {
 
   for ($result_as) {
     my $subclass = $cache_result_class{$_}
-               //= $self->_find_result_class($_)
+               ||= $self->_find_result_class($_)
       or croak "didn't find any ResultAs subclass to implement -result_as => '$_'";
     my $result_maker = $subclass->new(@subclass_args);
     return $result_maker->get_result($self);
