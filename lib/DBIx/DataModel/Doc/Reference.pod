@@ -91,7 +91,7 @@ the meta-schema instance.
 
 =head2 Schema() 
 
-  my $schema_class = DBIx::DataModel->Schema($schema_name, %options);
+  my $schema_class = DBIx::DataModel->Schema($schema_name, \%options);
 
 Front-end method for L</define_schema()>. The call above is equivalent to 
 

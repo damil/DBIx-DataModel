@@ -7,27 +7,14 @@ use 5.008;
 use warnings;
 use strict;
 use version;
-use MRO::Compat  (); # don't want to call MRO::Compat::import()
+use MRO::Compat;
+use DBIx::DataModel::Meta::Utils qw/does/;
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
+
 our $VERSION = '2.47_04';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
-
-sub define_schema {
-  my ($class, %params) = @_;
-
-  require DBIx::DataModel::Meta::Schema;
-  my $meta_schema = DBIx::DataModel::Meta::Schema->new(%params);
-  return $meta_schema;
-}
-
-sub Schema { # syntactic sugar for ->define_schema()
-  my ($class, $schema_class_name, %params) = @_;
-  my $meta_schema = $class->define_schema(class => $schema_class_name, %params);
-  return $meta_schema->class;
-}
-
 
 sub import {
   my ($class, %args) = @_;
@@ -42,6 +29,22 @@ sub import {
     if version->parse($COMPATIBILITY) < version->parse("1.00");
 }
 
+
+sub define_schema {
+  my ($class, %params) = @_;
+
+  require DBIx::DataModel::Meta::Schema;
+  my $meta_schema = DBIx::DataModel::Meta::Schema->new(%params);
+  return $meta_schema;
+}
+
+sub Schema { # syntactic sugar for ->define_schema()
+  my $class             = shift;
+  my $schema_class_name = shift;
+  my %params  = scalar(@_) == 1 && does($_[0], 'HASH') ? %{$_[0]} : @_;
+  my $meta_schema = $class->define_schema(class => $schema_class_name, %params);
+  return $meta_schema->class;
+}
 
 
 1; # End of DBIx::DataModel
