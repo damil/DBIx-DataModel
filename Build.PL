@@ -29,7 +29,7 @@ my $builder = Module::Build->new(
         'Task::Weaken'  => 0,
     },
     test_requires => {
-        'DBD::Mock'                   => 1.36,
+        'DBD::Mock'                   => 1.39,
         'FindBin'                     => 0,
     },
     recommends => {
