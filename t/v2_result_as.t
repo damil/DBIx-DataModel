@@ -1,53 +1,13 @@
 use strict;
 use warnings;
 no warnings 'uninitialized';
+use Test::More;
 use FindBin;
 use lib "$FindBin::Bin/lib";
+use DBIDM_Test qw/die_ok sqlLike HR_connect $dbh/;
 
 
-use DBI;
-use Data::Dumper;
-use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
-use DBIx::DataModel;
-use DBD::Mock 1.36;
-use Test::More;
-
-
-# die_ok : succeeds if the supplied coderef dies with an exception
-sub die_ok(&) {
-  my $code=shift;
-  eval {$code->()};
-  my $err = $@;
-  $err =~ s/ at .*//;
-  ok($err, $err);
-}
-
-# define a small schema
-DBIx::DataModel->Schema('HR') # Human Resources
-->Table(Employee   => T_Employee   => qw/emp_id/);
-
-
-my $dbh = DBI->connect('DBI:Mock:FakeDB', '', '',
-                       {RaiseError => 1, AutoCommit => 1});
-
-# sqlLike : takes a list of SQL regex and bind params, and a test msg.
-# Checks if those match with the DBD::Mock history.
-
-sub sqlLike { # closure on $dbh
-              # TODO : fix line number, should report the caller's line
-  my $msg = pop @_;
-
-  for (my $hist_index = -(@_ / 2); $hist_index < 0; $hist_index++) {
-    my ($sql, $bind)  = (shift, shift);
-    my $hist = $dbh->{mock_all_history}[$hist_index];
-
-    is_same_sql_bind($hist->statement, $hist->bound_params,
-                     $sql,             $bind, "$msg [$hist_index]");
-  }
-  $dbh->{mock_clear_history} = 1;
-}
-
-HR->dbh($dbh);
+HR_connect;
 
 my @fake_data = ( [qw/emp_id firstname        lastname   /],
                   [qw/1      Johann-Sebastian Bach       /],

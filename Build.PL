@@ -31,6 +31,7 @@ my $builder = Module::Build->new(
     test_requires => {
         'DBD::Mock'                   => 1.39,
         'FindBin'                     => 0,
+        'DBD::SQLite'                 => 1.38,
     },
     recommends => {
         'Lingua::EN::Inflect::Phrase' => 0,

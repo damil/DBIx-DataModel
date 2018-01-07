@@ -48,6 +48,14 @@ can_ok 'HR::Activity', "employee";
 can_ok 'HR::Employee',  "activities";
 
 
+# legacy syntax : options as hash instead of hashref
+DBIx::DataModel->Schema('HR2', 
+  no_update_columns            => {d_modif => 1, user_id => 1},
+  sql_no_inner_after_left_join => 1,
+);
+isa_ok 'HR2', 'DBIx::DataModel::Schema', 'options as hash';
+
+
 #----------------------------------------------------------------------
 # test View
 #----------------------------------------------------------------------
@@ -133,6 +141,45 @@ $emp->apply_column_handler('normalizeName');
 is($emp->{d_birth}, '16.12.1775', 'fromDB handler');
 is($emp->{lastname}, 'Bodin De Boismortier', 'ad hoc handler');
 
+# multiple types on same column
+HR->Type(Multival => 
+  from_DB => sub {$_[0] = [split /;/, $_[0]]   if defined $_[0]},
+  to_DB   => sub {$_[0] = join ";", @{$_[0]}   if defined $_[0]},
+);
+
+HR->Type(Upcase => 
+  to_DB   => sub {$_[0] = uc($_[0])   if defined $_[0]},
+);
+my $meta_emp = HR->table('Employee')->metadm;
+$meta_emp->define_column_type(Multival => qw/kids interests/);
+$meta_emp->define_column_type(Upcase   => qw/interests/);
+HR->table('Employee')->insert({
+    firstname => 'Foo',
+    kids      => [qw/Abel Barbara Cain Deborah Emily/],
+    interests => [qw/Music Computers Sex/],
+   });
+
+sqlLike("INSERT INTO T_Employee ( firstname, interests, kids) VALUES ( ?, ?, ? )",
+        [qw/Foo MUSIC;COMPUTERS;SEX Abel;Barbara;Cain;Deborah;Emily/],
+        "insert with to_DB handlers");
+
+
+# type handler at the statement level
+$dbh->{mock_clear_history} = 1;
+$dbh->{mock_add_resultset} = [[qw/computed_col/],
+                              [qw/foo;bar/],
+                              [qw/1;2;3/]];
+my $computed_col = HR->table('Employee')->select(
+  -columns => ['CASE WHEN foo is NULL THEN bar ELSE buz END|computed_col'],
+  -column_types => {
+    Multival => ['computed_col'],
+   },
+  -result_as => 'flat_arrayref',
+ );
+is_deeply($computed_col, [[qw/foo bar/], [qw/1 2 3/]], 
+          'aliased computed col');
+
+
 
 #----------------------------------------------------------------------
 # test general schema methods
@@ -205,6 +252,15 @@ sqlLike('SELECT lastname AS ln, d_birth AS db '.
         [], 'column aliases');
 is($lst->[0]{db}, "01.01.2001", "fromDB handler on column alias");
 
+
+# SQL function with dots (RT#104856)
+HR::Employee->select(
+  -columns   => 'DMBS_LOB.SUBSTR(col,200,1)|substr',
+ );
+sqlLike('SELECT DMBS_LOB.SUBSTR(col,200,1) AS substr FROM T_employee',
+        [],
+        'dot in function name');
+
 # -distinct columns
 $lst = HR::Employee->select(-columns => [-distinct => "lastname, firstname"]);
 sqlLike('SELECT DISTINCT lastname, firstname '.
@@ -229,6 +285,29 @@ sqlLike('SELECT lastname, COUNT(firstname) AS n_emp '.
 $lst = HR::Employee->select(-order_by => [qw/+col1 -col2 +col3/]);
 sqlLike('SELECT * FROM T_Employee ORDER BY col1 ASC, col2 DESC, col3 ASC', 
         [], '-order_by prefixes');
+
+
+
+# paging
+HR->table('Employee')->select(
+  -page_size => 10,
+  -page_index => 3,
+ );
+sqlLike('SELECT * FROM T_Employee LIMIT ? OFFSET ?',
+        [10, 20],
+        'page 3 from initial request');
+
+# -limit 0
+HR->table('Employee')->select(
+  -columns => [qw/foo bar/],
+  -limit   => 0,
+ );
+sqlLike('SELECT foo, bar FROM T_Employee LIMIT ? OFFSET ?',
+        [0, 0],
+        'limit 0');
+
+
+
 
 # select with OR through an arrayref
 my $result = HR::Employee->select(-where => [foo => 1, bar => 2]);
@@ -314,6 +393,16 @@ sqlLike('SELECT * ' .
         "WHERE ( emp_id = ? )", [888], 'spouse self-ref assoc.');
 
 
+# meta-information about paths
+my $emp_meta = HR->table('Employee')->metadm;
+my %paths = $emp_meta->path;
+while (my ($path_name, $path)= each %paths) {
+  my $opp     = $path->opposite or next; # some paths like 'spouse' have no opp
+  my $opp_opp = $opp->opposite;
+  isa_ok($opp, 'DBIx::DataModel::Meta::Path', "opposite is a Path");
+  isnt($path, $opp,                           "opposite is different");
+  is($path, $opp_opp,                         "opposite of opposite")
+}
 
 
 #----------------------------------------------------------------------
@@ -372,6 +461,30 @@ is_deeply(\%check_callbacks, {pre =>"was called",
       			post => "was called" }, 'fetch, pre/post callbacks');
 
 
+# -union
+my $stmt = HR->table('Employee')->select(
+  -columns   => [qw/emp_id firstname lastname/],
+  -where     => {d_birth => '01.01.1950'},
+  -union     => [-where  => {d_spouse => '01.01.1950'}],
+  -result_as => 'statement',
+ );
+
+my $rows = $stmt->all;
+sqlLike(<<__EOSQL__, [qw/01.01.1950 01.01.1950/], "sql union");
+  SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_birth = ? ) 
+  UNION 
+  SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_spouse = ? )
+__EOSQL__
+
+
+my $n = $stmt->row_count;
+sqlLike(<<__EOSQL__, [qw/01.01.1950 01.01.1950/], "sql count from union");
+  SELECT COUNT(*) FROM (
+    SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_birth = ? )
+    UNION 
+    SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_spouse = ? )
+  ) AS count_wrapper
+__EOSQL__
 
 
 #----------------------------------------------------------------------
@@ -626,6 +739,67 @@ is($lst->[0]{fmt2}, "2001-01-01", "fmt2, no col handler applied");
 is($lst->[0]{sub},  1234,         "sub,  no col handler applied");
 
 
+
+# multiple instances of the same table
+my @to_join = qw/Employee <=> activities <=> department
+                          <=> activities|other_act <=> employee|colleague/;
+my @cols = qw/Employee.emp_id colleague.emp_id|colleague_id/;
+$dbh->{mock_add_resultset} = [ [qw/emp_id  colleague_id/],
+                               [qw/1 2/],
+                               [qw/1 3/],
+                               [qw/1 4/],
+                               [qw/2 1/],
+                              ];
+my $first_colleague = HR->join(@to_join)->select(
+  -columns   => \@cols,
+  -result_as => 'firstrow',
+ );
+sqlLike(<<__EOSQL__, [], 'multiple instances of same table');
+SELECT Employee.emp_id, colleague.emp_id AS colleague_id
+      FROM T_Employee 
+INNER JOIN T_Activity ON ( T_Employee.emp_id = T_Activity.emp_id )
+INNER JOIN T_Department ON ( T_Activity.dpt_id = T_Department.dpt_id )
+INNER JOIN T_Activity AS other_act ON ( T_Department.dpt_id = other_act.dpt_id )
+INNER JOIN T_Employee AS colleague ON ( other_act.emp_id = colleague.emp_id )
+__EOSQL__
+
+is $first_colleague->can('activities'), HR::Employee->can('activities'),
+  "proper inheritance of 'activities' method";
+is $first_colleague->can('department'), HR::Activity->can('department'),
+  "proper inheritance of 'department' method";
+
+
+# where_on
+HR->join(qw/Employee activities => department/)->select(
+  -where => {firstname => 'Hector',
+             dpt_name  => 'Music'},
+  -where_on => {
+     T_Activity   => {d_end => {"<" => '01.01.2001'}},
+     T_Department => {dpt_head => 999},
+   },
+ );
+my @expected_sql_bind = (<<__EOSQL__, [qw/01.01.2001 999 Music Hector/]);
+     SELECT * FROM T_Employee 
+       LEFT OUTER JOIN T_Activity
+         ON T_Employee.emp_id = T_Activity.emp_id AND d_end < ?
+       LEFT OUTER JOIN T_Department 
+         ON T_Activity.dpt_id = T_Department.dpt_id AND dpt_head = ?
+       WHERE dpt_name = ? AND firstname = ?
+__EOSQL__
+sqlLike(@expected_sql_bind, 'where_on');
+
+# same test again, to check for possible side-effects in metadata
+HR->join(qw/Employee activities => department/)->select(
+  -where => {firstname => 'Hector',
+             dpt_name  => 'Music'},
+  -where_on => {
+     T_Activity   => {d_end => {"<" => '01.01.2001'}},
+     T_Department => {dpt_head => 999},
+   },
+ );
+sqlLike(@expected_sql_bind, 'where_on again');
+
+
 #----------------------------------------------------------------------
 # test insert() method
 #----------------------------------------------------------------------
@@ -701,6 +875,18 @@ HR::Employee->update(999, {firstname => 'toto',
 sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ? '.
         'WHERE (emp_id = ?)', ['1950-01-01', 'toto', 999], 'update');
 
+
+  # -set / -where / -ident
+  HR->table('Employee')->update(
+    -set   => {foo => 123},
+    -where => {baz => {">" => {-ident => 'buz'}}},
+   );
+  sqlLike("UPDATE T_Employee SET foo = ? WHERE baz > buz",
+          [123],
+          "update(-set => .., -where => { ... -ident})");
+
+
+
 # syntax $class->update($obj)
 HR::Employee->update(     {firstname => 'toto', 
       		 d_modif => '02.09.2005',
@@ -722,10 +908,53 @@ $emp->{d_birth}    = '01.01.1950';
 $emp->{last_login} = '01.09.2005';
 my %emp2 = %$emp;
 $emp->update;
-
 sqlLike('UPDATE T_Employee SET d_birth = ?, firstname = ?, lastname = ? '.
         'WHERE (emp_id = ?)',
         ['1950-01-01', 'toto', 'BODIN DE BOISMORTIER', 999], 'update3');
+
+# direct call on a object instance, with args
+$emp->update({bar => 987});
+sqlLike("UPDATE T_Employee SET bar = ? WHERE emp_id = ?",
+        [987, 999],
+        "obj update with args");
+
+# update using verbatim SQL
+my $dt     = "01.02.1234 12:34";
+HR->table('Employee')->update(
+  $emp_id,
+  {DT_field => \ ["TO_DATE(?, 'DD.MM.YYYY HH24:MI')", $dt]},
+);
+sqlLike("UPDATE T_Employee SET DT_field = TO_DATE(?, 'DD.MM.YYYY HH24:MI') "
+       . "WHERE ( emp_id = ? )",
+        [$dt, $emp_id],
+        "update from function");
+
+# in presence of subreferences, warn and then remove them
+{ my $warn_msg = '';
+  local $SIG{__WARN__} = sub {$warn_msg .= $_[0]};
+  HR->table('Employee')->update(
+    $emp_id, {foo => 123, skip1 => {bar => 456}, skip2 => bless({}, "Foo")},
+   );
+  
+  sqlLike("UPDATE T_Employee SET foo = ? WHERE ( emp_id = ? )",
+          [123, $emp_id],
+          "skip sub-references");
+  like $warn_msg, qr/nested references/, 'warn for nested references';
+}
+
+# update an unblessed record
+my $record = {emp_id => $emp_id, foo => 'bar'};
+HR->table('Employee')->update($record);
+sqlLike("UPDATE T_Employee SET foo = ? WHERE emp_id = ?",
+        ['bar', $emp_id],
+        "class update unblessed");
+
+# update a blessed record, 
+$record = bless {emp_id => $emp_id, foo => 'bar'}, 'HR::Employee';
+HR->table('Employee')->update($record);
+sqlLike("UPDATE T_Employee SET foo = ? WHERE emp_id = ?",
+        ['bar', $emp_id],
+        "class update blessed");
 
 
 # auto_update column handler (here added artificially through meta surgery)
@@ -754,16 +983,28 @@ sqlLike('INSERT INTO T_Employee (created_by, firstname, last_modif, lastname) ' 
 # test delete() method
 #----------------------------------------------------------------------
 
+# class method with -where
 HR::Employee->delete(-where => {foo => 'bar'});
 sqlLike('DELETE FROM T_Employee WHERE (foo = ?)', ['bar'], 'delete -where');
 
+# class method with primary key
+$emp_id = 123;
+HR::Employee->delete($emp_id);
+sqlLike("DELETE FROM T_Employee WHERE emp_id = ? ", 
+        [$emp_id],
+        "delete");
 
+# idem, but through connected source
+HR->table('Employee')->delete($emp_id);
+sqlLike("DELETE FROM T_Employee WHERE emp_id = ? ", 
+        [$emp_id],
+        "delete");
+
+
+# instance method
 $emp = HR::Employee->bless_from_DB({emp_id => 999});
 $emp->delete;
 sqlLike('DELETE FROM T_Employee WHERE (emp_id = ?)', [999], 'delete instance');
-
-
-
 
 
 #----------------------------------------------------------------------
@@ -866,6 +1107,24 @@ sqlLike('FAKE SQL, BEFORE TRANSACTION', [],
         'COMMIT',     [], "nested transaction on dbh2");
 
 
+# RT#99205 : side-effect when trying a transaction without a DB connection
+my $do_work = sub {Tst->table('Foo')->select};
+
+# Trying to do a transaction without a DB connection ... normally
+# this raises an exception, but if captured in a eval, we don't see the
+# exception, and it has the naughty side-effect of silently setting
+# Tst->singleton->{dbh} = {}
+eval {HR->do_transaction($do_work)};
+
+# now $schema->{dbh} is true but $schema->{dbh}[0]{AutoCommit} is false,
+# so it looks like we are running a transaction
+# ==> before bug fix, croak "cannot change dbh(..) while in a transaction";
+HR->dbh($dbh);
+
+# after bug fix, this works
+ok scalar(HR->dbh), "schema has a dbh";
+
+
 
 
 #----------------------------------------------------------------------
@@ -876,45 +1135,10 @@ done_testing;
 
 __END__
 
-package HR::Department;
-sub currentEmployees {
-  my $self = shift;
-  my $currentAct = $self->activities({d_end => [{-is  => undef},
-                                                {
-                                                  "<=" => '01.01.2005'}]});
-  return map {$_->employee} @$currentAct;
-}
-  
-package main;                   # switch back to the 'main' package
 
-
-
-
-
-$dbh->{mock_clear_history} = 1;
-$dbh->{mock_add_resultset} = [ [qw/emp_id act_id/],
-                               [qw/1 1/],
-                               [qw/2 2/],
-                               [qw/1 1bis/],
-                              ];
-
-SKIP: {
-  skip "THINK: semantics of ->primary_key for a join", 1;
-  $hashref = HR->join(qw/Employee activities/)->select(
-    -result_as => 'hashref'
-   );
-  is_deeply($hashref, {1 => {1      => {emp_id => 1, act_id => 1},
-                             '1bis' => {emp_id => 1, act_id => '1bis'}},
-                       2 => {2      => {emp_id => 2, act_id => 2}}},
-              'result_as => "hashref"');
-};
-
-
-TODO: 
-
-hasInvalidFields
-expand
-autoExpand
-document the tests !!
-select(-dbi_prepare_method => ..)
+TODO:
+  hasInvalidFields
+  expand
+  autoExpand
+  select(-dbi_prepare_method => ..)
 
