@@ -17,7 +17,7 @@ use Params::Validate qw/validate_with SCALAR ARRAYREF CODEREF UNDEF
 use Acme::Damn       qw/damn/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 
-use SQL::Abstract::More 1.31;
+use SQL::Abstract::More 1.32;
 use Try::Tiny;
 
 use namespace::clean;

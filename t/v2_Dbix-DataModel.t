@@ -593,6 +593,36 @@ sqlLike('SELECT lastname, dpt_name ' .
         'ON T_Activity.dpt_id=T_Department.dpt_id ' .
         'WHERE (gender = ?)', ['F'], 'join with indirect association');
 
+
+
+# option "join_with_USING"
+$join = HR->join(qw/Employee activities department/);
+$join->select(-columns => "lastname, dpt_name",
+              -where   => {gender => 'F'},
+              -join_with_USING => 1);
+sqlLike('SELECT lastname, dpt_name ' .
+        'FROM T_Employee LEFT OUTER JOIN T_Activity ' .
+        'USING (emp_id) ' .
+        'LEFT OUTER JOIN T_Department ' .
+        'USING (dpt_id) ' .
+        'WHERE (gender = ?)',
+           ['F'], 'join_with_USING');
+
+
+# check that  "join_with_USING" was really temporary
+$join = HR->join(qw/Employee activities department/);
+$join->select(-columns => "lastname, dpt_name",
+              -where   => {gender => 'F'},
+              );
+sqlLike('SELECT lastname, dpt_name ' .
+        'FROM T_Employee LEFT OUTER JOIN T_Activity ' .
+        'ON T_Employee.emp_id=T_Activity.emp_id ' .
+        'LEFT OUTER JOIN T_Department ' .
+        'ON T_Activity.dpt_id=T_Department.dpt_id ' .
+        'WHERE (gender = ?)',
+           ['F'], 'after join_with_USING');
+
+
 # wrong paths
 die_ok {$emp->join(qw/activities foo/)};
 die_ok {$emp->join(qw/foo bar/)};

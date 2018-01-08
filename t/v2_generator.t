@@ -74,15 +74,22 @@ like($perl_code, qr{Table\(qw/Foo},             "Table foo");
 like($perl_code, qr{Table\(qw/Bar},             "Table bar");
 
 
-note "schema generation from DBIx::Class";
-$generator = DBIx::DataModel::Schema::Generator->new(
-  -schema => 'Test::DBIDM::Schema::Generator3'
- );
-$generator->parse_DBIx_Class("MyApp::Schema");
-$perl_code = $generator->perl_code;
-like($perl_code, qr{Table\(qw/Cd.*?cdid},            "Table Cd with PK cdid");
-like($perl_code, qr{Association\([^)]*Cd[^)]*Track}, "Assoc Cd-Track"); 
 
+subtest 'dbix-class' => sub {
+
+  eval "use DBIx::Class; 1"
+    or plan skip_all => "DBIx::Class not installed";
+
+  note "schema generation from DBIx::Class";
+  $generator = DBIx::DataModel::Schema::Generator->new(
+    -schema => 'Test::DBIDM::Schema::Generator3'
+   );
+
+  $generator->parse_DBIx_Class("MyApp::Schema");
+  $perl_code = $generator->perl_code;
+  like($perl_code, qr{Table\(qw/Cd.*?cdid},            "Table Cd with PK cdid");
+  like($perl_code, qr{Association\([^)]*Cd[^)]*Track}, "Assoc Cd-Track"); 
+};
 
 
 done_testing;

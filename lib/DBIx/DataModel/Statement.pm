@@ -236,7 +236,7 @@ sub refine {
          | result_as      | post_SQL  | pre_exec  | post_exec  | post_bless
          | limit          | offset    | page_size | page_index
          | column_types   | prepare_attrs         | dbi_prepare_method
-         | _left_cols     | where_on
+         | _left_cols     | where_on              | join_with_USING
          )$/x
          and do {$args->{$k} = $v; last SWITCH};
 
@@ -311,13 +311,16 @@ sub sqlize {
                                           $additional_cond);
     }
 
-    # TODO: should be able to use paths and aliases as keys, instead of 
+    # TODO: should be able to use paths and aliases as keys, instead of
     # database table names.
     # TOCHECK: is this stuff still compatible with the bind() method ?
   }
 
-  # generate SQL
-  my $sqla_result = $sql_abstract->select(%sqla_args);
+  # generate SQL, with tmp activation of option "join_with_USING" if so required
+  my $sqla_result = do {
+    local $sql_abstract->{join_with_USING} = 1 if $args->{-join_with_USING};
+    $sql_abstract->select(%sqla_args);
+  };
 
   # maybe post-process the SQL
   if ($args->{-post_SQL}) {

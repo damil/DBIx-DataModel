@@ -11,7 +11,7 @@ use MRO::Compat;
 use DBIx::DataModel::Meta::Utils qw/does/;
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
 
-our $VERSION = '2.47_04';
+our $VERSION = '2.47_06';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility

@@ -1,8 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
-v2.47_01 01.01.2018
+v2.47_05 08.01.2018
   - extending -result_as through subclasses in DBIDM::Schema::ResultAs namespace
-  - new result kinds : xlsx, tsv, file_tabular, count, etc.
+  - new result kinds : xlsx, tsv, file_tabular, count, table, etc.
   - methods db_schema() and with_db_schema to prefix tables by DB schema name
   - new method $schema->do_after_commit()
   - new statement methods : dbh(), finish(), headers()
@@ -14,6 +14,11 @@ v2.47_01 01.01.2018
   - simplify ConnectedSource and delegate most methods to Source
   - main test suite ported to v2 syntax
   - fix RT#113092 "can't locally disable a schema-general auto_update spec"
+  - upgraded dependency on SQL::Abstract::More, v1.32
+  - new statement option -join_with_USING
+  - avoid defined-or to be compatible with Perl 5.8
+  - simplification and cleanup of all v2 tests
+  
 
 v2.46 02.06.2015
   - let SQL::Abstract quote identifiers in ON conditions (Sergiy Zuban++)
