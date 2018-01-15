@@ -12,7 +12,7 @@ use Params::Validate           qw/validate_with SCALAR ARRAYREF CODEREF
 use List::MoreUtils            qw/any/;
 use mro                        qw/c3/;
 use DBIx::DataModel;
-use SQL::Abstract::More 1.31;
+use SQL::Abstract::More 1.33;
 use Carp::Clan                 qw[^(DBIx::DataModel::|SQL::Abstract)];
 use Exporter                   qw/import/;
 

@@ -25,6 +25,7 @@ my $spec = {
                                    default => 'DBIx::DataModel::Schema'},
 
   sql_no_inner_after_left_join => {type => BOOLEAN, optional => 1},
+  join_with_USING              => {type => BOOLEAN, optional => 1},
 
   # fields below are in common with tables (schema is a kind of "pseudo-root")
   auto_insert_columns          => {type => HASHREF, default => {}},
@@ -270,6 +271,7 @@ sub define_join {
     my $join_spec = {
       operator  => $join->{kind},
       condition => $join->{condition},
+      using     => $join->{using},
     };
     push @sqla_join_args, $join_spec, $join->{db_table};
   }
@@ -355,8 +357,9 @@ sub _parse_join_path {
   my $seen_left_join;
 
   foreach my $join_name (@join_names) {
-    # if it is a INNER (<=>) or LEFT (=>) connector ..
-    if ($join_name =~ /^<?=>$/) {
+
+    # if it is a connector like '=>' or '<=>' or '<=' (see SQLAM syntax) ...
+    if ($join_name =~ /^[<>]?=[<>=]?$/) {
       !$join_kind or croak "'$join_kind' can't be followed by '$join_name'";
       $join_kind = $join_name;
       # TODO: accept more general join syntax as recognized by SQLA::More::join
@@ -389,10 +392,23 @@ sub _parse_join_path {
       # build new join hashref and insert it into appropriate structures
       my $left_table  = $source_join->{alias} || $source_join->{db_table};
       my $right_table = $alias || $path->{to}->db_from;
-      my %condition;
+      my %condition;   # for joining with a ON clause
+      my $using = [];  # for joining with a USING clause
       while (my ($left_col, $right_col) = each %{$path->{on}}) {
+        if ($left_col eq $right_col) {
+          # both cols of equal name ==> can participate in a USING clause
+          push @$using, $left_col if $using;
+        }
+        else {
+          # USING clause no longer possible as soon as there are unequal names
+          undef $using;
+        }
+
+        # for the ON clause, prefix column names by their table names
         # FIXME: honor SQL::Abstract's "name_sep" setting
-        $condition{"$left_table.$left_col"} = { -ident => "$right_table.$right_col" };
+        $left_col  = "$left_table.$left_col";
+        $right_col = "$right_table.$right_col";
+        $condition{$left_col} = { -ident => $right_col };
       }
       my $db_table = $path->{to}->db_from;
       $db_table .= "|$alias" if $alias;
@@ -401,7 +417,9 @@ sub _parse_join_path {
                        alias     => $alias,
                        table     => $path->{to},
                        db_table  => $db_table,
-                       condition => \%condition,   };
+                       condition => \%condition,
+                       using     => $using,
+                     };
       push @joins, $new_join;
       $source{$alias || $path_name} = $new_join;
 

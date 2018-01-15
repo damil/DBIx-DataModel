@@ -623,6 +623,34 @@ sqlLike('SELECT lastname, dpt_name ' .
            ['F'], 'after join_with_USING');
 
 
+# "join_with_USING" set at the schema level
+{
+  local HR->singleton->{join_with_USING} = 1;
+  $join = HR->join(qw/Employee activities department/);
+  $join->select(-columns => "lastname, dpt_name",
+                -where   => {gender => 'F'});
+  sqlLike('SELECT lastname, dpt_name ' .
+          'FROM T_Employee LEFT OUTER JOIN T_Activity ' .
+          'USING (emp_id) ' .
+          'LEFT OUTER JOIN T_Department ' .
+          'USING (dpt_id) ' .
+          'WHERE (gender = ?)',
+             ['F'], 'join_with_USING at schema level');
+
+
+  HR->join(qw/Employee activities/)->select(
+    -columns         => "lastname, dpt_name",
+    -where           => {gender => 'F'},
+    -join_with_USING => undef,
+   );
+  sqlLike('SELECT lastname, dpt_name ' .
+          'FROM T_Employee LEFT OUTER JOIN T_Activity ' .
+          'ON T_employee.emp_id = T_Activity.emp_id ' .
+          'WHERE (gender = ?)',
+             ['F'], 'local cancellation of join_with_USING');
+}
+
+
 # wrong paths
 die_ok {$emp->join(qw/activities foo/)};
 die_ok {$emp->join(qw/foo bar/)};
@@ -828,6 +856,13 @@ HR->join(qw/Employee activities => department/)->select(
    },
  );
 sqlLike(@expected_sql_bind, 'where_on again');
+
+# proper error message if inappropriate usage
+{ eval { HR->table('Employee')->select(-where_on => {Foo => 'bar'}); };
+  my $err = $@;
+  like $err, qr/where_on/, 'error message for wrong -where_on' ;
+}
+
 
 
 #----------------------------------------------------------------------

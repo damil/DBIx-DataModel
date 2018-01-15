@@ -208,6 +208,18 @@ even if the association betwen C<Activity> and C<Department> is
 many-to-one (which theoretically would result in a INNER JOIN by
 default).
 
+=item join_with_USING
+
+An optional boolean; if true, SQL joins will be expressed
+wherever possible with a USING clause instead of an ON clause, i.e.
+
+  SELECT * FROM Table1 INNER JOIN Table2 USING(column)
+
+This option can be overridden at the statement level.
+See also L<SQL::Abstract::More/"joins with USING clause instead of ON">.
+
+
+
 =item table_parent, join_parent
 
 Optional application-specific classes, to be used instead of the
@@ -1468,6 +1480,7 @@ Proxy for C<< $self->source->schema >>.
      -page_size     => $page_size,
      -page_index    => $page_index,
      -column_types  => \%column_types,
+     -join_with_USING => $boolean,
      -result_as     => 'rows'      || 'firstrow' 
                     || 'hashref'   || [hashref => @cols]
                     || [categorize => @cols]
@@ -1718,6 +1731,11 @@ of column names :
 =item C<< -dbi_prepare_method => $method_name >>
 
 overrides the L</dbi_prepare_method()> specified at the schema level.
+
+
+=item C<< -join_with_USING => $boolean >>
+
+overrides the L</join_with_USING()> parameter specified at the schema level
 
 
 =item C<< -result_as => $result_kind >>

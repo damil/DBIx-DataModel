@@ -270,7 +270,6 @@ sub sqlize {
   my $sql_abstract = $self->schema->sql_abstract;
   my $result_as    = $args->{-result_as} || "";
 
-
   # build arguments for SQL::Abstract::More
   $self->refine(-where => $source_where) if $source_where;
   my @args_to_copy = qw/-columns -where
@@ -296,10 +295,16 @@ sub sqlize {
 
   # "where_on" : conditions to be added in joins
   if (my $where_on = $args->{-where_on}) {
-    # retrieve components of the join
+    # check proper usage
+    does $sqla_args{-from}, 'ARRAY'
+      or croak "datasource for '-where_on' was not a join";
+
+    # retrieve components of the join and check again for proper usage
     my ($join_op, $first_table, @other_join_args) = @{$sqla_args{-from}};
     $join_op eq '-join'
       or croak "datasource for '-where_on' was not a join";
+
+    # reverse index (table_name => $join_hash)
     my %by_dest_table = reverse @other_join_args;
 
     # insert additional conditions into appropriate places
@@ -309,6 +314,7 @@ sub sqlize {
       $join_cond->{condition}
         = $sql_abstract->merge_conditions($join_cond->{condition},
                                           $additional_cond);
+      delete $join_cond->{using};
     }
 
     # TODO: should be able to use paths and aliases as keys, instead of
@@ -316,11 +322,26 @@ sub sqlize {
     # TOCHECK: is this stuff still compatible with the bind() method ?
   }
 
-  # generate SQL, with tmp activation of option "join_with_USING" if so required
-  my $sqla_result = do {
-    local $sql_abstract->{join_with_USING} = 1 if $args->{-join_with_USING};
-    $sql_abstract->select(%sqla_args);
-  };
+  # adjust join conditions for ON clause or for USING clause
+  if (does $sqla_args{-from}, 'ARRAY') {
+    $sqla_args{-from}[0] eq '-join'
+      or croak "datasource is an arrayref but does not start with -join";
+    my $join_with_USING
+      = exists $args->{-join_with_USING} ? $args->{-join_with_USING}
+                                         : $self->schema->{join_with_USING};
+    for (my $i = 2; $i < @{$sqla_args{-from}}; $i += 2) {
+      my $join_cond = $sqla_args{-from}[$i];
+      if ($join_with_USING) {
+        delete $join_cond->{condition} if $join_cond->{using};
+      }
+      else {
+        delete $join_cond->{using};
+      }
+    }
+  }
+
+  # generate SQL
+  my $sqla_result = $sql_abstract->select(%sqla_args);
 
   # maybe post-process the SQL
   if ($args->{-post_SQL}) {
