@@ -11,7 +11,7 @@ v2.47_05 08.01.2018
   - use Carp::Clan
   - drop dependency on Scalar::Does
   - Meta::Utils exports subroutines instead of OO methods
-  - simplify ConnectedSource and delegate most methods to Source
+  - suppress ConnectedSource -- methods are handled directly in Source classes
   - main test suite ported to v2 syntax
   - fix RT#113092 "can't locally disable a schema-general auto_update spec"
   - upgraded dependency on SQL::Abstract::More, v1.32

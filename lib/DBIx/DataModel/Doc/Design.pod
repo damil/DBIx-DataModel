@@ -85,13 +85,9 @@ class hierarchy :
          FRAMEWORK CLASSES
          *****************
 
-   +=================+
-   | DBIx::DataModel |
-   +=================+
-
-   +=================================+   +============================+
-   | DBIx::DataModel::ConnectedSource|   | DBIx::DataModel::Statement |
-   +=================================+   +============================+
+   +================+         +============================+
+   | DBIx::DataModel|         | DBIx::DataModel::Statement |
+   +================+         +============================+
 
    +=========================+   +=========================+
    | DBIx::DataModel::Schema |	 | DBIx::DataModel::Source |
@@ -129,11 +125,9 @@ L<DBIx::DataModel|DBIx::DataModel>
 is just a façade interface to
 L<DBIx::DataModel::Schema|DBIx::DataModel::Schema>.
 
-Classes
-L<DBIx::DataModel::ConnectedSource|DBIx::DataModel::ConnectedSource>
-and
+Class
 L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>
-implement short-lived objects which gather information for issuing
+implements short-lived objects which gather information for issuing
 requests to the database.
 
 Subclasses of L<DBIx::DataModel::Schema|DBIx::DataModel::Schema>
@@ -302,19 +296,17 @@ L<Schema|DBIx::DataModel::Schema>,
 calls
 L<define_join()|DBIx::DataModel::Doc::Reference/define_join()>
 to define or retrieve a join
-subclass; then it creates a fresh I<connected source> related to that
-join and to the schema. From that object, data
+subclass; then it creates a fresh instance of that class related to 
+the schema. From that object, data
 can then be retrieved through the
 L<select()|DBIx::DataModel::Doc::Reference/select()> method.
 
 
-When applied to a
-L<ConnectedSource|DBIx::DataModel::ConnectedSource>
-or when applied as a class method to
+When applied as a class method to
 a L<Source|DBIx::DataModel::Source>,
 L<join()|DBIx::DataModel::Doc::Reference/Source::join()>
 creates a new statement to query one or several tables associated with
-the connected source.  The new statement contains a
+the source.  The new statement contains a
 condition to restrict the results according to the primary key of the
 initial source.  That statement cannot be executed yet, because the
 values of the primary key are not known until we have an instance of
@@ -342,9 +334,7 @@ to retrieve data rows.
 
 The L<select()|DBIx::DataModel::Doc::Statement/select()>  method
 is most commonly called from
-L<Source|DBIx::DataModel::Source> or
-L<ConnectedSource|DBIx::DataModel::ConnectedSource> 
-classes, but this
+L<Source|DBIx::DataModel::Source> classes, but this
 is just a proxy to the implementation in
 L<Statement|DBIx::DataModel::Statement> class.
 This method performs many different things, depending on what kind

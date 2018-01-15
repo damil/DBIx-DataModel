@@ -1195,23 +1195,17 @@ Data is stored in I<data sources> that are accessed through a given
 I<schema>; therefore, before issuing data manipulation statements, we
 need to establish a relationship between a data source and a schema :
 this is the job of the two methods below. Both create an instance of
-L<DBIx::DataModel::ConnectedSource>, which is nothing but a pair of
-references to a C<$meta_source> and to a C<$schema>.  That object can
-then perform data selection, update or deletion.
+the source with one single field C<__schema> pointing to the C<$schema>.
+That object can then perform data selection, update or deletion.
 
 
 =head3 Schema::table()
 
-  my $connected_source = $schema->table($table_name);
+  my $source = $schema->table($table_name);
 
 This is the recommended way to reach a table from a schema.
 The C<$table_name> is the Perl name that was declared in L</define_table()>,
 not the database name.
-
-The method name is (intentionally!) misleading : instead of returning
-a I<table> object or I<meta_table> object, it returns a I<connected_source>;
-however that object delegates many methods to the table and therefore
-can mimic it (actually, it works like a kind of proxy). 
 
 When in single-schema mode, the C<table()> call can be replaced by a
 direct call to the table class: so for example, if we have a schema
@@ -1242,7 +1236,7 @@ L</define_table>.
 
 =head3 Schema::db_table()
 
-  my $connected_source = $schema->db_table($db_table_name);
+  my $source = $schema->db_table($db_table_name);
 
 Works like the C<table()> method above, except that the argument
 is the database table name instead of the Perl class name.
@@ -1250,11 +1244,11 @@ is the database table name instead of the Perl class name.
 
 =head3 Schema::join()
 
-  my $connected_source = $schema->join($table, $path1, $path2, ...);
+  my $source = $schema->join($table, $path1, $path2, ...);
 
 This method calls L</define_join()> to define or retrieve a join
-subclass; then it creates a  I<connected_source> related to that 
-join datasource and to the C<$schema>. From that object, data
+subclass; then it creates an instance of that subclass
+connected to the C<$schema>. From that object, data
 can be retrieved through the L</select()> method.
 
 This C<Schema::join()> method should not be confused with
@@ -1263,46 +1257,6 @@ at the end of this document, which is just an accessor method.
 
 Besides, a derivative of the present method is defined 
 in L</Source::join()>.
-
-
-=head3 Methods of connected sources
-
-A connected source has accessor methods for its
-C<meta_source> and C<schema> attributes. In addition, the
-C<metadm> method is a synonym for C<meta_source>.
-This is for convenience, because in something like
-
-  my $meta_table = $schema->table($table_name)->metadm;
-
-one naturally expects to get the meta-object associated with table
-C<$table_name>, forgetting the fact that the subexpression 
-C<<$schema->table($table_name) >> is a connected source and not a table!
-
-
-All other method calls on connected sources are just proxyed to
-L</Source> methods. Here is the list :
-
-=over
-
-=item insert
-
-=item update
-
-=item delete
-
-=item select
-
-=item fetch
-
-=item fetch_cached
-
-=item join
-
-=item bless_from_DB
-
-=back
-
-
 
 
 
@@ -2443,13 +2397,14 @@ the database on that schema.
 when in multi-schema mode, the syntax above does not work,
 because the C<HR::Employee> class cannot decide on which database
 schema the operation should be performed. Instead, the call should
-be made on an instance of L</ConnectedSource>, using this syntax :
+use this syntax :
 
   my $result = $schema->table('Employee')->select(...);
 
-The C<< $schema->table('Employee') >> part returns a connected
-source which will create a fake object of class C<HR::Employe>
-and invoke the C<select()> method on it; technically this is a
+The C<< $schema->table('Employee') >> part returns an
+instance of class C<HR::Employe> with one single field C<__schema>
+pointing to the schema. When invoking the C<select()> method on it,
+technically this is a
 Perl instance call, but it will be recognized as a
 "class method call" in the DBIx::DataModel sense.
 
@@ -2500,7 +2455,7 @@ it to a more sophisticated caching module.
     %options,
   );
   # or
-  my @ids = $connected_source->insert(
+  my @ids = $source->insert(
     [qw/ col1   col2   .../],
     [    $val1, $val2, ... ],
     ...
@@ -2690,7 +2645,7 @@ Later on, we can L<bind|/bind()> the statement
 to an instance of the C<$source>, and then 
 L<execute|/execute()> it :
 
-   my $obj          = $connected_source->fetch(...);
+   my $obj          = $source->fetch(...);
    $join_stmt->bind($obj);
    $join_stmt->execute();
    my $related_rows = $join_stmt->all;
@@ -2698,14 +2653,14 @@ L<execute|/execute()> it :
 Both operations can even be performed in one single line, because
 arguments to C<execute()> are passed to the C<bind()> method : 
 
-   my $obj          = $connected_source->fetch(...);
+   my $obj          = $source->fetch(...);
    my $related_rows = $join_stmt->execute($obj)->all;
 
 Such prepared statements are especially useful for loop efficiency :
 
-  my $join_stmt = $connected_source->join(qw/path1 path2 .../);
+  my $join_stmt = $source->join(qw/path1 path2 .../);
   $join_stmt->prepare();
-  my $list = $connected_source->select(...);
+  my $list = $source->select(...);
   foreach my $row (@$list) {
     my $related_rows = $join_stmt->execute($row)->all;
     # ... work with $related_rows
@@ -3017,8 +2972,6 @@ C<$meta_schema> :
 =item type_metaclass()
 
 =item statement_class()
-
-=item connected_source_class()
 
 =back
 

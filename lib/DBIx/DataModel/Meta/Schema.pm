@@ -61,10 +61,6 @@ my $statement_class = 'DBIx::DataModel::Statement';
 $spec->{statement_class}        = {type    => SCALAR, 
                                    isa     => $statement_class,
                                    default => $statement_class};
-my $connected_source_class = 'DBIx::DataModel::ConnectedSource';
-$spec->{connected_source_class} = {type    => SCALAR, 
-                                   isa     => $connected_source_class,
-                                   default => $connected_source_class};
 
 
 #----------------------------------------------------------------------
