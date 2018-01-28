@@ -11,6 +11,12 @@ use parent 'DBIx::DataModel::Schema::ResultAs';
 
 use namespace::clean;
 
+sub param_spec { # class method
+  return {
+    -worksheet    => {type => SCALAR, default => 'Data'},
+    -tech_details => {type => SCALAR, default => 'Technical_details'},
+  };
+}
 
 sub new {
   my $class = shift;
@@ -22,10 +28,7 @@ sub new {
   # other args as a hash of named options
   my %self = validate_with(
     params      => \@_,
-    spec        => {
-      -worksheet    => {type => SCALAR, default => 'Data'},
-      -tech_details => {type => SCALAR, default => 'Technical_details'},
-    },
+    spec        => $class->param_spec,
     allow_extra => 0);
 
   # assemble and bless
@@ -38,11 +41,9 @@ sub get_result {
   my ($self, $statement) = @_;
 
   # create the Excel workbook
-  my $workbook  = Excel::Writer::XLSX->new($self->{file})
-    or die "open Excel file $self->{file}: $!";
-  my $worksheet = $workbook->add_worksheet($self->{-worksheet});
+  my $workbook  = $self->create_workbook;
 
-  # get data from the statement
+  # gather data from the statement
   $statement->execute;
   $statement->make_fast;
   my @headers   = $statement->headers;
@@ -51,31 +52,64 @@ sub get_result {
     push @rows, [@{$row}{@headers}];
   }
 
-  # insert data as an Excel table
-  $worksheet->add_table(0, 0, scalar(@rows), scalar(@headers)-1, {
-    data       => \@rows,
-    columns    => [ map { {header => $_}} @headers ],
-    autofilter => 1,
-   });
-  $worksheet->freeze_panes(1, 0);
+  # create the data worksheet
+  my $worksheet = $self->create_data_worksheet($workbook);
+  $self->populate_worksheet($worksheet, \@headers, \@rows);
 
   # optionally insert another sheet with technical details
-  if ($self->{-tech_details}) {
-    my $tech_wksheet = $workbook->add_worksheet($self->{-tech_details});
-    $tech_wksheet->write_col(0, 0, [
-      scalar(localtime),               # time of the extraction
-      $statement->schema->dbh->{Name}, # database name
-      scalar(@rows) . " results",      # number of rows
-      $statement->sql,                 # SQL and bind values
-     ])
-  }
-
+  $self->add_technical_details($workbook, $statement) if $self->{-tech_details};
 
   # finalize
   $statement->finish;
   $workbook->close;
 
+  # return filename or filehandle
   return $self->{file};
+}
+
+
+sub create_workbook {
+  my ($self) = @_;
+
+  my $workbook  = Excel::Writer::XLSX->new($self->{file})
+    or die "open Excel file $self->{file}: $!";
+
+  return $workbook;
+}
+
+
+sub create_data_worksheet {
+  my ($self, $workbook) = @_;
+  my $worksheet = $workbook->add_worksheet($self->{-worksheet});
+
+  return $worksheet;
+}
+
+
+sub populate_worksheet {
+  my ($self, $worksheet, $headers, $rows) = @_;
+
+  # insert data as an Excel table
+  $worksheet->add_table(0, 0, scalar(@$rows), scalar(@$headers)-1, {
+    data       => $rows,
+    columns    => [ map { {header => $_}} @$headers ],
+    autofilter => 1,
+   });
+}
+
+
+sub add_technical_details {
+  my ($self, $workbook, $statement, $n_rows) = @_;
+
+  my $tech_worksheet = $workbook->add_worksheet($self->{-tech_details});
+  $tech_worksheet->write_col(0, 0, [
+    scalar(localtime),               # time of the extraction
+    $statement->schema->dbh->{Name}, # database name
+    $statement->row_num . " rows",   # number of rows
+    $statement->sql,                 # SQL and bind values
+   ]);
+
+  return $tech_worksheet;
 }
 
 
