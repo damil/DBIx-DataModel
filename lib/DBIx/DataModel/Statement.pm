@@ -752,7 +752,6 @@ sub _compute_from_DB_handlers {
   return $self;
 }
 
-
 sub _find_result_class {
   my $self         = shift;
   my $name         = ucfirst shift;
@@ -760,7 +759,7 @@ sub _find_result_class {
   my $schema_class = ref $schema || $schema;
 
   # try to find subclass $name within namespace of schema or ancestors
-  foreach my $namespace (@{mro::get_linear_isa($schema_class)}) {
+  foreach my $namespace (@{$schema->resultAs_classes}) {
     my $class = "${namespace}::ResultAs::${name}";
 
     # see if that class is already loaded (by checking for a 'get_result' method)

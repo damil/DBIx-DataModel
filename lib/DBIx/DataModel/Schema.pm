@@ -12,13 +12,14 @@ use DBIx::DataModel::Source::Table;
 
 use Scalar::Util     qw/blessed/;
 use Module::Load     qw/load/;
-use Params::Validate qw/validate_with SCALAR ARRAYREF CODEREF UNDEF 
+use Params::Validate qw/validate_with SCALAR ARRAYREF CODEREF UNDEF
                                       OBJECT BOOLEAN/;
 use Acme::Damn       qw/damn/;
 use Carp::Clan       qw[^(DBIx::DataModel::|SQL::Abstract)];
 
 use SQL::Abstract::More 1.33;
 use Try::Tiny;
+use mro              qw/c3/;
 
 use namespace::clean;
 
@@ -29,11 +30,12 @@ my $spec = {
   sql_abstract          => {type => OBJECT,
                             isa  => 'SQL::Abstract::More',
                             optional => 1},
-  dbi_prepare_method    => {type => SCALAR,  default  => 'prepare'},
-  placeholder_prefix    => {type => SCALAR,  default  => '?:'},
-  select_implicitly_for => {type => SCALAR,  default  => ''},
-  autolimit_firstrow    => {type => BOOLEAN, optional => 1},
-  db_schema             => {type => SCALAR,  optional => 1},
+  dbi_prepare_method    => {type => SCALAR,   default  => 'prepare'},
+  placeholder_prefix    => {type => SCALAR,   default  => '?:'},
+  select_implicitly_for => {type => SCALAR,   default  => ''},
+  autolimit_firstrow    => {type => BOOLEAN,  optional => 1},
+  db_schema             => {type => SCALAR,   optional => 1},
+  resultAs_classes      => {type => ARRAYREF, optional => 1},
 };
 
 
@@ -59,6 +61,9 @@ sub new {
 
   # default SQLA
   $self->{sql_abstract} ||= SQL::Abstract::More->new;
+
+  # default resultAs_classes
+  $self->{resultAs_classes} ||= mro::get_linear_isa($class);
 
   # from now on, singleton mode will be forbidden
   $class->metadm->{singleton} = undef;
@@ -153,7 +158,7 @@ sub dbh {
 # some rw setters/getters
 my @accessors = qw/debug select_implicitly_for dbi_prepare_method 
                    sql_abstract placeholder_prefix autolimit_firstrow
-                   db_schema/;
+                   db_schema resultAs_classes/;
 foreach my $accessor (@accessors) {
   no strict 'refs';
   *$accessor = sub {
