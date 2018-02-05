@@ -345,19 +345,6 @@ while (my ($local, $remote) = each %accessor_map) {
   }
 }
 
-# while (my ($local, $remote) = each %accessor_map) {
-#   no strict 'refs';
-#   *$local = sub {
-#     my $self = shift;
-#     ref $self or $self = $self->singleton;
-
-#     my $meta_source = $self->metadm->$remote(@_) or return;
-#     my $cs_class = $self->metadm->connected_source_class;
-#     load $cs_class;
-#     return $cs_class->new($meta_source, $self);
-#   }
-# }
-
 #----------------------------------------------------------------------
 # UTILITY FUNCTIONS (PRIVATE)
 #----------------------------------------------------------------------
