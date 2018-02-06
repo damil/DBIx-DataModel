@@ -89,10 +89,10 @@ sub insert {
     # inject schema
     $record->{__schema} = $schema;
 
-    # remove subtrees (will be inserted later)
+    # remove subtrees (they will be inserted later)
     my $subrecords = $record->_weed_out_subtrees;
 
-    # do the insertion. Result depends on %$options.
+    # do the insertion. The result depends on %$options.
     my @single_result = $record->_singleInsert(%$options);
 
     # NOTE: at this point, $record is expected to hold its own primary key

@@ -6,6 +6,7 @@ lib/DBIx/DataModel/Compatibility/V1.pm
 lib/DBIx/DataModel/Doc/Cookbook.pod
 lib/DBIx/DataModel/Doc/Delta_v1.pod
 lib/DBIx/DataModel/Doc/Delta_v2.pod
+lib/DBIx/DataModel/Doc/Delta_v3.pod
 lib/DBIx/DataModel/Doc/Design.pod
 lib/DBIx/DataModel/Doc/Glossary.pod
 lib/DBIx/DataModel/Doc/Internals.pod

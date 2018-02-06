@@ -41,26 +41,29 @@ L<GLOSSARY|DBIx::DataModel::Doc::Glossary>
 =back
 
 
-B<WARNING> : Since version 2.0, a number of important changes
-have been made in the API
-(classes renamed, arguments renamed or reorganized, etc. -- see
-L<DBIx::DataModel::Doc::Delta_v2>). 
-If you need backwards compatibility, make sure to load the 
-L<1.0 compatibility layer|DBIx::DataModel::Compatibility::V1>.
-
-
-
 =head1 INTRODUCTION
 
 This chapter is the detailed reference description
-for most public methods in C<DBIx::DataModel>.
+for C<DBIx::DataModel> version 3.0.
 
-Just a couple of peripheric classes are described in 
-separate documents : this is the case for 
+It covers
+most public methods, except for a couple of peripheric classes
+which are described in 
+separate documents, such as
 L<DBIx::DataModel::Schema::Generator> (automatic schema generation
 from external sources), and for 
 L<DBIx::DataModel::Statement::JDBC> (special methods for working
 with L<DBD::JDBC>).
+
+Changes from earlier generations of C<DBIx::DataModel>
+are described in L<DBIx::DataModel::Doc::Delta_v3>,
+L<DBIx::DataModel::Doc::Delta_v2>
+and L<DBIx::DataModel::Doc::Delta_v1>.
+
+Other documentation chapters include a L<glossary|DBIx::DataModel::Doc::Glossary>,
+a L<quickstart|DBIx::DataModel::Doc::Quickstart> document,
+a L<cookbook|DBIx::DataModel::Doc::Cookbook>
+and a L<design description|DBIx::DataModel::Doc::Design>.
 
 
 =head1 META-SCHEMA DEFINITION
@@ -276,7 +279,7 @@ See L</define_table()>. The call above is equivalent to
 =head3 View()
 
   $schema->View($class_name, $default_columns, $db_tables, 
-                     \%where, @parent_tables);
+                     \%where, @parent_tables, \%options);
 
 This is another front-end method for 
 L</"define_table()">,
@@ -292,7 +295,8 @@ The call above is equivalent to
                                 db_name         => $db_tables,
                                 where           => \%where,
                                 default_columns => $default_columns,
-                                parents         => \@parent_tables);
+                                parents         => \@parent_tables,
+                                %options);
 
 The C<< $db_tables >> can be a single table name, or a join
 between several tables, expressed directly in SQL, like
@@ -305,7 +309,9 @@ of this view. Be careful about table names :
 the SQL code in C<$db_tables> should contain I<database> table names,
 whereas the members of C<< @parent_tables >> should be 
 I<Perl> table classes. 
-See also L<DBIx::DataModel::Doc::Design/"Views within the ORM">.
+Additional arguments to the C<define_table()> method can be passed
+in the optional hashref C<< \%options >>.
+See also L<DBIx::DataModel::Doc::Cookbook/"Views within the ORM">.
 
 
 Perl views as defined here have nothing to do with views declared in
@@ -364,12 +370,13 @@ See L</define_type()>. The call above is equivalent to
   $meta_schema->define_table(%options);
 
 Creates a new Perl class of name C<$class_name> that represents a
-database table. The new class inherits from the C<table_parent> 
-declared in the schema (by default : L<DBIx::DataModel::Source::Table>).
-At the same time, an instance of the C<table_metaclass> is also
-created (by default : L<DBIx::DataModel::Meta::Source::Table>),
-for holding meta-information about that table (database name, 
-primary key, paths to other tables, etc.).
+database table or database view. The new class inherits from the
+C<table_parent> declared in the schema (by default :
+L<DBIx::DataModel::Source::Table>).  At the same time, an instance of
+the C<table_metaclass> is also created (by default :
+L<DBIx::DataModel::Meta::Source::Table>), for holding meta-information
+about that table (database name, primary key, paths to other tables,
+etc.).
 
 Returns C<$meta_schema>. Entries in C<%options> are :
 
@@ -387,7 +394,7 @@ practice).
 SQL name of the database table or view that will be accessed through
 this class.  Actually, it might be any SQL clause, like for example
 C<Table1 t1 INNER JOIN Table2 t2 ON t1.fk=t2.pk>; see the L</View()>
-method below.
+method above.
 
 =item primary_key => $string | \@array
 
@@ -407,14 +414,19 @@ L<SQL::Abstract::More> format. That condition
 will be automatically injected into every SELECT statement
 on this table. When working with regular tables, this parameter
 is always empty; it is only useful for declaring C<DBIx::DataModel> 
-views (see the L</View()> method below).
+views (see the L</View()> method above).
 
 =item parents => [$parent1, ...]
 
 List of meta-tables from which this table will inherit.  This can be
 useful if your database supports table inheritance (like for example
 PostgreSQL), and you want to reflect the inheritance structure 
-within the Perl table classes.
+within the Perl table classes. Another use case is when
+the C<$db_name> refers to a database view or to an ORM view
+(a SQL fragm :aent that joins several tables) : it is probably
+a good idea to declare as parents all tables that participate in
+the join, so that the methods of those parents become available
+to instances of the view.
 
 
 =item column_types
@@ -644,11 +656,9 @@ the C<A> association end, and the component class corresponds to the
 C<B> end, so the order is important (while for plain associations the
 order makes no difference).
 
-The UML intended meaning of a composition is that objects of the
+In UML, the intended meaning of a composition is that objects of the
 component classes cannot exist outside of their composite class. Within
-C<DBIx::DataModel>, the additional semantics for compositions is to
-support cascaded insertions and deletions, and auto-expansion; so the
-special semantics attached to kind C<Composition> is :
+C<DBIx::DataModel>, the special semantics attached to kind C<Composition> is :
 
 =over
 
@@ -1152,7 +1162,8 @@ This method returns a I<copy> of the current schema, with the
 C<db_schema> attribute set to $string. The original Perl C<$schema> is left
 untouched. This is useful for a I<temporary> switch of database
 schema, as opposed to the C<db_schema()> method above that performs a
-permanent change. 
+permanent change (or more precisely : a change valid until 
+C<db_schema()> is called again with a different argument).
 
 
 =head3 localize_state()
@@ -1296,6 +1307,7 @@ options as additional arguments :
 When called in this form, C<do_transaction> will temporarily
 set the dbh to the supplied value, and then return to the 
 previous value when the nested transaction is finished.
+
 Commits on all involved database handles are delayed until
 the top-level transaction is finished.
 
@@ -1307,6 +1319,55 @@ C<do_transaction()> behaves like L<DBIx::RetryOverDisconnects/txn_do>,
 i.e. it will inspect if the failure was due to a disconnection, and 
 in that case will try again, as many times as required in 
 the C<TxnRetries> attribute.
+
+
+=head3 do_after_commit()
+
+  $schema->do_after_commit(sub {...});
+
+This method should be called from within a transaction.  The coderef
+supplied as argument will be called automatically after the
+transaction is finished successfully; as the name implies, this is
+guaranteed to happen only I<after the commit>, even if this is called
+inside a nested transaction where the final commit only happens later,
+in a different module.
+
+To understand why this method is useful, consider a situation like this
+
+  sub function1 {
+    my @keys = $schema->do_transaction(sub {do_complex_inserts()});
+    publish_to_outer_world(@keys);
+  }
+      
+  sub function2 {
+    $schema->do_transaction(sub {
+      do_initial_work();
+      function1();
+      do_final_work();
+     });
+   }
+
+Here the call to C<< publish_to_outer_world(@keys) >> is likely to
+fail, because this happens inside a nested transaction and therefore
+the keys returned by the previous line are not committed yed; as a
+result, the "outer world" (especially if it is another process) cannot
+access those keys until the outer transaction is finished.
+
+To avoid this problem, C<function1> should be rewritten as
+
+  sub function1 {
+    $schema->do_transaction(sub {
+      my @keys = do_complex_inserts();
+      $schema->do_after_commit(sub {publish_to_outer_world(@keys)});
+     });
+  }
+
+so that C<< publish_to_outer_world(@keys) >> only happens
+after the end of C<function2()>.
+
+Multiple calls to C<< do_after_commit() >> are allowed; the
+coderefs will be executed in the same order as they were registered.
+If the transaction is aborted, all coderefs are dismissed.
 
 
 =head2 Other schema methods
@@ -1321,6 +1382,9 @@ from its arguments : these become plain Perl hashrefs, arrayrefs or scalars.
 This may be useful if the datatree returned by a C<select(..) / expand(..) >
 needs to be exported through an external module that only considers
 plain datastructures; this is the case for example with L<YAML::Syck/Dump>.
+
+In list context, the C<unbless()> method returns its list of arguments;
+in scalar context, it returns the first argument.
 
 
 =head3 Schema class methods delegated to the meta-schema
@@ -2174,11 +2238,16 @@ Calls C<< $self->sth->finish >>
 
 =head3 bless_from_DB()
 
-  $statement->bless_from_DB($record);
+  my $obj = $statement->bless_from_DB($record);
 
 Blesses C<< $record >> into an object of 
 C<< $statement->meta_source->class >>,
 and applies the C<from_DB> column handlers.
+
+Although implemented in the C<Statement> class, the same method can
+also be called also directly from source classes, in the form :
+
+  my $obj = $schema->table($tablename)->bless_from_DB($record);
 
 
 =head1 SOURCES

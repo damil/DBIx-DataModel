@@ -22,7 +22,7 @@ sub new {
   my $class = shift;
 
   # the first positional arg is the output file .. string or a filehandle
-  my $file  = shift  
+  my $file  = shift
     or croak 'select(..., -result_as => [xlsx => $file]): file is missing';
 
   # other args as a hash of named options

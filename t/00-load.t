@@ -1,10 +1,9 @@
 #!perl -T
 
-use Test::More tests => 16;
+use Test::More tests => 15;
 
 BEGIN {
 	use_ok( 'DBIx::DataModel', -compatibility => undef );
-	use_ok( 'DBIx::DataModel::ConnectedSource' );
 	use_ok( 'DBIx::DataModel::Meta' );
 	use_ok( 'DBIx::DataModel::Meta::Association' );
 	use_ok( 'DBIx::DataModel::Meta::Path' );

@@ -222,7 +222,7 @@ sub Composition {
 # PUBLIC BACK-END METHODS FOR DECLARING SCHEMA MEMBERS
 #----------------------------------------------------------------------
 
-# common pattern for qw/table association type/; "join" is specific (see below)
+# common pattern for defining tables, associations and types
 foreach my $kind (qw/table association type/) {
   my $metaclass = "${kind}_metaclass";
   no strict 'refs';
@@ -246,6 +246,7 @@ foreach my $kind (qw/table association type/) {
 }
 
 
+# defining joins (different from the common pattern above)
 sub define_join {
   my $self = shift;
 

@@ -815,6 +815,8 @@ redefined in subclasses :
 
 =item _compute_from_DB_handlers
 
+=item _find_result_class
+
 =back
 
 
