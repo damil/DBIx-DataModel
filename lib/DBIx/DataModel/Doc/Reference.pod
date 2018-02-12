@@ -28,10 +28,6 @@ REFERENCE
 
 =item *
 
-L<MISC|DBIx::DataModel::Doc::Misc>
-
-=item *
-
 L<INTERNALS|DBIx::DataModel::Doc::Internals>
 
 =item *

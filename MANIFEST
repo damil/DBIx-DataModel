@@ -10,7 +10,6 @@ lib/DBIx/DataModel/Doc/Delta_v3.pod
 lib/DBIx/DataModel/Doc/Design.pod
 lib/DBIx/DataModel/Doc/Glossary.pod
 lib/DBIx/DataModel/Doc/Internals.pod
-lib/DBIx/DataModel/Doc/Misc.pod
 lib/DBIx/DataModel/Doc/Quickstart.pod
 lib/DBIx/DataModel/Doc/Reference.pod
 lib/DBIx/DataModel/Meta.pm

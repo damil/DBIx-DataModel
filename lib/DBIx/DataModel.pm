@@ -698,13 +698,6 @@ manipulation methods.
 
 =item *
 
-The L<MISC|DBIx::DataModel::Doc::Misc> chapter discusses
-how this framework interacts with its context
-(Perl namespaces, DBI layer, etc.), and
-how to work with self-referential associations.
-
-=item *
-
 The L<INTERNALS|DBIx::DataModel::Doc::Internals> chapter
 documents the internal structure of the framework, for programmers
 who might be interested in extending it.

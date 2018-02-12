@@ -29,10 +29,6 @@ L<REFERENCE|DBIx::DataModel::Doc::Reference>
 
 =item *
 
-L<MISC|DBIx::DataModel::Doc::Misc>
-
-=item *
-
 L<INTERNALS|DBIx::DataModel::Doc::Internals>
 
 =item *
@@ -182,20 +178,15 @@ second element is the value. This is convenient when the DBD driver
 needs additional information about the values used in the statement.
 See L<SQL::Abstract::More/"BIND VALUES WITH TYPES"> for explanations.
 
-
-
-
   my $rows = $source->select(
-    -where => {col => [$val, {sql_type => 'some_type'}]}
+    -where => {col => [{sql_type => 'some_type'}, $val]}
   );
   $source->insert(
-    {key => $pk, some_col => [$val, {sql_type => 'some_type'}]}
+    {key => $pk, some_col => [{sql_type => 'some_type'}, $val]}
   );
   $record->update(
-    {some_col => [$val, {sql_type => 'some_type'}]}
+    {some_col => [{sql_type => 'some_type'}, $val]}
   );
-
-
 
 This can also be automated within a C<to_DB> handler :
 
@@ -232,6 +223,78 @@ single-schema mode) :
    );
 
   print $sql; # SELECT `KEY`, `VALUE` FROM `CONFIG` WHERE ( `KEY` = ? )
+
+
+=head2 Self-referential associations
+
+Associations can be self-referential, i.e. describing tree
+structures :
+
+  $schema->Association([qw/OrganisationalUnit parent   1 ou_id       /],
+                       [qw/OrganisationalUnit children * parent_ou_id/],
+
+However, when there are several self-referential associations,
+we might get into problems : consider
+
+  $schema->Association([qw/Person mother   1 pers_id  /],
+                       [qw/Person children * mother_id/])
+         ->Association([qw/Person father   1 pers_id  /],
+                       [qw/Person children * father_id/]); # BUG: children
+
+This does not work because there are two definitions  of the "children"
+role name in the same class "Person".
+One solution is to distinguish these
+roles, and then write by hand a general "children" role :
+
+  $schema->Association([qw/Person mother          1 pers_id  /],
+                       [qw/Person mother_children * mother_id/])
+         ->Association([qw/Person father          1 pers_id  /],
+                       [qw/Person father_children * father_id/]);
+  
+  package MySchema::Person;
+  sub children {
+    my $self = shift;
+    my $id = $self->{pers_id};
+    my $sql = "SELECT * FROM Person WHERE mother_id = $id OR father_id = $id";
+    my $children = $self->dbh->selectall_arrayref($sql, {Slice => {}});
+    MySchema::Person->bless_from_DB($_) foreach @$children;
+    return $children;
+  }
+
+Alternatively, since rolenames C<mother_children> and C<father_children>
+are most probably useless, we might just specify unidirectional
+associations : 
+
+  $schema->Association([qw/Person mother  1 pers_id  /],
+                       [qw/Person ---     * mother_id/])
+         ->Association([qw/Person father  1 pers_id  /],
+                       [qw/Person ---     * father_id/]);
+
+And here is a more sophisticated way to define the "children" method,
+that will accept additional "where" criteria, like every regular method.
+
+  package MySchema::Person;
+  sub children {
+    my $self      = shift; # remaining args in @_ will be passed to select()
+    my $class     = ref $self;
+    my $id        = $self->{pers_id};
+    my $statement = $self->schema->table($class)->select(
+      -where => [mother_id => $id, 
+                 father_id => $id],
+      -result_as => 'statement'
+    );
+    return $statement->select(@_);
+  }
+
+This definition forces the join on C<mother_id> or 
+C<father_id>, while leaving open the possibility for the caller
+to specify additional criteria. For example, all female children 
+of a person (either father or mother) can now be retrieved through
+
+  $person->children(-where => {gender => 'F'})
+
+Observe that C<mother_id> and C<father_id> are inside an arrayref
+instead of a hashref, so that L<SQL::Abstract> will generate an SQL 'OR'.
 
 
 =head2 Schema versioning
@@ -276,6 +339,57 @@ you have to specify a column type for it at the statement level :
     -column_types => {Date_simple => [qw/max_d_begin min_d_end/],
     -result_as    => 'firstrow'
   );
+
+
+
+
+=head2 Conditions on functions with special syntax
+
+Some database systems have SQL functions with special syntax.
+For example a fulltext search in Oracle is expressed as
+
+  ... WHERE CONTAINS(fulltext_field, 'word') > 0
+
+This does not fit well in a hashref to be passed as a C<-where> condition for 
+L<SQL::Abstract::More>, because the name of the field and the bind value
+are lost within the SQL syntax. To make it easier, we define a I<special operator>
+for L<SQL::Abstract::More> :
+
+  # define the schema
+  DBIx::DataModel->Schema('SCH');
+  
+  # feed the schema with a custom instance of SQL::Abstract::More
+  my $sqlam = SQL::Abstract::More->new(
+    sql_dialect => "Oracle",
+    special_ops => [{regex   => qr/^contains(:?_all|_any)?$/i,
+                     handler => \&_fulltext_contains_for_Oracle}],
+   );
+  SCH->singleton->sql_abstract($sqlam);
+  
+  sub _fulltext_contains_for_Oracle {
+    my ($self, $field, $op, $arg) = @_;
+
+    my $sql = "CONTAINS($field, ?) > 0";
+    my @bind;
+
+    # Oracle connector for words : default '&', but '|' if op is -contains_any
+    my $connector = ($op =~ /any$/) ? ' | ' : ' & ';
+
+    # words to be passed to the CONTAINS function
+    my @words = ref $arg ? @$arg : ($arg);
+    @words = map { split /\s+/ } grep {$_} @words;
+
+    @bind = (join $connector, @words);
+    return ($sql, @bind);
+  }
+
+Now fulltext queries can be expressed easily as
+
+  my $results = SCH->table('Table1')->select(
+    -where => {fulltext_field1 => {-contains_all => ['ab', 'cd']},
+               fulltext_field2 => {-contains_any => ['ef', 'gh', 'ij']},
+              },
+   );
 
 
 =head2 Nested queries
