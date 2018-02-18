@@ -30,6 +30,10 @@ L<REFERENCE|DBIx::DataModel::Doc::Reference>
 
 =item *
 
+L<COOKBOOK|DBIx::DataModel::Doc::Cookbook>
+
+=item *
+
 L<INTERNALS|DBIx::DataModel::Doc::Internals>
 
 =item *
@@ -951,7 +955,7 @@ be inserted, but where the actual values are supplied in a separate
 step.  Ultimately these placeholders get translated into usual
 placeholders at the C<DBI> and database layers; but an additional
 layer was needed here in order to allow for stepwise building of SQL
-conditions as just demonstrated above.
+conditions, as just demonstrated above.
 
 Stepwise binding of values to placeholders requires
 I<named placeholders>, as opposed to usual positional placeholders.

@@ -23,12 +23,15 @@ our @EXPORT = qw/define_class define_method define_readonly_accessors
 BEGIN {no strict 'refs'; *does = \&SQL::Abstract::More::does;}
 
 
+my %seen_class_method;
+
 sub _check_call_as_class_method {
   my $first_arg = $_[0];
 
   if ($first_arg && !ref $first_arg && $first_arg->isa(__PACKAGE__) ) {
     my $func = (caller(1))[3];
-    carp "calling $func() as class method is obsolete; import and call as a function";
+    carp "calling $func() as class method is obsolete; import and call as a function"
+      unless $seen_class_method{$func}++;
     shift @_;
   }
 }
@@ -84,7 +87,6 @@ sub define_class {
 sub define_method {
   &_check_call_as_class_method;
 
-  
   # check parameters
   my %params = validate_with(
     params => \@_,

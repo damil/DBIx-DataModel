@@ -28,6 +28,10 @@ L<REFERENCE|DBIx::DataModel::Doc::Reference>
 
 =item *
 
+L<COOKBOOK|DBIx::DataModel::Doc::Cookbook>
+
+=item *
+
 L<INTERNALS|DBIx::DataModel::Doc::Internals>
 
 =item *

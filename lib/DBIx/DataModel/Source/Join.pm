@@ -98,7 +98,7 @@ DBIx::DataModel::Source::Join - Parent for Join classes
 
 This is the parent class for all join classes created through
 
-  $schema->Join($classname, ...);
+  $schema->join($classname, ...);
 
 =head1 METHODS
 

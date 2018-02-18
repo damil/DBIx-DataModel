@@ -29,6 +29,10 @@ L<REFERENCE|DBIx::DataModel::Doc::Reference>
 
 =item *
 
+COOKBOOK
+
+=item *
+
 L<INTERNALS|DBIx::DataModel::Doc::Internals>
 
 =item *
@@ -135,8 +139,15 @@ administration rights in the database.
 
 =head2 Object inflation/deflation
 
-Here is an example of inflating/deflating a scalar value from 
-the database into a Perl object :
+The term "object inflation" means that a scalar value read from a
+column in the database is transformed into an Perl object in memory,
+and is transformed back into a scalar value when writing into the
+database. The standard example for such situations is the handling
+of dates, because Perl programs often need to perform operations
+on dates that are not possible with a plain scalar format.
+
+Here is an example of automatic inflation/deflation of date columns
+to Perl objects of class L<Date::Simple> :
 
   # declare column type
   use Date::Simple;
@@ -148,6 +159,11 @@ the database into a Perl object :
   # apply column type to columns
   My::Table1->metadm->define_column_type(Date_simple => qw/d_start d_end/);
   My::Table2->metadm->define_column_type(Date_simple => qw/d_birth/);
+
+With this automatic conversion, all functionalities of L<Date::Simple>
+can be applied to date columns within rows of C<Table1> and C<Table2> :
+comparisons, date arithmetics, etc.
+
 
 B<Caveat>: the C<from_DB> / C<to_DB> functions do not apply
 automatically within C<-where> conditions. So the following

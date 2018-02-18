@@ -576,8 +576,8 @@ about tables, associations, primary keys and foreign keys
 
 exposure of database operations like joins, bulk updates, subqueries,
 etc.  The database is not hidden behind object-oriented programming
-concepts, as some other ORMs try to do, but rather made to collaborate
-with the object-oriented layer.
+concepts, as some other ORMs try to do, but rather made to explicitly
+collaborate with the object-oriented layer.
 
 =item *
 
@@ -698,6 +698,11 @@ manipulation methods.
 
 =item *
 
+The L<COOKBOOK|DBIx::DataModel::Doc::Cookbook> chapter
+provides some recipes for common ORM tasks.
+
+=item *
+
 The L<INTERNALS|DBIx::DataModel::Doc::Internals> chapter
 documents the internal structure of the framework, for programmers
 who might be interested in extending it.
@@ -725,12 +730,6 @@ documentation explains how to automatically generate a schema from
 a C<DBI> connection, from a L<SQL::Translator|SQL::Translator> description
 or from an existing C<DBIx::Class|DBIx::Class> schema.
 
-=item *
-
-The L<DBIx::DataModel::Statement|DBIx::DataModel::Statement>
-documentation documents the methods of 
-statements (not included in the 
-general L<REFERENCE|DBIx::DataModel::Doc::Reference> chapter).
 
 =back
 
