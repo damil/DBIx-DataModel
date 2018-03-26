@@ -666,7 +666,7 @@ This would need 'insert or update', which is not supported.
 
 Although the basic principles are quite simple, there are many
 details to discuss, so the documentation is quite long.
-In an attempt to accomodate for different needs of readers,
+In an attempt to accommodate for different needs of readers,
 the documentation has been structured as follows :
 
 =over
