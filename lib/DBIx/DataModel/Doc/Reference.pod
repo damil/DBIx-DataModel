@@ -76,13 +76,13 @@ come in two flavours :
 =item *
 
 a "front-end" method, starting with an uppercase letter,
-that uses positional parameters. This version is prefered
+that uses positional parameters. This version is preferred
 for conciseness and for backwards compatibility.
 
 =item *
 
 a "back-end" method, with a name of shape C<define_*>, 
-that uses named parameters. This version is prefered for
+that uses named parameters. This version is preferred for
 completeness.
 
 =back
@@ -207,7 +207,7 @@ would be interpreted as
   T_Employee LEFT OUTER JOIN T_Activity ON ...
              LEFT OUTER JOIN T_Department ON ...
 
-even if the association betwen C<Activity> and C<Department> is 
+even if the association between C<Activity> and C<Department> is 
 many-to-one (which theoretically would result in a INNER JOIN by
 default).
 
@@ -232,12 +232,12 @@ this schema.
 =item table_metaclass, join_metaclass, association_metaclass, path_metaclass, type_metaclass
 
 Optional application-specific classes, to be used instead of the
-builtin metaclasses, for instanciating meta-objects declared in this schema, .
+builtin metaclasses, for instantiating meta-objects declared in this schema, .
 
 =item statement_class
 
 Optional application-specific class to be used instead of the
-builtin class L<DBIx::DataModel::Statement> for instanciating 
+builtin class L<DBIx::DataModel::Statement> for instantiating 
 statements.
 
 =back
@@ -793,7 +793,7 @@ it will be a usual inner join (exception if
 C<< $meta_schema->sql_no_inner_after_left_join >> is true : after a first
 left join, all remaining tables are also connected through additional
 left joins). The default kind of join chosen by this rule may be
-overriden by inserting intermediate connectors in the list, namely 
+overridden by inserting intermediate connectors in the list, namely 
 C<< '<=>' >> for inner joins and C<< '=>' >> for left joins.
 So for example
 
@@ -1076,7 +1076,7 @@ There is also another way to see the SQL code for one particular statement :
   my $sqlam = $schema->sql_abstract;                     # get
 
 Sets or retrieves the instance of L<SQL::Abstract::More> used 
-by this C<$schema>. If the client code does not set it explictly,
+by this C<$schema>. If the client code does not set it explicitly,
 an instance wil be implicitly created.
 
 =head3 dbi_prepare_method()
@@ -1349,7 +1349,7 @@ To understand why this method is useful, consider a situation like this
 
 Here the call to C<< publish_to_outer_world(@keys) >> is likely to
 fail, because this happens inside a nested transaction and therefore
-the keys returned by the previous line are not committed yed; as a
+the keys returned by the previous line are not committed yet; as a
 result, the "outer world" (especially if it is another process) cannot
 access those keys until the outer transaction is finished.
 
@@ -1654,7 +1654,7 @@ specified either by a plain string or by an array of strings.
 adds a C<HAVING> clause in the SQL statement (only makes
 sense together with a C<GROUP BY> clause).
 This is like a C<-where> clause, except that the criteria
-are applied after grouping has occured.
+are applied after grouping has occurred.
 
 =item C<< -order_by => \@order >> 
 
@@ -2292,7 +2292,7 @@ we can write
 
 A join between several tables (see the L</join()> method) creates
 a new class that inherits all path methods from all tables participating
-in the join; in case of name conflics, the latest table takes precedence.
+in the join; in case of name conflicts, the latest table takes precedence.
 Again, it is possible to use fully qualified method names if necessary.
 
 
@@ -2705,7 +2705,7 @@ returns that column (so you can call C<< my $k = $obj->primary_key >>).
 As a class method, this returns a statement that will select a
 collection of data rows from tables associated with the current
 meta-source, performing the appropriate joins.  Internally this is
-implemented throught the C</define_join()> method, with an additional
+implemented through the C</define_join()> method, with an additional
 C<-where> criteria to constrain on the primary key(s) of the
 meta-source.  That statement cannot be executed yet, because the
 values of the primary key are not known until we have an row of that
@@ -2827,7 +2827,7 @@ with arguments, this is equivalent to
 
 in other words, the C<-where> part is taken from the 
 primary key of the invocant, and the updated fields are passed
-as an argument hashref. Primary key colums may appear in this 
+as an argument hashref. Primary key columns may appear in this 
 hashref, but this will result in I<changing the primary key> 
 for that record. Ex :
 
