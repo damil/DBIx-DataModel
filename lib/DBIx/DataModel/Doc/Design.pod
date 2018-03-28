@@ -1470,63 +1470,26 @@ Here is a list of points to improve in future versions C<DBIx::DataModel> :
 
   - 'has_invalid_columns' : should be called automatically before insert/update ?
   - 'validate' record handler (at record level, not only column handlers)
-  - 'normalize' handler : for ex. transform empty string into null
   - walk through WHERE queries and apply 'to_DB' handler (not obvious!)
-  - more extensive and more organized testing
-  - add PKEYS keyword in -columns, will be automatically replaced by
+  - add PKEYS keyword in -columns, to be automatically replaced by
     names of primary key columns of the touched tables
-  - design API for easy dynamic association of row objects without dealing
-    with the keys
-  - remove spouse example from doc (because can't have same table
-    twice in roles)
-  - quoting
   - pre/post callbacks: support arrays of handlers, refine(..) should add
     to the array
   - refine(-order_by => ..) should add to the ordering
   - update with subtrees (insert/update on dependent records. Quid: delete?)
   - auto-unjoin (API for partioning columns into subobjects).
-  - support for DBI TraceLevel
   - support DISTINCT ON ...
   - support find_or_create, update_or_create
-  - doc : Schema has only tables, pk, fk (no cols, triggers, stored procs, domains)
-  - doc : SQL-oriented (like Fey)
   - copy idea from DBIC:Storage:DBI:MultiColumnIn
   - Storable
      - hooks for YAML ?
      - think about STORABLE_attach
-     # ADD TESTS for table inheritance
-
+     - think about freeze/thaw in multi-schema mode
   - readonly tables
-  - declare RT bug for Params::Validate : doc is confused about
-    validate_with / validation_options
-
   - savepoints
-
-  - Statement::refine() should be more intelligent
-      - combine (-where, -orderBy, callbacks)
-      - reject overrides when not possible
-      - should add something like a 'reset' method ??
-
   - explain how to design families of tables with an intermediate superclass
-
-  - find a way to rename _singleInsert > _single_insert, without breaking
-    compatibility
-
-  - declare RT bug for Params::Validate : doc is confused about
-    validate_with / validation_options
-
-  - doc : explain Table inheritance
-     $schema->Table(..., {parent_tables => ...});
-     # ADD TESTS for table inheritance
-  - Storable
-     - hooks for YAML ?
-     - think about STORABLE_attach
-
-  - think about freeze/thaw in multi-schema mode
   - tune croak() in Statement.pm so that SQL errors are reported 
     from caller's line
-  - add method "delete_..." for components of a Composition
-
   - $obj->join(path1 ...)->select(...) should automatically add
     -result_as => 'firstrow' when all multiplicities are 1. See TODO
     in ConnnectedSources::join

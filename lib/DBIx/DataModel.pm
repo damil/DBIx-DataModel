@@ -11,7 +11,7 @@ use MRO::Compat;
 use DBIx::DataModel::Meta::Utils qw/does/;
 use Carp::Clan qw[^(DBIx::DataModel::|SQL::Abstract)];
 
-our $VERSION = '2.47_08';
+our $VERSION = '3.0';
 
 # compatibility setting : see import()
 our $COMPATIBILITY = $VERSION; # from 2.20, no longer automatic compatibility
@@ -555,7 +555,7 @@ I<object-relational mappings> (ORMs)
 =head2 Strengths of C<DBIx::DataModel>
 
 The L<DESIGN|DBIx::DataModel::Doc::Design> chapter of this
-documentation will help you understand the philosophy of
+documentation explains the main design decisions of
 C<DBIx::DataModel>. Some of the strong points are :
 
 =over
@@ -581,7 +581,9 @@ collaborate with the object-oriented layer.
 
 =item *
 
-efficiency through fine control of interaction with the DBI layer
+efficiency through a very lightweight infrastructure (row objects
+are just blessed hashrefs) and through
+fine tuning of interaction with the DBI layer
 (prepare/execute, fetch into reusable memory location, etc.)
 
 =item *
@@ -592,7 +594,7 @@ simplified 'order_by', support for values with associated datatypes, etc.)
 
 =item *
 
-clear conceptual distinction between 
+clear conceptual distinction between
 
 =over
 
