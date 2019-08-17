@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx::DataModel.
 
+  - -result_as => 'hashref' or 'categorize' can take a subroutine argument
+
+
 v3.0 23.02.2018
   - bump to next major version
   - complete revision of documentation

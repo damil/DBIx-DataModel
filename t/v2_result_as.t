@@ -1,3 +1,5 @@
+use lib "../lib";
+
 use strict;
 use warnings;
 no warnings 'uninitialized';
@@ -45,7 +47,14 @@ subtest 'categorize'=> sub {
                firstname => 'Hector',
                lastname  => 'Berlioz'       } ],
      }
- };
+   };
+
+
+  # custom subroutine for key generation
+  $dbh->{mock_add_resultset} = \@fake_data;
+  my $key_maker = sub {my $row = shift; substr($row->{lastname}, 0, 1)};
+  $result = HR->table('Employee')->select(-result_as => [categorize => $key_maker ]);
+  is scalar(@{$result->{B}}), 2 , "categorize with sub"; # Berlioz and Bach
 };
 
 subtest 'count'=> sub {
@@ -94,10 +103,22 @@ subtest 'flat_arrayref'=> sub {
 };
 
 subtest 'hashref'=> sub {
+  # regular 1-level hashref
   $dbh->{mock_add_resultset} = \@fake_data;
   my $result = HR->table('Employee')->select(-columns => [qw/lastname emp_id/],
                                              -result_as => [hashref => 'lastname']);
   is_deeply [sort keys %$result], [qw/Bach Berlioz Monteverdi/], 'hashref';
+
+  # tree of depth 2
+  $dbh->{mock_add_resultset} = \@fake_data;
+  $result = HR->table('Employee')->select(-result_as => [hashref => (qw/lastname firstname/) ]);
+  ok defined $result->{Berlioz}{Hector}, "nested columns";
+
+  # custom subroutine for key generation
+  $dbh->{mock_add_resultset} = \@fake_data;
+  my $key_maker = sub {my $row = shift; map {substr($_, 0, 1)} @{$row}{qw/lastname firstname/}};
+  $result = HR->table('Employee')->select(-result_as => [hashref => $key_maker ]);
+  ok defined $result->{B}{H}, "hashref with sub";
 };
 
 subtest 'json'=> sub {
