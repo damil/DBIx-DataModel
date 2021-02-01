@@ -527,17 +527,17 @@ sqlLike(<<__EOSQL__, [qw/01.01.1950 02.02.1950/], "sql except");
 __EOSQL__
 
 
-# -minus
-HR->table('Employee')->select(
-  -columns   => [qw/emp_id firstname lastname/],
-  -where     => {d_birth => {'>=' => '01.01.1950'}},
-  -minus     => [-where  => {d_spouse => {'>=' => '02.02.1950'}}],
- );
-sqlLike(<<__EOSQL__, [qw/01.01.1950 02.02.1950/], "sql minus");
-  SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_birth >= ? )
-  MINUS
-  SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_spouse >= ? )
-__EOSQL__
+# -minus -- currently not supported by SQL::Abstract::Test in v2.0
+# HR->table('Employee')->select(
+#   -columns   => [qw/emp_id firstname lastname/],
+#   -where     => {d_birth => {'>=' => '01.01.1950'}},
+#   -minus     => [-where  => {d_spouse => {'>=' => '02.02.1950'}}],
+#  );
+# sqlLike(<<__EOSQL__, [qw/01.01.1950 02.02.1950/], "sql minus");
+#   SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_birth >= ? )
+#   MINUS
+#   SELECT emp_id, firstname, lastname FROM T_Employee WHERE ( d_spouse >= ? )
+# __EOSQL__
 
 
 
