@@ -41,7 +41,9 @@ can_ok 'HR::Employee', "select";
 die_ok {HR::Employee->Table(Foo    => T_Foo => qw/foo_id/)};
 
 # primary_key method works
-is_deeply([HR::Employee->primary_key], ['emp_id'], 'primary_key');
+is_deeply([HR::Employee->primary_key], ['emp_id'], 'primary_key (perl class method)');
+is_deeply([HR->table('Employee')->primary_key], ['emp_id'], 'primary_key (DBIDM class method)');
+
 
 # path methods are present
 can_ok 'HR::Activity', "employee";
