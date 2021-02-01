@@ -1476,9 +1476,9 @@ If the transaction is aborted, all coderefs are dismissed.
 
   $schema->unbless($obj1, $obj2, ...);
 
-Recursively applies L<Acme::Damn/damn> to remove all class information 
-from its arguments : these become plain Perl hashrefs, arrayrefs or scalars.
-Internal references to C<__schema> are also removed.
+Applies L<Data::Structure::Util/unbless> to the given objects, 
+recursively removing all class information : these become
+plain Perl hashrefs, arrayrefs or scalars.
 
 This may be useful if the datatree returned by a C<select(..) / expand(..) >
 needs to be exported through an external module that only considers
