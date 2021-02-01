@@ -268,7 +268,7 @@ This module implements
 
 =item L<join|DBIx::DataModel::Doc::Reference/join>
 
-=item L<primKey|DBIx::DataModel::Doc::Reference/primKey>
+=item L<primary_key|DBIx::DataModel::Doc::Reference/primary_key>
 
 =back
 
