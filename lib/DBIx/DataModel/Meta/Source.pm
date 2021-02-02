@@ -124,11 +124,6 @@ sub _consolidate_hash {
       $val ? $hash{$name} = $val : delete $hash{$name};
     }
   }
-  # foreach my $meta_source ($self, $self->ancestors, $self->{schema}) {
-  #   while (my ($name, $val) = each %{$meta_source->{$field} || {}}) {
-  #     $hash{$name} ||= $val;
-  #   }
-  # }
   return $optional_hash_key ? $hash{$optional_hash_key} : %hash;
 }
 
