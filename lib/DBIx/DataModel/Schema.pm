@@ -18,7 +18,7 @@ use Params::Validate      qw/validate_with SCALAR ARRAYREF CODEREF UNDEF
 
 use Carp::Clan            qw[^(DBIx::DataModel::|SQL::Abstract)];
 
-use SQL::Abstract::More 1.33;
+use SQL::Abstract::More 1.37;
 use Try::Tiny;
 use mro              qw/c3/;
 
