@@ -3,7 +3,8 @@ use strict;
 use warnings;
 use parent "DBIx::DataModel::Meta";
 use DBIx::DataModel;
-use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors/;
+use DBIx::DataModel::Meta::Utils qw/define_class define_readonly_accessors
+                                    define_abstract_methods/;
 
 use Params::Validate qw/validate_with SCALAR ARRAYREF HASHREF OBJECT/;
 use Scalar::Util     qw/weaken/;
@@ -27,8 +28,9 @@ my %common_arg_spec = (
   # other slot filled later : 'name'
 );
 
-define_readonly_accessors(__PACKAGE__, keys %common_arg_spec, 'name');
 
+define_readonly_accessors(__PACKAGE__, keys %common_arg_spec, 'name');
+define_abstract_methods  (__PACKAGE__, qw/db_from where/);
 
 sub _new_meta_source { # called by new() in Meta::Table and Meta::Join
   my $class         = shift;
@@ -127,18 +129,6 @@ sub _consolidate_hash {
   return $optional_hash_key ? $hash{$optional_hash_key} : %hash;
 }
 
-
-sub db_from {
-  my $self = shift;
-  my $class = ref $self;
-  die "db_from() not implemented in $class";
-}
-
-sub where {
-  my $self = shift;
-  my $class = ref $self;
-  die "where() not implemented in $class";
-}
 
 
 1;

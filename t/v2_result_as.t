@@ -229,4 +229,18 @@ subtest 'find_subclass' => sub {
 };
 
 
+subtest 'bad_subclass' => sub {
+  use DBIx::DataModel::Meta::Utils qw/define_class/;
+  # create a fake subclass
+  define_class(name => "DBIx::DataModel::Schema::ResultAs::FooBar",
+               isa  => ["DBIx::DataModel::Schema::ResultAs"],
+               metadm => 'DBIx::DataModel::Meta',
+              );
+  my $fake_instance = bless {}, "DBIx::DataModel::Schema::ResultAs::FooBar";
+  eval {$fake_instance->get_result()};
+  my $err = $@;
+  like($err, qr/should implement.*as required/, 'proper error msg for abstract method');
+};
+
+
 done_testing;
