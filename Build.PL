@@ -27,12 +27,13 @@ my $builder = Module::Build->new(
 	'Try::Tiny'              => 0,
     },
     build_requires => {
-        'Task::Weaken'  => 0,
+        'Task::Weaken'        => 0,
 
          # test_requires => { # not working in perl 5.10, so keep it as 'build_requires'
-        'DBD::Mock'     => 1.39,
-        'FindBin'       => 0,
-        'DBD::SQLite'   => 1.38,
+        'DBD::Mock'           => 1.39,
+        'FindBin'             => 0,
+        'DBD::SQLite'         => 1.38,
+        'SQL::Abstract::Test' => 0,
     },
     recommends => {
         'Lingua::EN::Inflect::Phrase' => 0,
