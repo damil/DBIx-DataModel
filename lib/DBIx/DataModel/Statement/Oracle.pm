@@ -82,7 +82,7 @@ __END__
 
 =head1 NAME
 
-DBIx::DataModel::Statement::Oracle - Statement for interacting with DBD::Oracle
+DBIx::DataModel::Statement::Oracle - Statement for interacting with DBD::Oracle in Oracle versions prior to 12c
 
 =head1 SYNOPSIS
 
@@ -103,13 +103,20 @@ from L<DBIx::DataModel::Statement> in order to take advantage
 of L<DBD::Oracle/"Scrollable Cursor Methods">.
 
 This is interesting for applications that need to do pagination
-within result sets, because Oracle prior to version 12 had
+within result sets, because Oracle prior to version 12c had
 no support for LIMIT/OFFSET in SQL.
 So here we use some special methods of the Oracle driver to jump
 to a specific row within a resultset, and then extract a limited
 number of rows.
 
 The API is exactly the same as other, regular DBIx::DataModel implementations.
+
+This will also work in Oracle versions 12c or superior, but the recommanded
+way is to activate the C<Oracle12c> dialect in L<SQL::Abstract::More> :
+
+
+  $schema->sql_abstract(SQL::Abstract::More->new(sql_dialect => 'Oracle12c'));
+
 
 =head1 AUTHOR
 
@@ -120,4 +127,4 @@ Laurent Dami, E<lt>laurent.dami AT etat  ge  chE<gt>, April 2012.
 Copyright 2011 by Laurent Dami.
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+it under the same terms as Perl itself.
