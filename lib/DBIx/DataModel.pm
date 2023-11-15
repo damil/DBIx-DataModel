@@ -648,7 +648,7 @@ needs to know about them).
 
 C<DBIx::DataModel> does not keep track of data mutations
 in memory, and therefore provides no support for automatically
-propagating changes into the database; the client code has
+propagating changes into the database; the client code has to
 explicitly manage C<insert> and C<update> operations.
 
 =item no 'cascaded update' nor 'insert or update'
