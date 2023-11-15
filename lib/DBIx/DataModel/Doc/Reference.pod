@@ -1013,7 +1013,7 @@ containing a database connection, a debugging status, etc.
 
 A schema subclass can have several instances; in that case, the application
 runs in 
-L<multi-schema|DBIx::DataModel::Doc::Glossary/"multi-schema">.
+L<multi-schema|DBIx::DataModel::Doc::Glossary/"multi-schema"> mode.
 However, multi-schema mode is only useful
 in some special situations, like for example when transferring data between
 several databases; in most common cases, a 
