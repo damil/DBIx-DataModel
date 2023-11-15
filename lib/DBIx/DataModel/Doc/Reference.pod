@@ -247,8 +247,6 @@ This option can be overridden at the statement level.
 The advantages of joins with USING is discussed in 
 L<SQL::Abstract::More/"joins with USING clause instead of ON">.
 
-
-
 =item table_parent, join_parent
 
 Optional application-specific classes, to be used instead of the
@@ -267,6 +265,17 @@ builtin class L<DBIx::DataModel::Statement> for instantiating
 statements. For example you may want to set this option to
 L<DBIx::DataModel::Statement::Oracle> if you work with an
 Oracle database, version prior to 12c.
+
+=item sql_abstract_class
+
+Optional subclass of L<SQL::Abstract::More> to be used when
+populating the C<sql_abstract> attribute of a schema.
+
+=item sql_abstract_args
+
+Optional arguments to be passed to the C<< ->new() >> method
+when populating the C<sql_abstract> attribute of a schema.
+
 
 =back
 
@@ -1161,10 +1170,8 @@ There is also another way to see the SQL code for one particular statement :
 
 Sets or retrieves the instance of L<SQL::Abstract::More> used 
 by this C<$schema>. If the client code does not set it explicitly,
-an instance will be implicitly created. The reason for using
-something else than this default might be either 
-to control some specific parameters of C<SQL::Abstract::More>,
-or to subclass it.
+an instance will be implicitly created, using meta-schema attributes
+C<sql_abstract_class> and C<sql_abstract_args>.
 
 
 =head3 dbi_prepare_method()
