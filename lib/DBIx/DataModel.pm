@@ -60,12 +60,14 @@ DBIx::DataModel - UML-based Object-Relational Mapping (ORM) framework
 C<DBIx::DataModel> is a framework for building Perl
 abstractions (classes, objects and methods) that interact
 with relational database management systems (RDBMS).
-Of course the ubiquitous L<DBI|DBI> module is used as
-a basic layer for communicating with databases; on top of that,
-C<DBIx::DataModel> provides facilities for generating SQL queries,
+Working above the L<DBI|DBI> module, it provides facilities for generating SQL queries,
 joining tables automatically, navigating through the results,
 converting values, building complex datastructures and packaging
 the results in various formats.
+
+This framework is complex and rich in functionalities, so a fair amount of
+time is needed for discovering the documentation and experimenting with the
+various features.
 
 More explanations are given in the L</DESCRIPTION> section below,
 after the synopsis.
