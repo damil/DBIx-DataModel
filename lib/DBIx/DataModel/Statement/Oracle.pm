@@ -102,20 +102,22 @@ This subclass redefines some parent methods
 from L<DBIx::DataModel::Statement> in order to take advantage
 of L<DBD::Oracle/"Scrollable Cursor Methods">.
 
-This is interesting for applications that need to do pagination
-within result sets, because Oracle prior to version 12c had
-no support for LIMIT/OFFSET in SQL.
-So here we use some special methods of the Oracle driver to jump
+This was interesting in ancient Oracle databases,
+for applications that needed to do pagination within result sets.
+In versions prior to 12c, Oracle had no support for LIMIT/OFFSET in SQL,
+so this subclass uses some special methods of the Oracle driver to jump
 to a specific row within a resultset, and then extract a limited
-number of rows.
+number of rows. The API is exactly the same as other, regular DBIx::DataModel implementations.
 
-The API is exactly the same as other, regular DBIx::DataModel implementations.
+This mechanism will also work in Oracle versions 12c or superior, but it is no longer needed
+in recent Oracle databases; instead, activate the C<Oracle12c> dialect in L<SQL::Abstract::More>,
+like this :
 
-This will also work in Oracle versions 12c or superior, but the recommanded
-way is to activate the C<Oracle12c> dialect in L<SQL::Abstract::More> :
+  DBIx::DataModel->Schema("MySchema",
+     sql_abstract_args => [sql_dialect => "Oracle12c"],
+  );
 
 
-  $schema->sql_abstract(SQL::Abstract::More->new(sql_dialect => 'Oracle12c'));
 
 
 =head1 AUTHOR

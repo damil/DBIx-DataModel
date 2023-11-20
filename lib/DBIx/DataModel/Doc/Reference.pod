@@ -273,8 +273,8 @@ populating the C<sql_abstract> attribute of a schema.
 
 =item sql_abstract_args
 
-Optional arguments to be passed to the C<< ->new() >> method
-when populating the C<sql_abstract> attribute of a schema.
+Optional arrayref of arguments to be passed to the C<< ->new() >> method
+of C<sql_abstract_class>.
 
 
 =back
