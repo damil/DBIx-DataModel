@@ -12,13 +12,12 @@ SKIP: {
     or plan skip_all => "DBD::Oracle is not installed";
 
   $ENV{DBI_DSN} && $ENV{DBI_USER} && $ENV{DBI_PASS}
-    or plan skip_all => "need environment variables DBI_DSN, DBI_USER and DBI_PASS to run Oracle tests";
+    or plan skip_all => "need environment variables DBI_DSN, DBI_USER and DBI_PASS";
 
   # declare datamodel
-  eval "use DBIx::DataModel::Statement::Oracle; 1";
   DBIx::DataModel->Schema(
     'ORA',
-    statement_class => 'DBIx::DataModel::Statement::Oracle'
+    {sql_abstract_args => [sql_dialect => 'Oracle12c']}
    )->Table(All_tables => ALL_TABLES => qw/TABLE_NAME OWNER/);
 
   # connect to DB
@@ -31,7 +30,7 @@ SKIP: {
   my $tables = $source->select(-columns   => 'TABLE_NAME',
                                -order_by  => 'TABLE_NAME',);
 
-  # test scrollable cursors
+  # test various combinations of limit/offset
   my $slice = $source->select(-columns   => 'TABLE_NAME',
                               -order_by  => 'TABLE_NAME',
                               -limit     => 3);
@@ -71,6 +70,7 @@ SKIP: {
 
   my $row = $source->select(-columns   => 'TABLE_NAME',
                             -order_by  => 'TABLE_NAME',
+                            -limit     => 2,
                             -offset    => 2,
                             -result_as => 'firstrow');
   is_deeply($row, $tables->[2], "offset 2, single row");
@@ -78,6 +78,7 @@ SKIP: {
  
   my $stmt = $source->select(-columns   => 'TABLE_NAME',
                              -order_by  => 'TABLE_NAME',
+                             -limit     => 2,
                              -offset    => 2,
                              -result_as => 'fast_statement');
   $row = $stmt->next;
@@ -87,9 +88,6 @@ SKIP: {
 
   # row count
   is($stmt->row_count, scalar(@$tables), "row_count");
-  $row = $stmt->next;
-  is_deeply($row, $tables->[4], "next() after row_count()");
-
 
   # limit
   $stmt = $source->select(-columns   => 'TABLE_NAME',
@@ -99,7 +97,6 @@ SKIP: {
                           -result_as => 'statement');
   my $rows = $stmt->next(10);
   is_deeply($rows, [@$tables[2,3,4]], "limit");
-
 
   done_testing;
 }
