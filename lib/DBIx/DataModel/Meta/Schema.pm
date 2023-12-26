@@ -382,11 +382,12 @@ sub _parse_join_path {
         or croak "couldn't find item '$join_name' in join specification";
       # TODO: also deal with indirect paths (many-to-many)
 
-      # if join kind was not explicit, compute it from min. multiplicity
-      $join_kind ||= 
-        ($path->{multiplicity}[0] == 0
-           || ($seen_left_join && $self->{sql_no_inner_after_left_join})) 
-          ? '=>' : '<=>';
+      # if join kind was not explicit, compute it from min. multiplicity and from previous joins
+      if (!$join_kind) {
+        $join_kind = $path->{multiplicity}[0] == 0                              ?  '=>' 
+                   : ($seen_left_join && $self->{sql_no_inner_after_left_join}) ?  '=>' 
+                   :                                                              '<=>';
+      }
       $seen_left_join = 1 if $join_kind eq '=>';
 
       # if max. multiplicity > 1, the join has no primary key
