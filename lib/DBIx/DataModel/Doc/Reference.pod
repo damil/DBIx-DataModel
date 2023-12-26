@@ -1721,19 +1721,19 @@ allowed.
 
 =item C<< -where_on => \%where_on_criteria >> 
 
-  $schema->join(qw/Employee => activities => department/)->select(
+  $schema->join(qw/Employee => activities => department|dpt/)->select(
     -where => {firstname => 'Hector',
                dpt_name  => 'Music'},
     -where_on => {
-       T_Activity   => {d_end => {"<" => '01.01.2001'}},
-       T_Department => {dpt_head => 999},
+       T_Activity  => {d_end => {"<" => '01.01.2001'}},
+       dpt         => {dpt_head => 999},
      },
   );
 
 Adds some additional criteria into the 
 C<< JOIN ... ON ... >> SQL statement.
 These criteria are expressed as a hashref; keys of that hashref
-are names of database tables participating in the join.
+are aliases or database names of tables participating in the join.
 The criteria will be combined with regular foreign key constraints
 produced by the join; so in the (silly) example above, the generated
 SQL is :
@@ -1741,16 +1741,13 @@ SQL is :
      SELECT * FROM T_Employee 
        LEFT OUTER JOIN T_Activity
          ON T_Employee.emp_id = T_Activity.emp_id AND d_end < ?
-       LEFT OUTER JOIN T_Department 
-         ON T_Activity.dpt_id = T_Department.dpt_id AND dpt_head = ?
+       LEFT OUTER JOIN T_Department dpt
+         ON T_Activity.dpt_id = dpt.dpt_id AND dpt_head = ?
        WHERE dpt_name = ? AND firstname = ?
 
-Depending on the database system, 
-results from such additional criteria within the C<ON> clauses
-I<may be different> from a usual C<WHERE> criteria at the end
-of the statement; if in doubt, read your vendor's manual and do
-experiments. 
-
+For some database systems (Oracle is an example), conditions on columns of a left join
+B<must> be expressed as criteria within the C<ON> clauses instead of usual C<WHERE> criteria at the end
+of the statement; otherwise the left join becomes an inner join.
 
 =item C<< -union => [ %select_subargs ] >>
 

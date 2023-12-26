@@ -423,6 +423,7 @@ sub _parse_join_path {
                        condition => \%condition,
                        using     => $using,
                      };
+
       push @joins, $new_join;
       $source{$alias || $path_name} = $new_join;
 

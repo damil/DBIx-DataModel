@@ -5,6 +5,7 @@ package DBIx::DataModel::Statement;
 
 use warnings;
 use strict;
+use List::Util 1.29  qw/pairmap/;
 use List::MoreUtils  qw/firstval any/;
 use Scalar::Util     qw/weaken dualvar/;
 use POSIX            qw/LONG_MAX/;
@@ -294,6 +295,7 @@ sub sqlize {
 
   # "where_on" : conditions to be added in joins
   if (my $where_on = $args->{-where_on}) {
+
     # check proper usage
     does $sqla_args{-from}, 'ARRAY'
       or croak "datasource for '-where_on' was not a join";
@@ -303,8 +305,10 @@ sub sqlize {
     $join_op eq '-join'
       or croak "datasource for '-where_on' was not a join";
 
-    # reverse index (table_name => $join_hash)
-    my %by_dest_table = reverse @other_join_args;
+    # reverse index ($table_or_alias_name => $join_hash)
+    my %by_dest_table = pairmap {my $table_or_alias = $b; 
+                                 $table_or_alias =~ s/^.*\|//;
+                                 ($table_or_alias => $a)}       @other_join_args;
 
     # insert additional conditions into appropriate places
     while (my ($table, $additional_cond) = each %$where_on) {
@@ -315,10 +319,6 @@ sub sqlize {
                                           $additional_cond);
       delete $join_cond->{using};
     }
-
-    # TODO: should be able to use paths and aliases as keys, instead of
-    # database table names.
-    # TOCHECK: is this stuff still compatible with the bind() method ?
   }
 
   # adjust join conditions for ON clause or for USING clause
