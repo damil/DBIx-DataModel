@@ -14,7 +14,6 @@ my $builder = Module::Build->new(
         'Carp::Clan'             => 0,
         'Clone'                  => 0,
         'DBI'                    => 0,
-        'List::Util'             => 1.29,
         'SQL::Abstract::Classic' => 1.91,
         'SQL::Abstract::More'    => 1.40,
         'Module::Build'          => 0,

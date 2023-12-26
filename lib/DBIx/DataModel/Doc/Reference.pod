@@ -1725,15 +1725,15 @@ allowed.
     -where => {firstname => 'Hector',
                dpt_name  => 'Music'},
     -where_on => {
-       T_Activity  => {d_end => {"<" => '01.01.2001'}},
-       dpt         => {dpt_head => 999},
+       activities => {d_end => {"<" => '01.01.2001'}},
+       dpt        => {dpt_head => 999},
      },
   );
 
 Adds some additional criteria into the 
 C<< JOIN ... ON ... >> SQL statement.
 These criteria are expressed as a hashref; keys of that hashref
-are aliases or database names of tables participating in the join.
+are aliases or association names of tables participating in the join.
 The criteria will be combined with regular foreign key constraints
 produced by the join; so in the (silly) example above, the generated
 SQL is :
@@ -1748,6 +1748,11 @@ SQL is :
 For some database systems (Oracle is an example), conditions on columns of a left join
 B<must> be expressed as criteria within the C<ON> clauses instead of usual C<WHERE> criteria at the end
 of the statement; otherwise the left join becomes an inner join.
+
+In versions prior to DBIx::DataModel v3.07, keys in the C<-where_on> hash were names
+of database tables. This is still supported but is now deprecated : the recommanded way
+is to use table aliases (if present in the join) or association names.
+
 
 =item C<< -union => [ %select_subargs ] >>
 

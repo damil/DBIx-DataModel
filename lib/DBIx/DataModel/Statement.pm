@@ -5,7 +5,6 @@ package DBIx::DataModel::Statement;
 
 use warnings;
 use strict;
-use List::Util 1.29  qw/pairmap/;
 use List::MoreUtils  qw/firstval any/;
 use Scalar::Util     qw/weaken dualvar/;
 use POSIX            qw/LONG_MAX/;
@@ -303,17 +302,18 @@ sub sqlize {
     # retrieve components of the join and check again for proper usage
     my ($join_op, $first_table, @other_join_args) = @{$sqla_args{-from}};
     $join_op eq '-join'
-      or croak "datasource for '-where_on' was not a join";
+      or croak "the '-where_on' argument can only be used on a 'join' datasource";
 
-    # reverse index ($table_or_alias_name => $join_hash)
-    my %by_dest_table = pairmap {my $table_or_alias = $b; 
-                                 $table_or_alias =~ s/^.*\|//;
-                                 ($table_or_alias => $a)}       @other_join_args;
+    # build a hash where keys are the database table names, and values are the join conditions (hashes)
+    my %by_dest_table = reverse @other_join_args;
 
-    # insert additional conditions into appropriate places
+    # additional conditions coming from the -where_on hash are inserted as additional join criteria
     while (my ($table, $additional_cond) = each %$where_on) {
-      my $join_cond = $by_dest_table{$table}
-        or croak "-where_on => {'$table' => ..}: this table is not in the join";
+      my $db_table  = $meta_source->{db_table_by_source}{$table};
+      no warnings 'uninitialized';
+      my $join_cond =  $by_dest_table{$db_table} # new preferred syntax : through association or alias names
+                    || $by_dest_table{$table}    # backwards compat : database names are accepted too
+        or croak "-where_on => {'$table' => ..}: there is no such table in the join ", $meta_source->class;
       $join_cond->{condition}
         = $sql_abstract->merge_conditions($join_cond->{condition},
                                           $additional_cond);

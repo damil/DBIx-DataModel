@@ -1,7 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
-v3.07 21.12.2023
-  - -where_on : support for table aliases
+v3.07 26.12.2023
+  - -where_on : support for table aliases and association names
 
 v3.06 22.11.2023
   - support for SQL dialect 'Oracle12c'

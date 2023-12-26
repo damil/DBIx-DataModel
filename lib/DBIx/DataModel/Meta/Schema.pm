@@ -257,7 +257,7 @@ sub define_join {
   my $self = shift;
 
   # parse arguments
-  my ($joins, $aliased_tables) = $self->_parse_join_path(@_);
+  my ($joins, $aliased_tables, $db_table_by_source) = $self->_parse_join_path(@_);
 
   # build class name
   my $subclass   = join "", map {($_->{kind}, $_->{name})} @$joins;
@@ -281,11 +281,12 @@ sub define_join {
 
   # install the Join
   my %args = (
-    schema         => $self,
-    class          => $class_name,
-    parents        => [uniq map {$_->{table}} @$joins],
-    sqla_join_args => \@sqla_join_args,
-    aliased_tables => $aliased_tables,
+    schema             => $self,
+    class              => $class_name,
+    parents            => [uniq map {$_->{table}} @$joins],
+    sqla_join_args     => \@sqla_join_args,
+    aliased_tables     => $aliased_tables,
+    db_table_by_source => $db_table_by_source,
   );
   $args{primary_key} = $joins->[0]{primary_key} if $joins->[0]{primary_key};
   my $meta_join = DBIx::DataModel::Meta::Source::Join->new(%args);
@@ -436,7 +437,10 @@ sub _parse_join_path {
     }
   }
 
-  return (\@joins, \%aliased_tables);
+
+  my %db_table_by_source = map {($_ => $source{$_}{db_table})} keys %source;
+
+  return (\@joins, \%aliased_tables, \%db_table_by_source);
 }
 
 
