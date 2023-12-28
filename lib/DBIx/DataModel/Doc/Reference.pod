@@ -1599,6 +1599,7 @@ Proxy for C<< $self->source->schema >>.
      -page_index      => $page_index,
      -column_types    => \%column_types,
      -join_with_USING => $boolean,
+     -sql_abstract    => $an_sql_abstract_instance,
      -result_as       => 'rows' || 'firstrow' || [hashref => @cols] || etc.
   );
   
@@ -1881,7 +1882,12 @@ overrides the L</dbi_prepare_method()> specified at the schema level.
 
 =item C<< -join_with_USING => $boolean >>
 
-overrides the L</join_with_USING()> parameter specified at the schema level.
+overrides the L</join_with_USING> parameter specified at the schema level.
+
+
+=item C<< -sql_abstract => $an_sql_abstract_instance >>
+
+overrides the L</sql_abstract> parameter specified at the schema level.
 
 
 =item C<< -result_as => $result_kind >>
