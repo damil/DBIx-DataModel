@@ -334,10 +334,10 @@ my $path_regex = qr/^(?:(.+?)\.)?    # $1: optional source followed by '.'
                     $/x;
 
 sub _parse_join_path {
-  my ($self, $initial_table, @join_names) = @_;
+  my ($self, $initial_table, @join_items) = @_;
   my %aliased_tables;
 
-  $initial_table && @join_names
+  $initial_table && @join_items
     or croak "join: not enough arguments";
 
   # build first member of the @join result
@@ -360,27 +360,27 @@ sub _parse_join_path {
   my $join_kind;
   my $seen_left_join;
 
-  foreach my $join_name (@join_names) {
+  foreach my $join_item (@join_items) {
 
     # if it is a connector like '=>' or '<=>' or '<=' (see SQLAM syntax) ...
-    if ($join_name =~ /^[<>]?=[<>=]?$/) {
-      !$join_kind or croak "'$join_kind' can't be followed by '$join_name'";
-      $join_kind = $join_name;
+    if ($join_item =~ /^[<>]?=[<>=]?$/) {
+      !$join_kind or croak "'$join_kind' can't be followed by '$join_item'";
+      $join_kind = $join_item;
       # TODO: accept more general join syntax as recognized by SQLA::More::join
     }
 
     # otherwise, it must be a path specification
     else {
       # parse
-      my ($source_name, $path_name, $alias) = $join_name =~ $path_regex
-        or croak "incorrect item '$join_name' in join specification";
+      my ($source_name, $path_name, $alias) = $join_item =~ $path_regex
+        or croak "incorrect item '$join_item' in join specification";
 
       # find source and path information, from join elements seen so far
       my $source_join
         = $source_name ? $source{$source_name}
                        : lastval {$_->{table}{path}{$path_name}} @joins;
       my $path = $source_join && $source_join->{table}{path}{$path_name}
-        or croak "couldn't find item '$join_name' in join specification";
+        or croak "couldn't find item '$join_item' in join specification";
       # TODO: also deal with indirect paths (many-to-many)
 
       # if join kind was not explicit, compute it from min. multiplicity and from previous joins
@@ -418,7 +418,7 @@ sub _parse_join_path {
       my $db_table = $path->{to}->db_from;
       $db_table .= "|$alias" if $alias;
       my $new_join = { kind      => $join_kind,
-                       name      => $join_name,
+                       name      => $join_item,
                        alias     => $alias,
                        table     => $path->{to},
                        db_table  => $db_table,
