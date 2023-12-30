@@ -19,9 +19,10 @@ sub db_from {
     # therefore tables are at odd positions in the list. Tables already containing
     # a '.' are left untouched.
     my @copy = @$db_from;
-    for (my $i=1; $i < @copy; $i += 2) {
-      /\./ or $_ = "$db_schema.$_" for $copy[$i];
+    for (my $i=1; $i < @copy && $copy[$i] !~ /\./; $i += 2) {
+      $copy[$i] =~ s/^/$db_schema./;
     }
+
     $db_from = \@copy;
   }
 

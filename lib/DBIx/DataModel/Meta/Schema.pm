@@ -328,21 +328,14 @@ sub _parse_association_end {
 
 
 
-
-my $path_regex = qr/^(?:(.+?)\.)?    # $1: optional source followed by '.'
-                     (.+?)           # $2: path name (mandatory)
-                     (?:\|(.+))?     # $3: optional alias following a '|'
-                    $/x;
-
 sub _parse_join_path {
   my ($self, $initial_table, @join_items) = @_;
-
 
   # check if there are enough args
   $initial_table && @join_items
     or croak "join: not enough arguments";
 
-  # build first member of the join
+  # build first member of the join from the initial table
   my %first_join = (kind => '', name => $initial_table);
   $initial_table =~ s/\|(.+)$//  and $first_join{alias} = $1;
   my $table = $self->table($initial_table)
@@ -380,6 +373,7 @@ sub _parse_join_path {
     }
   }
 
+  # index to DB tables from DBIDM source names (will be used by Statement.pm)
   my %db_table_by_source = map {($_ => $accu{source}{$_}{db_table})} keys %{$accu{source}};
 
   return ($accu{joins}, $accu{aliased_tables}, \%db_table_by_source);
@@ -387,21 +381,24 @@ sub _parse_join_path {
 
 
 
-
+my $path_regex = qr/^(?:(.+?)\.)?    # $1: optional source followed by '.'
+                     (.+?)           # $2: path name (mandatory)
+                     (?:\|(.+))?     # $3: optional alias following a '|'
+                    $/x;
 
 sub _process_next_path_item {
-  my ($self, $join_item, $accu) = @_;
+  my ($self, $path_item, $accu) = @_;
 
   # parse
-  my ($source_name, $path_name, $alias) = $join_item =~ $path_regex
-    or croak "incorrect item '$join_item' in join specification";
+  my ($source_name, $path_name, $alias) = $path_item =~ $path_regex
+    or croak "incorrect item '$path_item' in join specification";
 
   # find source and path information, from join elements seen so far
   my $source_join
     = $source_name ? $accu->{source}{$source_name}
                    : lastval {$_->{table}{path}{$path_name}} @{$accu->{joins}};
   my $path = $source_join && $source_join->{table}{path}{$path_name}
-    or croak "couldn't find item '$join_item' in join specification";
+    or croak "couldn't find item '$path_item' in join specification";
   # TODO: also deal with indirect paths (many-to-many)
 
   # if join kind was not explicit, compute it from min. multiplicity and from previous joins
@@ -416,9 +413,18 @@ sub _process_next_path_item {
   delete $accu->{joins}[0]{primary_key} if $path->{multiplicity}[1] > 1;
 
  # build new join hashref and insert it into appropriate structures 
-  my $new_join = $self->_build_new_join($join_item, $source_join, $path, $accu->{join_kind}, $alias);
-  push @{$accu->{joins}}, $new_join;
-  $accu->{source}{$alias || $path_name} = $new_join;
+  my %new_join = ( kind      => $accu->{join_kind},
+                   name      => $path_item,
+                   alias     => $alias,
+                   table     => $path->{to},
+                   db_table  => $path->{to}->db_from . ($alias ? "|$alias" : ""),
+                   condition => {}, # for joining with conditions on left and right columns
+                   using     => [], # for joining with a USING clause
+                 );
+  lock_keys(%new_join);
+  $self->_fill_join_condition_and_using(\%new_join, $source_join, $path, $alias);
+  push @{$accu->{joins}}, \%new_join;
+  $accu->{source}{$alias || $path_name} = \%new_join;
 
   # remember aliased table
   $accu->{aliased_tables}{$alias} = $path->{to}->name if $alias;
@@ -428,46 +434,27 @@ sub _process_next_path_item {
 }
 
 
-sub _build_new_join {
-  my ($self, $join_name, $source_join, $path, $join_kind, $alias) = @_;
+sub _fill_join_condition_and_using {
+  my ($self, $new_join, $source_join, $path, $alias) = @_;
 
   my $left_table  = $source_join->{alias} || $source_join->{db_table};
-  my $right_table = $alias || $path->{to}->db_from;
-  my %condition;   # for joining with a ON clause
-  my $using = [];  # for joining with a USING clause
+  my $right_table = $alias                || $path->{to}->db_from;
+
   while (my ($left_col, $right_col) = each %{$path->{on}}) {
     if ($left_col eq $right_col) {
-      # both cols of equal name ==> can participate in a USING clause
-      push @$using, $left_col if $using;
+      # both cols have equal names, so they can participate in a USING clause
+      push @{$new_join->{using}}, $left_col if $new_join->{using};
     }
     else {
-      # USING clause no longer possible as soon as there are unequal names
-      undef $using;
+      # USING clause is no longer possible as soon as there are unequal names
+      undef $new_join->{using};
     }
 
-    # for the ON clause, prefix column names by their table names
-    # FIXME: honor SQL::Abstract's "name_sep" setting
-    $left_col  = "$left_table.$left_col";
-    $right_col = "$right_table.$right_col";
-    $condition{$left_col} = { -ident => $right_col };
+    # for the ON clause, prefix column names by their table names.
+    # Theoretically we should honor SQL::Abstract's "name_sep" setting .. but here there is no access to $statement->sql_abstract
+    $new_join->{condition}{"$left_table.$left_col"} = { -ident => "$right_table.$right_col" };
   }
-  my $db_table = $path->{to}->db_from;
-  $db_table .= "|$alias" if $alias;
-  my %new_join = ( kind      => $join_kind,
-                   name      => $join_name,
-                   alias     => $alias,
-                   table     => $path->{to},
-                   db_table  => $db_table,
-                   condition => \%condition,
-                   using     => $using,
-                 );
-  lock_keys(%new_join);
-
-  return \%new_join;
 }
-
-
-
 
 
 1;
