@@ -18,6 +18,7 @@ my $builder = Module::Build->new(
         'SQL::Abstract::More'    => 1.40,
         'Module::Build'          => 0,
         'Data::Structure::Util'  => 0,
+        'Hash::Util'             => 0,
         'Scalar::Util'           => 1.07,
         'Storable'               => 0,
         'namespace::clean'       => 0,
