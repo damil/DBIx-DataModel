@@ -1600,6 +1600,7 @@ Proxy for C<< $self->source->schema >>.
      -column_types    => \%column_types,
      -join_with_USING => $boolean,
      -sql_abstract    => $an_sql_abstract_instance,
+       # OR : -with   => $an_sql_abstract_instance, # -with is a synonym for -sql_abstract
      -result_as       => 'rows' || 'firstrow' || [hashref => @cols] || etc.
   );
   
@@ -1888,6 +1889,10 @@ overrides the L</join_with_USING> parameter specified at the schema level.
 =item C<< -sql_abstract => $an_sql_abstract_instance >>
 
 overrides the L</sql_abstract> parameter specified at the schema level.
+
+=item C<< -with => $an_sql_abstract_instance >>
+
+synonym for C<< -sql_abstract >>.
 
 
 =item C<< -result_as => $result_kind >>

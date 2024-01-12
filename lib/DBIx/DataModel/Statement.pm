@@ -121,7 +121,7 @@ sub arg {
 sub sql_abstract {
   my ($self, $arg_name) = @_;
 
-  return $self->arg('sql_abstract') || $self->schema->sql_abstract;
+  return $self->arg(-sql_abstract) || $self->schema->sql_abstract;
 }
   
 
@@ -198,6 +198,11 @@ sub refine {
 
   # process all key-value pairs
   while (my ($k, $v) = splice @more_args, 0, 2) {
+
+    # special case : -with can be used as synonym for -sql_abstract (for making it more similar to SQL's "WITH RECURSIVE...")
+    $k = '-sql_abstract' if $k eq '-with';
+
+    # find the proper arg handler and invoke it
     my $refine_handler = $REFINABLE_ARGS{$k}
       or croak "invalid arg : $k";
     $self->$refine_handler($k, $v);

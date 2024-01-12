@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx::DataModel.
 
+
+  - new Statement arg : -sql_abstract (can also be written -with)
+  - refactoring of method Statement::refine()
+
 v3.07 26.12.2023
   - -where_on : support for table aliases and association names
 
