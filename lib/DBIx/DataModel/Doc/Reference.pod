@@ -1892,7 +1892,20 @@ overrides the L</sql_abstract> parameter specified at the schema level.
 
 =item C<< -with => $an_sql_abstract_instance >>
 
-synonym for C<< -sql_abstract >>.
+synonym for C<< -sql_abstract >>, in order to facilitate the generation of
+I<common table expressions> in collaboration with L<SQL::Abstract::More/with_recursive, with> :
+
+  my $sqla_with_added_CTE = $schema->sql_abstract->with_recursive(
+   [ -table     => $CTE_table_name,
+     -columns   => \@CTE_columns,
+     -as_select => \%select_args ],
+  );
+  
+  my $rows = $schema->join(...)->select(
+    -with    => $sqla_with_added_CTE,
+    -columns => ...,
+    -where   => ...,
+  );
 
 
 =item C<< -result_as => $result_kind >>
