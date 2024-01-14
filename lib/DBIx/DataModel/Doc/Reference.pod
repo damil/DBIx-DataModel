@@ -1600,7 +1600,7 @@ Proxy for C<< $self->source->schema >>.
      -column_types    => \%column_types,
      -join_with_USING => $boolean,
      -sql_abstract    => $an_sql_abstract_instance,
-       # OR : -with   => $an_sql_abstract_instance, # -with is a synonym for -sql_abstract
+       # OR : -with   => $an_sql_abstract_instance, # '-with' is a synonym for '-sql_abstract'
      -result_as       => 'rows' || 'firstrow' || [hashref => @cols] || etc.
   );
   
@@ -1906,6 +1906,9 @@ I<common table expressions> in collaboration with L<SQL::Abstract::More/with_rec
     -columns => ...,
     -where   => ...,
   );
+
+
+See L<the cookbook|DBIx::DataModel::Doc::Cookbook/"Common table expressions (WITH RECURSIVE)"> for an example.
 
 
 =item C<< -result_as => $result_kind >>

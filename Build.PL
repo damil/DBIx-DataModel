@@ -9,7 +9,7 @@ my $builder = Module::Build->new(
     dist_author         => 'Laurent Dami <dami AT cpan.org>',
     dist_version_from   => 'lib/DBIx/DataModel.pm',
     requires => {
-        'perl'                   => 5.008,
+        'perl'                   => 5.010,
         'version'                => 0,
         'Carp::Clan'             => 0,
         'Clone'                  => 0,
@@ -31,8 +31,6 @@ my $builder = Module::Build->new(
         'Module::Build'       => 0,
      },
     build_requires => {
-        'Task::Weaken'        => 0,
-
          # test_requires => { # not working in perl 5.10, so keep it as 'build_requires'
         'DBD::Mock'           => 1.39,
         'FindBin'             => 0,
