@@ -730,6 +730,17 @@ sqlLike('SELECT lastname, dpt_name ' .
 }
 
 
+# join from instance
+$emp->join(qw/activities department/)->select(
+              -columns         => "dpt_name",
+              -join_with_USING => 1,
+              -where           => {dpt_name => {-like => 'A%'}});
+sqlLike('SELECT dpt_name ' .
+        'FROM T_Activity INNER JOIN T_Department USING (dpt_id) ' .
+        'WHERE (dpt_name LIKE ? AND emp_id = ?)',
+        ['A%', 999],
+        'join from instance');
+
 # wrong paths
 die_ok {$emp->join(qw/activities foo/)};
 die_ok {$emp->join(qw/foo bar/)};

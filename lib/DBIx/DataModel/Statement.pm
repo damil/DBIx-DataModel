@@ -55,8 +55,7 @@ my %REFINABLE_ARGS = (
                                       result_as       post_SQL  pre_exec  post_exec  post_bless
                                       limit           offset    page_size page_index as
                                       column_types    prepare_attrs       dbi_prepare_method
-                                      _left_cols      where_on            join_with_USING
-                                      sql_abstract/,
+                                      where_on        join_with_USING     sql_abstract/,
  );
 
 
