@@ -2055,6 +2055,24 @@ L<SQL::Abstract|SQL::Abstract>, as in :
       -where   => {foo => 123, bar => {-not_in => $subquery}}
    );
 
+A subquery can also take an optional argument which will be used
+as a column alias, for inserting the subquery as a column in a
+select list :
+
+  my $subquery = $source1->select(..., -result_as => [subquery => 'col3']);
+  my $rows     = $source2->select(
+      -columns => ['col1', 'col2', $subquery, 'col4'],
+      -where   => ...
+   );
+
+This will generate SQL of shape
+
+  SELECT col1, col2, (SELECT ... <subquery content>) col3, col4
+  FROM ...
+
+and bind values from the subquery will be inserted at the beginning
+of the bind list.
+
 
 =item L<count|DBIx::DataModel::Schema::ResultAs::Count>
 

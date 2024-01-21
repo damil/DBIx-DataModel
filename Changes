@@ -1,5 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
+  - new feature: select(..., -result_as => [subquery => 'aliased_column'])
+
 v3.08 13.01.2024
   - new Statement arg : -sql_abstract (can also be written -with) for supporting Common Table Expressions
   - refactoring of method Statement::refine()

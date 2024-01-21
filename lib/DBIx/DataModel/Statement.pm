@@ -53,12 +53,11 @@ my %REFINABLE_ARGS = (
   map {(-$_ => \&_just_store_arg)} qw/order_by        group_by  having    for
                                       union union_all intersect except    minus
                                       result_as       post_SQL  pre_exec  post_exec  post_bless
-                                      limit           offset    page_size page_index
+                                      limit           offset    page_size page_index as
                                       column_types    prepare_attrs       dbi_prepare_method
                                       _left_cols      where_on            join_with_USING
                                       sql_abstract/,
  );
-# TOCHECK : don't remember why we need _left_cols. What is it used for ?
 
 
 #----------------------------------------------------------------------
@@ -233,7 +232,7 @@ sub sqlize {
   my @args_to_copy = qw/-columns -where
                         -union -union_all -intersect -except -minus
                         -order_by -group_by -having
-                        -limit -offset -page_size -page_index/;
+                        -limit -offset -page_size -page_index -as/;
   my %sqla_args = (-from         => clone($self->source->db_from),
                    -want_details => 1);
   defined $args->{$_} and $sqla_args{$_} = $args->{$_} for @args_to_copy;
