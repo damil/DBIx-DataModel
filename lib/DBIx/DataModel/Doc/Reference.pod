@@ -1280,7 +1280,7 @@ permanent change.
 Decides which policy will be applied regarding C<< $dbh->{HandleError} >> handlers.
 Whenever a schema receives a handle to a dbh through the C<< $schema->dbh($new_dbh, ..) >>
 method, C<DBIx::DataModel> may add or modify the C<< $dbh->{HandleError} >> handler,
-so that SQL errrors are signaled at the client's level instead of being signaled
+so that SQL errrors are signaled from the caller's perspective instead of being signaled
 as errors within L<DBIx::DataModel::Statement>. Allowed policies are :
 
 =over

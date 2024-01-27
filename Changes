@@ -1,5 +1,7 @@
 Revision history for Perl extension DBIx::DataModel.
 
+v3.09 27.01.2024
+  - installing $dbh->{HandleError} so that error messages are reported from the caller's perspective
   - new feature: select(..., -result_as => [subquery => 'aliased_column'])
 
 v3.08 13.01.2024
