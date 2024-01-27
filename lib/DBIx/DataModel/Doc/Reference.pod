@@ -1120,6 +1120,9 @@ allowed at any time, except when a transaction is in course.  However,
 a nested transaction may temporarily change the database handle by
 supplying it as argument to the L</"do_transaction()"> method.
 
+While setting the schema to a new C<$dbh>, the C<HandleError> attribute of that C<$dbh> may
+be modified -- see L</handleError_policy()>.
+
 To unset the database handle, call C<< $schema->dbh(undef) >>.
 
 =head3 debug()
@@ -1268,6 +1271,43 @@ C<db_schema> attribute set to $string. The original C<$schema> is left
 untouched. This is useful for a I<temporary> switch of database
 schema, as opposed to the C<db_schema()> method above that performs a
 permanent change.
+
+
+=head3 handleError_policy()
+
+  $schema->handleError_policy('none'); # default is 'combine'
+
+Decides which policy will be applied regarding C<< $dbh->{HandleError} >> handlers.
+Whenever a schema receives a handle to a dbh through the C<< $schema->dbh($new_dbh, ..) >>
+method, C<DBIx::DataModel> may add or modify the C<< $dbh->{HandleError} >> handler,
+so that SQL errrors are signaled at the client's level instead of being signaled
+as errors within L<DBIx::DataModel::Statement>. Allowed policies are :
+
+=over
+
+=item combine
+
+A new C<< $dbh->{HandleError} >> handler will be installed. If a previous handler
+was already present, that handler will be called, and then the C<DBIx::DataModel>
+handler runs on top of the previous one. If the previous handler was already installed
+by C<DBIx::DataModel>, this handler remains in place without any new installation.
+
+This is the default policy.
+
+=item none
+
+C<DBIx::DataModel> leaves the previous  C<< $dbh->{HandleError} >> handler in place without any interference.
+
+=item override
+
+C<DBIx::DataModel> forces installation of a new   C<< $dbh->{HandleError} >>, ignoring the previous handler.
+
+=item if_absent
+
+C<DBIx::DataModel> installs a new  C<< $dbh->{HandleError} >> handler only if there was no previous handler.
+
+=back
+
 
 
 =head3 localize_state()

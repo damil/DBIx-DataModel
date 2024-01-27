@@ -346,20 +346,22 @@ sub prepare {
   # log the statement and bind values
   $self->schema->_debug("PREPARE $self->{sql} / @{$self->{bound_params}}");
 
-  # call the database
+  # assemble stuff for calling the database
   my $dbh          = $self->schema->dbh or croak "Schema has no dbh";
-  my $method       = $self->{args}{-dbi_prepare_method}
-                  || $self->schema->dbi_prepare_method;
+  my $method       = $self->{args}{-dbi_prepare_method}  || $self->schema->dbi_prepare_method;
   my @prepare_args = ($self->{sql});
   if (my $prepare_attrs = $self->{args}{-prepare_attrs}) {
     push @prepare_args, $prepare_attrs;
   }
+
+  # call the database
   $self->{sth}  = $dbh->$method(@prepare_args);
 
   # new status and return
   $self->{status} = PREPARED;
   return $self;
 }
+
 
 
 sub sth {
