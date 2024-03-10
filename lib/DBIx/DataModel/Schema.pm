@@ -85,10 +85,17 @@ foreach my $accessor (grep {$_ ne 'dbh'} keys %$schema_attributes_spec) {
     ref $self or $self = $self->singleton;
 
     if (@_) {
-      my ($new_val) = validate_with(params      => \@_,
-                                    spec        => [ $schema_attributes_spec->{$accessor} ],
-                                    allow_extra => 0);
-      $self->{$accessor} = $new_val;
+      if (not defined $_[0]) { # $schema->$attribute(undef) means deleting that attribute in $schema
+        delete $self->{$accessor};
+      }
+      else {
+        my ($new_val) = validate_with(params      => \@_,
+                                      spec        => [ $schema_attributes_spec->{$accessor} ],
+                                      allow_extra => 0,
+                                      called      => $accessor,
+                                     );
+        $self->{$accessor} = $new_val;
+      }
     }
     return $self->{$accessor};
   };
@@ -470,13 +477,15 @@ This is the parent class for all schema classes created through
 
 =head1 CONSTRUCTOR
 
-See L<DBIx::DataModel::Doc::Reference/Schema>
+See L<DBIx::DataModel::Doc::Reference/Schema::new()>
 
+=head1 ATTRIBUTES
+
+See L<DBIx::DataModel::Doc::Reference/Schema attributes>
 
 =head1 METHODS
 
-Methods are documented in 
-L<DBIx::DataModel::Doc::Reference|DBIx::DataModel::Doc::Reference>.
+See L<DBIx::DataModel::Doc::Reference/Other schema methods>.
 
 =head2 Delegated methods
 
