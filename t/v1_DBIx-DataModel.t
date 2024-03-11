@@ -7,7 +7,7 @@ use Data::Dumper;
 use SQL::Abstract::Test import => [qw/is_same_sql_bind/];
 use Storable qw/dclone/;
 
-use constant N_DBI_MOCK_TESTS => 110;
+use constant N_DBI_MOCK_TESTS => 111;
 use constant N_BASIC_TESTS    =>  15;
 
 use Test::More tests => (N_BASIC_TESTS + N_DBI_MOCK_TESTS);
@@ -697,9 +697,19 @@ die_ok {$emp->emp_id};
 	  'WHERE (emp_id = ? AND gender = ? AND gender != ?)', [999, 'F', 'M'],
 	  'statement prepare/execute');
 
+  # idem, other syntax
+  $statement = HR->table('Employee')->join(qw/activities department/);
+  $statement->prepare(-columns => [qw/firstname lastname/],
+                      -where   => {gender => 'F'});
+  my @rows = $statement->execute($emp)->all;
+  sqlLike('SELECT firstname, lastname ' .
+	  'FROM T_Activity ' .
+	  'INNER JOIN T_Department ' .
+	  'ON T_Activity.dpt_id=T_Department.dpt_id ' .
+	  'WHERE (emp_id = ? AND gender = ?)', [999, 'F'],
+	  'statement prepare/execute 2nd syntax');
 
   # many-to-many association
-
   HR->Association([qw/Employee   employees   * activities employee/],
 			[qw/Department departments * activities department/]);
 
