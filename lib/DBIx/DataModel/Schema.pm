@@ -34,7 +34,6 @@ my $schema_attributes_spec = {
   select_implicitly_for => {type => SCALAR,          default  => ''                                       },
   autolimit_firstrow    => {type => BOOLEAN,         optional => 1                                        },
   db_schema             => {type => SCALAR,          optional => 1                                        },
-  resultAs_classes      => {type => ARRAYREF,        optional => 1                                        },
   handleError_policy    => {type => SCALAR,          default  => 'combine', regex => qr(^(if_absent
                                                                                          |combine
                                                                                          |override
@@ -63,9 +62,6 @@ sub new {
 
   # default SQLA
   $self->{sql_abstract} ||= $metadm->sql_abstract_class->new($metadm->sql_abstract_args);
-
-  # default resultAs_classes
-  $self->{resultAs_classes} ||= mro::get_linear_isa($class);
 
   # from now on, singleton mode will be forbidden
   $metadm->{singleton} = undef;
