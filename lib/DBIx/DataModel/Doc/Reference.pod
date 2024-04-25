@@ -719,7 +719,7 @@ of kind C<Composition> is :
 
 =item *
 
-the multiplicity must be 1-to-n
+the multiplicity must be 1-to-n or 1-to-0..1
 
 =item * 
 

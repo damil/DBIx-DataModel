@@ -227,8 +227,8 @@ sub _check_composition {
   # multiplicities must be 1-to-n
   $self->{A}{multiplicity}[1] == 1
     or croak "max multiplicity of first class in a composition must be 1";
-  $self->{B}{multiplicity}[1] > 1
-    or croak "max multiplicity of second class in a composition must be > 1";
+  $self->{B}{multiplicity}[0] == 0
+    or croak "min multiplicity of second class in a composition must be 0";
 
   # check for conflicting compositions
   while (my ($name, $path) = each %{$self->{B}{table}{path} || {}}) {
@@ -402,7 +402,7 @@ Special behaviour is attached to the kind C<Composition> :
 
 =item *
 
-the multiplicity must be 1-to-n
+the multiplicity must be 1-to-n or 1-to-0..1
 
 =item * 
 

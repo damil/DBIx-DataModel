@@ -43,7 +43,7 @@ sub new {
 
   # if this is a composition path, remember it in the 'components' array
   push @{$self->{from}{components}}, $path
-    if $self->{association}{kind} eq 'Composition' && $self->{multiplicity}[1] > 1;
+    if $self->{association}{kind} eq 'Composition' && $self->{multiplicity}[0] == 0;
 
   # install a navigation method into the 'from' table class
   my @navigation_args = ($self->{name},  # method name
