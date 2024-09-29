@@ -726,7 +726,7 @@ summarize the differences between major versions.
 The L<DBIx::DataModel::Schema::Generator|DBIx::DataModel::Schema::Generator>
 documentation explains how to automatically generate a schema from
 a C<DBI> connection, from a L<SQL::Translator|SQL::Translator> description
-or from an existing C<DBIx::Class|DBIx::Class> schema.
+or from an existing L<DBIx::Class|DBIx::Class> schema.
 
 
 =back
